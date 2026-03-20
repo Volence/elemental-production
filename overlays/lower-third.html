@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lower Third Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; width: 1920px; height: 1080px; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap');
+
+    .lower-third {
+      position: absolute;
+      bottom: 120px;
+      left: 60px;
+      display: flex;
+      align-items: stretch;
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .lower-third.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .lt-accent {
+      width: 4px;
+      background: linear-gradient(180deg, #6366f1, #a78bfa);
+      border-radius: 2px 0 0 2px;
+    }
+
+    .lt-content {
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(20px);
+      padding: 12px 24px;
+      border-radius: 0 8px 8px 0;
+      min-width: 250px;
+    }
+
+    .lt-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      line-height: 1.2;
+    }
+
+    .lt-subtitle {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="lt" class="lower-third">
+    <div class="lt-accent"></div>
+    <div class="lt-content">
+      <div id="lt-title" class="lt-title"></div>
+      <div id="lt-subtitle" class="lt-subtitle"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const es = new EventSource(`${API}/api/events`);
+
+    function update(state) {
+      const lt = document.getElementById('lt');
+      const data = state.lowerThird || {};
+
+      if (data.visible && (data.title || data.subtitle)) {
+        document.getElementById('lt-title').textContent = data.title || '';
+        document.getElementById('lt-subtitle').textContent = data.subtitle || '';
+        lt.classList.add('visible');
+      } else {
+        lt.classList.remove('visible');
+      }
+    }
+
+    es.addEventListener('state', e => update(JSON.parse(e.data)));
+    fetch(`${API}/api/state`).then(r => r.json()).then(update);
+  </script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gameplay HUD Overlay</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;600;700;800&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: 'Oswald', 'Bebas Neue', sans-serif; color: white;
+    }
+
+    .hud { position: relative; width: 1920px; height: 1080px; }
+
+    /* ===== Unified top strip (event + series tracker) ===== */
+    .top-strip {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      display: flex;
+      align-items: stretch;
+      height: 30px;
+      background: rgba(12,15,18,0.94);
+      border-radius: 0 0 6px 6px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-top: none;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+
+    /* Event name section */
+    .strip-event {
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.5);
+      white-space: nowrap;
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Individual map slot in the series tracker */
+    .strip-map {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 10px;
+      position: relative;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      cursor: default;
+    }
+    .strip-map:last-of-type { border-right: none; }
+
+    .strip-map .sm-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      object-fit: cover;
+      margin-right: 6px;
+      opacity: 0.7;
+    }
+
+    .strip-map .sm-name {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: rgba(255,255,255,0.5);
+      white-space: nowrap;
+    }
+
+    .strip-map .sm-score {
+      font-size: 9px;
+      font-weight: 700;
+      margin-left: 5px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* Current map highlight */
+    .strip-map.current {
+      background: linear-gradient(180deg, rgba(249,115,22,0.2) 0%, rgba(239,68,68,0.15) 100%);
+    }
+    .strip-map.current .sm-name { color: rgba(255,255,255,0.95); }
+    .strip-map.current .sm-icon { opacity: 1; }
+    .strip-map.current::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #f97316, #ef4444);
+    }
+
+    /* Won maps */
+    .strip-map.won-t1::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: #3b82f6;
+    }
+    .strip-map.won-t1 .sm-score { color: #3b82f6; }
+
+    .strip-map.won-t2::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: #ef4444;
+    }
+    .strip-map.won-t2 .sm-score { color: #ef4444; }
+
+    /* Best-of section */
+    .strip-bo {
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.35);
+      white-space: nowrap;
+      border-left: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* ===== Team bars ===== */
+    .top-bar {
+      position: absolute;
+      top: 46px;
+      width: 100%;
+      height: 48px;
+      display: flex;
+      justify-content: space-between;
+      z-index: 10;
+      pointer-events: none;
+      padding: 0 38px;
+    }
+
+    .team-bar {
+      position: relative;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      background-color: rgba(12,15,18,0.92);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .team-bar .bar-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      padding: 0 8px;
+      gap: 6px;
+    }
+
+    /* Left bar */
+    .team-bar.left {
+      width: 27%;
+      border-radius: 0 4px 4px 0;
+      background-image: url('LeftTeam_1.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .team-bar.left .bar-content {
+      justify-content: flex-start;
+    }
+    .team-bar.left .team-score {
+      margin-left: auto;
+      padding-right: 6px;
+    }
+
+    /* Right bar */
+    .team-bar.right {
+      width: 27%;
+      border-radius: 4px 0 0 4px;
+      background-image: url('RightTeam_1.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .team-bar.right .bar-content {
+      justify-content: flex-end;
+      flex-direction: row-reverse;
+    }
+    .team-bar.right .team-score {
+      margin-right: auto;
+      padding-left: 6px;
+    }
+
+    .team-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 4px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .team-name {
+      font-size: 15px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      white-space: nowrap;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+    }
+
+    .team-score {
+      font-size: 20px;
+      font-weight: 700;
+      min-width: 20px;
+      text-align: center;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+    }
+
+    .score-divider {
+      width: 1px;
+      height: 22px;
+      background: rgba(255,255,255,0.25);
+      flex-shrink: 0;
+    }
+
+    /* Hero bans */
+    .bans-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .ban-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid rgba(239,68,68,0.6);
+      position: relative;
+      flex-shrink: 0;
+    }
+    .ban-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: grayscale(15%) brightness(0.85);
+    }
+    .ban-icon::after {
+      content: '';
+      position: absolute;
+      top: -1px;
+      right: -1px;
+      width: 8px;
+      height: 8px;
+      background: #ef4444;
+      clip-path: polygon(100% 0, 0 0, 100% 100%);
+    }
+
+    /* Animations */
+    .top-strip { animation: dropDown 0.3s ease forwards; opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    @keyframes dropDown { to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    .team-bar { animation: slideIn 0.4s ease forwards; opacity: 0; }
+    .team-bar.left { transform: translateX(-20px); }
+    .team-bar.right { transform: translateX(20px); animation-delay: 0.1s; }
+    @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+  </style>
+</head>
+<body>
+  <div class="hud" id="root"></div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const GRAPHICS = `${API}/assets/graphics`;
+    const CACHE_BUST = `v=${Date.now()}`;
+    const es = new EventSource(`${API}/api/events`);
+    let heroData = [];
+
+    async function loadHeroes() {
+      heroData = await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+    }
+
+    function getHeroPortrait(key) {
+      const hero = heroData.find(h => h.key === key);
+      return hero ? hero.portrait : '';
+    }
+
+    function update(state) {
+      const el = document.getElementById('root');
+      const swap = !!state.swapSides;
+      const left = swap ? (state.teams?.team2 || {}) : (state.teams?.team1 || {});
+      const right = swap ? (state.teams?.team1 || {}) : (state.teams?.team2 || {});
+      const leftBans = swap ? (state.heroBans?.team2 || []) : (state.heroBans?.team1 || []);
+      const rightBans = swap ? (state.heroBans?.team1 || []) : (state.heroBans?.team2 || []);
+      const maps = state.maps || [];
+      const currentMapIdx = maps.findIndex(m => m.status === 'current');
+      const currentMap = currentMapIdx >= 0 ? maps[currentMapIdx] : maps[0];
+      const fontFamily = state.font?.family || 'Oswald';
+      const bestOf = state.bestOf || maps.length || 5;
+
+      // Ban icons
+      const bansHtml = (bans) => bans.length > 0 ? `<div class="bans-group">${
+        bans.map(k => `<div class="ban-icon"><img src="${getHeroPortrait(k)}"></div>`).join('')
+      }</div>` : '';
+
+      // Series map slots for unified top strip
+      const seriesHtml = maps.map((m, i) => {
+        let cls = '';
+        if (m.status === 'completed' && m.winner === 'team1') {
+          cls = swap ? 'won-t2' : 'won-t1';
+        } else if (m.status === 'completed' && m.winner === 'team2') {
+          cls = swap ? 'won-t1' : 'won-t2';
+        } else if (i === currentMapIdx) {
+          cls = 'current';
+        }
+
+        const scoreLabel = m.status === 'completed' && m.roundScore ? m.roundScore : '';
+        const showIcon = m.image ? `<img class="sm-icon" src="${m.image}">` : '';
+
+        return `
+          <div class="strip-map ${cls}">
+            ${showIcon}
+            <span class="sm-name">${m.name || 'TBD'}</span>
+            ${scoreLabel ? `<span class="sm-score">${scoreLabel}</span>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      el.innerHTML = `
+        <div class="top-strip" style="font-family:'${fontFamily}',sans-serif">
+          <div class="strip-event">${state.eventName || 'MATCH'}</div>
+          ${seriesHtml}
+          <div class="strip-bo">BO${bestOf}</div>
+        </div>
+
+        <div class="top-bar">
+          <div class="team-bar left">
+            <div class="bar-content" style="font-family:'${fontFamily}',sans-serif">
+              ${left.logo ? `<img class="team-logo" src="${left.logo}">` : ''}
+              <span class="team-name">${left.name || 'TEAM 1'}</span>
+              ${bansHtml(leftBans)}
+              <div class="score-divider"></div>
+              <span class="team-score">${left.score ?? 0}</span>
+            </div>
+          </div>
+
+          <div class="team-bar right">
+            <div class="bar-content" style="font-family:'${fontFamily}',sans-serif">
+              ${right.logo ? `<img class="team-logo" src="${right.logo}">` : ''}
+              <span class="team-name">${right.name || 'TEAM 2'}</span>
+              ${bansHtml(rightBans)}
+              <div class="score-divider"></div>
+              <span class="team-score">${right.score ?? 0}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    loadHeroes().then(() => {
+      es.addEventListener('state', e => update(JSON.parse(e.data)));
+      fetch(`${API}/api/state`).then(r => r.json()).then(update);
+    });
+  </script>
+</body>
+</html>

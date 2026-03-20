@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Match Scoreboard Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Inter', sans-serif; color: white; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+    .scoreboard { padding: 16px; opacity: 0; animation: fadeIn 0.4s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .scoreboard-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .sb-title { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+    .map-selector { display: flex; gap: 4px; }
+    .map-btn {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
+      padding: 4px 10px; font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.7);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .map-btn:hover { background: rgba(255,255,255,0.1); }
+    .map-btn.active { background: rgba(99,102,241,0.3); border-color: #6366f1; color: white; }
+
+    .teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .team-block { border-radius: 8px; overflow: hidden; }
+    .team-block.t1 { border-top: 2px solid #3b82f6; }
+    .team-block.t2 { border-top: 2px solid #ef4444; }
+
+    .team-heading {
+      padding: 8px 12px; font-size: 14px; font-weight: 800;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .team-heading.t1 { color: #3b82f6; }
+    .team-heading.t2 { color: #ef4444; }
+    .win-badge { background: #22c55e; color: white; font-size: 9px; padding: 2px 6px; border-radius: 3px; }
+
+    .stat-header {
+      display: grid; grid-template-columns: 100px repeat(6, 1fr);
+      gap: 4px; padding: 4px 12px; font-size: 8px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .player-row {
+      display: grid; grid-template-columns: 100px repeat(6, 1fr);
+      gap: 4px; padding: 5px 12px; font-size: 11px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .player-row:hover { background: rgba(255,255,255,0.03); }
+
+    .player-name { font-weight: 700; display: flex; align-items: center; gap: 4px; }
+    .role-tag {
+      font-size: 7px; font-weight: 700; padding: 1px 4px; border-radius: 2px;
+      text-transform: uppercase;
+    }
+    .role-tank { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .role-damage { background: rgba(239,68,68,0.2); color: #ef4444; }
+    .role-support { background: rgba(34,197,94,0.2); color: #22c55e; }
+
+    .stat-val { text-align: center; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.8); }
+
+    .role-divider {
+      font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      padding: 4px 12px 2px; margin-top: 4px;
+    }
+    .role-divider.tank { color: #f59e0b; }
+    .role-divider.damage { color: #ef4444; }
+    .role-divider.support { color: #22c55e; }
+
+    .team-totals {
+      padding: 6px 12px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.08);
+      display: grid; grid-template-columns: 100px repeat(6, 1fr); gap: 4px;
+      font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.5);
+    }
+    .team-totals .stat-val { color: rgba(255,255,255,0.7); }
+  </style>
+</head>
+<body>
+  <div id="scoreboard" class="scoreboard"></div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const es = new EventSource(`${API}/api/events`);
+    let currentMap = -1; // -1 = latest
+
+    const roleOrder = { 'Tank': 0, 'Damage': 1, 'Support': 2 };
+
+    function renderMap(state, mapIndex) {
+      const el = document.getElementById('scoreboard');
+      const stats = state.playerStats;
+      if (!stats || stats.length === 0) { el.innerHTML = '<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.3)">No stats available</div>'; return; }
+
+      const idx = mapIndex < 0 ? stats.length - 1 : Math.min(mapIndex, stats.length - 1);
+      const round = stats[idx];
+      if (!round || !round.teams || round.teams.length < 2) return;
+
+      // Map selector buttons
+      const mapBtns = stats.map((r, i) => {
+        const mapName = state.maps?.[i]?.name || `Map ${i + 1}`;
+        return `<button class="map-btn ${i === idx ? 'active' : ''}" onclick="switchMap(${i})">${mapName}</button>`;
+      }).join('');
+
+      const teamHtml = round.teams.map((team, ti) => {
+        const cls = ti === 0 ? 't1' : 't2';
+        const sorted = [...team.players].sort((a, b) => (roleOrder[a.role] ?? 9) - (roleOrder[b.role] ?? 9));
+
+        let lastRole = '';
+        const rows = sorted.map(p => {
+          const roleTag = `<span class="role-tag role-${p.role.toLowerCase()}">${p.role}</span>`;
+          let divider = '';
+          if (p.role !== lastRole) {
+            divider = `<div class="role-divider ${p.role.toLowerCase()}">${p.role === 'Tank' ? '🛡️' : p.role === 'Damage' ? '⚔️' : '💚'} ${p.role}</div>`;
+            lastRole = p.role;
+          }
+          return `${divider}<div class="player-row">
+            <div class="player-name">${p.nickname} ${roleTag}</div>
+            <div class="stat-val">${p.kdRatio.toFixed(1)}</div>
+            <div class="stat-val">${p.kills}</div>
+            <div class="stat-val">${p.deaths}</div>
+            <div class="stat-val">${p.finalBlows}</div>
+            <div class="stat-val">${p.damageDealt.toLocaleString()}</div>
+            <div class="stat-val">${p.healingDone.toLocaleString()}</div>
+          </div>`;
+        }).join('');
+
+        return `<div class="team-block ${cls}">
+          <div class="team-heading ${cls}">
+            ${team.name}
+            ${team.stats.teamWin ? '<span class="win-badge">WIN</span>' : ''}
+          </div>
+          <div class="stat-header">
+            <div>Player</div><div class="stat-val">K/D</div><div class="stat-val">Elims</div>
+            <div class="stat-val">Deaths</div><div class="stat-val">FB</div>
+            <div class="stat-val">Dmg</div><div class="stat-val">Heal</div>
+          </div>
+          ${rows}
+          <div class="team-totals">
+            <div>Totals</div>
+            <div class="stat-val">—</div>
+            <div class="stat-val">${team.stats.totalEliminations}</div>
+            <div class="stat-val">${team.stats.totalDeaths}</div>
+            <div class="stat-val">${team.stats.totalFinalBlows}</div>
+            <div class="stat-val">—</div>
+            <div class="stat-val">—</div>
+          </div>
+        </div>`;
+      }).join('');
+
+      el.innerHTML = `
+        <div class="scoreboard-header">
+          <div class="sb-title">${round.mapName || 'Match Stats'} — ${round.mapMode || ''}</div>
+          <div class="map-selector">${mapBtns}</div>
+        </div>
+        <div class="teams-grid">${teamHtml}</div>
+      `;
+    }
+
+    window.switchMap = function(idx) {
+      currentMap = idx;
+      fetch(`${API}/api/state`).then(r => r.json()).then(s => renderMap(s, currentMap));
+    };
+
+    function update(state) { renderMap(state, currentMap); }
+
+    es.addEventListener('state', e => update(JSON.parse(e.data)));
+    fetch(`${API}/api/state`).then(r => r.json()).then(update);
+  </script>
+</body>
+</html>

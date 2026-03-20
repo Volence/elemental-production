@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Starting Soon Overlay</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: 'Oswald', 'Bebas Neue', sans-serif; color: white;
+    }
+    .container { position: relative; width: 1920px; height: 1080px; }
+
+    /* Left side: countdown */
+    .countdown-section {
+      position: absolute; left: 80px; bottom: 160px;
+      text-align: center;
+    }
+    .countdown-time {
+      font-size: 120px; font-weight: 700; letter-spacing: 4px; line-height: 1;
+      text-shadow: 0 4px 30px rgba(0,0,0,0.5);
+    }
+    .countdown-label {
+      margin-top: 8px; padding: 8px 32px; font-size: 28px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 4px;
+      background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+      color: white; border-radius: 4px;
+    }
+
+    /* Right side: today's schedule */
+    .schedule-section {
+      position: absolute; right: 60px; top: 50%; transform: translateY(-50%);
+      width: 560px;
+    }
+    .schedule-header {
+      background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+      color: white; font-size: 18px; font-weight: 700; letter-spacing: 3px;
+      text-transform: uppercase; padding: 10px 24px; text-align: right;
+      border-radius: 4px; margin-bottom: 12px; width: fit-content; margin-left: auto;
+    }
+    .match-row {
+      display: flex; align-items: center; padding: 10px 16px; margin-bottom: 4px;
+      background: rgba(15,15,25,0.85); border-radius: 4px;
+      border-left: 3px solid transparent; transition: all 0.3s;
+    }
+    .match-row.up-next {
+      border-left-color: #f97316;
+      background: rgba(249,115,22,0.15);
+    }
+    .match-row .team-left, .match-row .team-right {
+      display: flex; align-items: center; gap: 8px; flex: 1;
+    }
+    .match-row .team-right { justify-content: flex-end; }
+    .match-row .team-logo { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+    .match-row .team-name { font-size: 16px; font-weight: 600; }
+    .match-row .vs { color: rgba(255,255,255,0.3); font-size: 12px; padding: 0 8px; }
+    .match-row .match-time {
+      font-size: 22px; font-weight: 700; min-width: 60px; text-align: right;
+    }
+    .match-row .match-label {
+      font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+      color: #f97316; text-align: right; display: block;
+    }
+    .match-row .match-info { text-align: right; min-width: 90px; }
+
+    .footer-text {
+      margin-top: 16px; text-align: center; font-size: 16px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 3px;
+    }
+    .footer-sub {
+      text-align: center; font-size: 11px; color: rgba(255,255,255,0.4);
+      text-transform: uppercase; letter-spacing: 2px; margin-top: 4px;
+    }
+
+    /* Animations */
+    .countdown-section { animation: slideUp 0.6s ease forwards; opacity: 0; transform: translateY(20px); }
+    .schedule-section { animation: slideLeft 0.6s 0.2s ease forwards; opacity: 0; transform: translate(20px, -50%); }
+    @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideLeft { to { opacity: 1; transform: translate(0, -50%); } }
+  </style>
+</head>
+<body>
+  <div class="container" id="root"></div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const es = new EventSource(`${API}/api/events`);
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+
+    function update(state) {
+      const el = document.getElementById('root');
+      const schedule = state.schedule || [];
+
+      // Build schedule rows
+      const scheduleHtml = schedule.length > 0 ? schedule.map((match, i) => {
+        const isNext = i === 0;
+        return `<div class="match-row ${isNext ? 'up-next' : ''}">
+          <div class="team-left">
+            ${match.team1Logo ? `<img class="team-logo" src="${match.team1Logo}">` : '<div class="team-logo" style="background:#333;border-radius:50%"></div>'}
+            <span class="team-name">${match.team1 || 'TBD'}</span>
+          </div>
+          <span class="vs">—</span>
+          <div class="team-right">
+            <span class="team-name">${match.team2 || 'TBD'}</span>
+            ${match.team2Logo ? `<img class="team-logo" src="${match.team2Logo}">` : '<div class="team-logo" style="background:#333;border-radius:50%"></div>'}
+          </div>
+          <div class="match-info">
+            <span class="match-time">${isNext ? '' : (match.time || '')}</span>
+            <span class="match-label">${isNext ? 'UP NEXT' : (match.label || '')}</span>
+          </div>
+        </div>`;
+      }).join('') : `
+        <div class="match-row up-next">
+          <div class="team-left">
+            ${state.teams?.team1?.logo ? `<img class="team-logo" src="${state.teams.team1.logo}">` : ''}
+            <span class="team-name">${state.teams?.team1?.name || 'TBD'}</span>
+          </div>
+          <span class="vs">—</span>
+          <div class="team-right">
+            <span class="team-name">${state.teams?.team2?.name || 'TBD'}</span>
+            ${state.teams?.team2?.logo ? `<img class="team-logo" src="${state.teams.team2.logo}">` : ''}
+          </div>
+          <div class="match-info">
+            <span class="match-label">UP NEXT</span>
+          </div>
+        </div>`;
+
+      el.innerHTML = `
+        <div class="countdown-section">
+          <div class="countdown-time">${formatTime(state.countdown?.remaining || 0)}</div>
+          <div class="countdown-label">${state.countdown?.label || 'STARTING SOON'}</div>
+        </div>
+        <div class="schedule-section">
+          <div class="schedule-header">TODAY'S SCHEDULE</div>
+          ${scheduleHtml}
+          <div class="footer-text">CATCH ALL THE ACTION</div>
+          <div class="footer-sub">OVER ON YOUTUBE & TWITCH</div>
+        </div>
+      `;
+    }
+
+    es.addEventListener('state', e => update(JSON.parse(e.data)));
+    fetch(`${API}/api/state`).then(r => r.json()).then(update);
+  </script>
+</body>
+</html>

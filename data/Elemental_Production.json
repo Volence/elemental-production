@@ -1,0 +1,2029 @@
+{
+  "current_scene": "Starting",
+  "current_program_scene": "Starting",
+  "scene_order": [
+    {
+      "name": "Starting"
+    },
+    {
+      "name": "Intermission"
+    },
+    {
+      "name": "Map Pick"
+    },
+    {
+      "name": "Map Intro"
+    },
+    {
+      "name": "Gameplay"
+    },
+    {
+      "name": "Casters"
+    },
+    {
+      "name": "Casters Lobby"
+    },
+    {
+      "name": "Casters Scoreboard"
+    },
+    {
+      "name": "Ending"
+    }
+  ],
+  "name": "Elemental Production",
+  "groups": [],
+  "quick_transitions": [
+    {
+      "name": "Cut",
+      "duration": 300,
+      "hotkeys": [],
+      "id": 1,
+      "fade_to_black": false
+    },
+    {
+      "name": "Fade",
+      "duration": 300,
+      "hotkeys": [],
+      "id": 2,
+      "fade_to_black": false
+    }
+  ],
+  "transitions": [],
+  "saved_projectors": [],
+  "canvases": [],
+  "current_transition": "Fade",
+  "transition_duration": 300,
+  "preview_locked": false,
+  "scaling_enabled": false,
+  "scaling_level": 0,
+  "scaling_off_x": 0.0,
+  "scaling_off_y": 0.0,
+  "virtual-camera": {
+    "type2": 0,
+    "internal-type": 0
+  },
+  "modules": {
+    "scripts-tool": [],
+    "output": {}
+  },
+  "version": 2,
+  "sources": [
+    {
+      "prev_ver": 29,
+      "name": "Starting Image",
+      "uuid": "3f014484-3dec-48ea-91a5-494b50bc7c62",
+      "versioned_id": "image_source",
+      "id": "image_source",
+      "settings": {
+        "file": "/home/volence/Documents/Production/FACEIT SEASON 8 ELEMENTAL/FI_StartingSoon.png"
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Intermission Image",
+      "uuid": "b1ac68ac-1ef5-4864-9342-0f2a253046b6",
+      "versioned_id": "image_source",
+      "id": "image_source",
+      "settings": {
+        "file": "/home/volence/Documents/Production/FACEIT SEASON 8 ELEMENTAL/FI_BRB.png"
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Ending Image",
+      "uuid": "c4a5ab79-6949-4f9a-a5ad-54cf3785198f",
+      "versioned_id": "image_source",
+      "id": "image_source",
+      "settings": {
+        "file": "/home/volence/Documents/Production/FACEIT SEASON 8 ELEMENTAL/FI_SeeYou.png"
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Casters Image",
+      "uuid": "763912e1-9a13-40f6-a492-8d8ada52d7a6",
+      "versioned_id": "image_source",
+      "id": "image_source",
+      "settings": {
+        "file": "/home/volence/Documents/Production/FACEIT SEASON 8 ELEMENTAL/FI_Caster.png"
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Casters with Faceit Image",
+      "uuid": "650b0f7c-8b92-4a4d-b0fc-b229ad69ad99",
+      "versioned_id": "image_source",
+      "id": "image_source",
+      "settings": {
+        "file": "/home/volence/Documents/Production/FACEIT SEASON 8 ELEMENTAL/FI_FaceitStats.png"
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Left Team Bar",
+      "uuid": "248311ee-c3b2-428e-8fc1-73d4c6c93438",
+      "versioned_id": "image_source",
+      "id": "image_source",
+      "settings": {
+        "file": "/home/volence/Documents/Production/FACEIT SEASON 8 ELEMENTAL/LeftTeam_1.png"
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Right Team Bar",
+      "uuid": "2746fea9-728d-49a0-b5f9-cc2dfb6936b2",
+      "versioned_id": "image_source",
+      "id": "image_source",
+      "settings": {
+        "file": "/home/volence/Documents/Production/FACEIT SEASON 8 ELEMENTAL/RightTeam_1.png"
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Starting Soon BS",
+      "uuid": "ffe73744-5f1f-4295-90d7-06ced9fe3c7b",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/starting-soon.html",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Countdown Overlay BS",
+      "uuid": "e50db46f-87b3-4b8c-adcc-32c59ab82d23",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/starting-soon.html",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Map Intro BS",
+      "uuid": "fa92f8d3-1e6a-4f12-9f40-fa8131ce0bb8",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/map-intro.html",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Map Pick BS",
+      "uuid": "b3700788-3c1c-4df3-b402-9b54db1d25b6",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/map-pick.html",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Gameplay HUD BS",
+      "uuid": "0872af52-6b20-4865-ae74-78b941ac3414",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/gameplay-hud.html",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Faceit Lobby BS",
+      "uuid": "28050b8a-3ab7-4325-bbfe-7d1eab3e73ab",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/faceit-lobby.html",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Faceit Scoreboard BS",
+      "uuid": "e3f3afbd-824d-4346-8354-9048ded906b7",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/faceit-scoreboard.html",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Observer BS",
+      "uuid": "16d85787-3657-49e4-86fa-2ebdf0604f58",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Caster 1",
+      "uuid": "00fab366-cc51-442f-bc0b-cc7be6ae3962",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Caster 2",
+      "uuid": "c277db49-d333-4206-87ce-4b228bc8c8c8",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Team Name 1",
+      "uuid": "760577f3-8eeb-4f87-b045-ef0f86023f40",
+      "versioned_id": "text_ft2_source_v2",
+      "id": "text_ft2_source",
+      "settings": {
+        "text": "TEAM 1",
+        "font": {
+          "face": "Oswald",
+          "style": "Regular",
+          "size": 128,
+          "flags": 0
+        },
+        "color1": 4294967295,
+        "color2": 4294967295,
+        "outline": false,
+        "drop_shadow": false,
+        "custom_width": 0,
+        "word_wrap": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Team Name 2",
+      "uuid": "583abe13-c3bc-4bd5-aa09-ea7147e5555a",
+      "versioned_id": "text_ft2_source_v2",
+      "id": "text_ft2_source",
+      "settings": {
+        "text": "TEAM 2",
+        "font": {
+          "face": "Oswald",
+          "style": "Regular",
+          "size": 128,
+          "flags": 0
+        },
+        "color1": 4294967295,
+        "color2": 4294967295,
+        "outline": false,
+        "drop_shadow": false,
+        "custom_width": 0,
+        "word_wrap": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Left Score",
+      "uuid": "074028ef-267a-4eab-a480-4047a71725ef",
+      "versioned_id": "text_ft2_source_v2",
+      "id": "text_ft2_source",
+      "settings": {
+        "text": "0",
+        "font": {
+          "face": "Oswald",
+          "style": "Regular",
+          "size": 128,
+          "flags": 0
+        },
+        "color1": 4294967295,
+        "color2": 4294967295,
+        "outline": false,
+        "drop_shadow": false,
+        "custom_width": 0,
+        "word_wrap": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Right Score",
+      "uuid": "579fe600-6b21-427a-92e8-09e7f9be9f42",
+      "versioned_id": "text_ft2_source_v2",
+      "id": "text_ft2_source",
+      "settings": {
+        "text": "0",
+        "font": {
+          "face": "Oswald",
+          "style": "Regular",
+          "size": 128,
+          "flags": 0
+        },
+        "color1": 4294967295,
+        "color2": 4294967295,
+        "outline": false,
+        "drop_shadow": false,
+        "custom_width": 0,
+        "word_wrap": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Caster 1 Name",
+      "uuid": "4d46c6af-9c58-4111-a6b5-509f8dbc90fa",
+      "versioned_id": "text_ft2_source_v2",
+      "id": "text_ft2_source",
+      "settings": {
+        "text": "Caster 1",
+        "font": {
+          "face": "Oswald",
+          "style": "Regular",
+          "size": 128,
+          "flags": 0
+        },
+        "color1": 4294967295,
+        "color2": 4294967295,
+        "outline": false,
+        "drop_shadow": false,
+        "custom_width": 0,
+        "word_wrap": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Caster 2 Name",
+      "uuid": "8f5db1f1-9de3-4eb0-8886-aae754f0957d",
+      "versioned_id": "text_ft2_source_v2",
+      "id": "text_ft2_source",
+      "settings": {
+        "text": "Caster 2",
+        "font": {
+          "face": "Oswald",
+          "style": "Regular",
+          "size": 128,
+          "flags": 0
+        },
+        "color1": 4294967295,
+        "color2": 4294967295,
+        "outline": false,
+        "drop_shadow": false,
+        "custom_width": 0,
+        "word_wrap": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Countdown Text",
+      "uuid": "c46ade9f-615a-47f3-9e91-a95d7aa154d6",
+      "versioned_id": "text_ft2_source_v2",
+      "id": "text_ft2_source",
+      "settings": {
+        "text": "05:00",
+        "font": {
+          "face": "Oswald",
+          "style": "Regular",
+          "size": 128,
+          "flags": 0
+        },
+        "color1": 4294967295,
+        "color2": 4294967295,
+        "outline": false,
+        "drop_shadow": false,
+        "custom_width": 0,
+        "word_wrap": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Left Team Image",
+      "uuid": "636d9f12-f505-4ef3-942e-da8e906ade8f",
+      "versioned_id": "image_source",
+      "id": "image_source",
+      "settings": {
+        "file": "/home/volence/elemental/elemental-production/data/cache/left_team_logo.png"
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Right Team Image",
+      "uuid": "3638808e-e4c0-4c89-b82d-99be5e165799",
+      "versioned_id": "image_source",
+      "id": "image_source",
+      "settings": {
+        "file": "/home/volence/elemental/elemental-production/data/cache/right_team_logo.png"
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Background Music",
+      "uuid": "697181a7-a6c4-42c4-ace5-8987c7ce3336",
+      "versioned_id": "vlc_source",
+      "id": "vlc_source",
+      "settings": {
+        "playlist": []
+      },
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 0.5,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Casters Background Music",
+      "uuid": "b3fa6a3f-e117-44e7-a18a-a61c77d499ac",
+      "versioned_id": "vlc_source",
+      "id": "vlc_source",
+      "settings": {
+        "playlist": []
+      },
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 0.5,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Starting",
+      "uuid": "9f31f816-3843-482c-b482-7eeabccb6983",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Starting Soon BS",
+            "source_uuid": "ffe73744-5f1f-4295-90d7-06ced9fe3c7b",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Starting Image",
+            "source_uuid": "3f014484-3dec-48ea-91a5-494b50bc7c62",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Background Music",
+            "source_uuid": "697181a7-a6c4-42c4-ace5-8987c7ce3336",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 3
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Intermission",
+      "uuid": "1ea4daa4-967f-4214-b1e4-d6f07ab7bc87",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Countdown Text",
+            "source_uuid": "c46ade9f-615a-47f3-9e91-a95d7aa154d6",
+            "pos": {
+              "x": 860.0,
+              "y": 880.0
+            },
+            "scale": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Intermission Image",
+            "source_uuid": "b1ac68ac-1ef5-4864-9342-0f2a253046b6",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Background Music",
+            "source_uuid": "697181a7-a6c4-42c4-ace5-8987c7ce3336",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 3
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Ending",
+      "uuid": "f491a35c-56dc-4274-bd2c-691ed7c27c80",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Ending Image",
+            "source_uuid": "c4a5ab79-6949-4f9a-a5ad-54cf3785198f",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Background Music",
+            "source_uuid": "697181a7-a6c4-42c4-ace5-8987c7ce3336",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 2
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Casters",
+      "uuid": "edad6336-d743-4b0e-ba8b-dcea47769ab4",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Caster 2 Name",
+            "source_uuid": "8f5db1f1-9de3-4eb0-8886-aae754f0957d",
+            "pos": {
+              "x": 1282.0,
+              "y": 792.0
+            },
+            "scale": {
+              "x": 0.25,
+              "y": 0.25
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Caster 1 Name",
+            "source_uuid": "4d46c6af-9c58-4111-a6b5-509f8dbc90fa",
+            "pos": {
+              "x": 449.0,
+              "y": 792.0
+            },
+            "scale": {
+              "x": 0.25,
+              "y": 0.25
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Caster 2",
+            "source_uuid": "c277db49-d333-4206-87ce-4b228bc8c8c8",
+            "pos": {
+              "x": 1026.0,
+              "y": 395.0
+            },
+            "scale": {
+              "x": 0.348,
+              "y": 0.348
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Caster 1",
+            "source_uuid": "00fab366-cc51-442f-bc0b-cc7be6ae3962",
+            "pos": {
+              "x": 226.0,
+              "y": 397.0
+            },
+            "scale": {
+              "x": 0.348,
+              "y": 0.348
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Casters Image",
+            "source_uuid": "763912e1-9a13-40f6-a492-8d8ada52d7a6",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 5,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Casters Background Music",
+            "source_uuid": "b3fa6a3f-e117-44e7-a18a-a61c77d499ac",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 6,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 6
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Casters Lobby",
+      "uuid": "a24b9fce-f8cc-453e-a767-86196fc3bb08",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Faceit Lobby BS",
+            "source_uuid": "28050b8a-3ab7-4325-bbfe-7d1eab3e73ab",
+            "pos": {
+              "x": 480.0,
+              "y": 300.0
+            },
+            "scale": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Caster 2",
+            "source_uuid": "c277db49-d333-4206-87ce-4b228bc8c8c8",
+            "pos": {
+              "x": 979.0,
+              "y": 151.0
+            },
+            "scale": {
+              "x": 0.201,
+              "y": 0.201
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Caster 1",
+            "source_uuid": "00fab366-cc51-442f-bc0b-cc7be6ae3962",
+            "pos": {
+              "x": 555.0,
+              "y": 151.0
+            },
+            "scale": {
+              "x": 0.201,
+              "y": 0.201
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Casters with Faceit Image",
+            "source_uuid": "650b0f7c-8b92-4a4d-b0fc-b229ad69ad99",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Casters Background Music",
+            "source_uuid": "b3fa6a3f-e117-44e7-a18a-a61c77d499ac",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 5,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 5
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Casters Scoreboard",
+      "uuid": "e63e8190-e7e0-4390-b726-1f1c557d69b4",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Faceit Scoreboard BS",
+            "source_uuid": "e3f3afbd-824d-4346-8354-9048ded906b7",
+            "pos": {
+              "x": 303.0,
+              "y": 322.0
+            },
+            "scale": {
+              "x": 1.101,
+              "y": 1.101
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Caster 2",
+            "source_uuid": "c277db49-d333-4206-87ce-4b228bc8c8c8",
+            "pos": {
+              "x": 979.0,
+              "y": 151.0
+            },
+            "scale": {
+              "x": 0.201,
+              "y": 0.201
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Caster 1",
+            "source_uuid": "00fab366-cc51-442f-bc0b-cc7be6ae3962",
+            "pos": {
+              "x": 555.0,
+              "y": 151.0
+            },
+            "scale": {
+              "x": 0.201,
+              "y": 0.201
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Casters with Faceit Image",
+            "source_uuid": "650b0f7c-8b92-4a4d-b0fc-b229ad69ad99",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Casters Background Music",
+            "source_uuid": "b3fa6a3f-e117-44e7-a18a-a61c77d499ac",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 5,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 5
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Map Intro",
+      "uuid": "0c0c5c4f-7e4b-4b97-ab47-bb27cfb2b373",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Map Intro BS",
+            "source_uuid": "fa92f8d3-1e6a-4f12-9f40-fa8131ce0bb8",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Background Music",
+            "source_uuid": "697181a7-a6c4-42c4-ace5-8987c7ce3336",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 2
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Map Pick",
+      "uuid": "0f25401e-b7fd-47f3-96bb-7884f5103a3d",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Map Pick BS",
+            "source_uuid": "b3700788-3c1c-4df3-b402-9b54db1d25b6",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Background Music",
+            "source_uuid": "697181a7-a6c4-42c4-ace5-8987c7ce3336",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 2
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Gameplay",
+      "uuid": "f169175d-6224-4408-a553-f030e1bb0c3d",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Observer BS",
+            "source_uuid": "16d85787-3657-49e4-86fa-2ebdf0604f58",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Team Name 1",
+            "source_uuid": "760577f3-8eeb-4f87-b045-ef0f86023f40",
+            "pos": {
+              "x": 80.0,
+              "y": 30.0
+            },
+            "scale": {
+              "x": 0.2,
+              "y": 0.2
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Team Name 2",
+            "source_uuid": "583abe13-c3bc-4bd5-aa09-ea7147e5555a",
+            "pos": {
+              "x": 1520.0,
+              "y": 30.0
+            },
+            "scale": {
+              "x": 0.2,
+              "y": 0.2
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Left Score",
+            "source_uuid": "074028ef-267a-4eab-a480-4047a71725ef",
+            "pos": {
+              "x": 930.0,
+              "y": 22.0
+            },
+            "scale": {
+              "x": 0.22,
+              "y": 0.22
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Right Score",
+            "source_uuid": "579fe600-6b21-427a-92e8-09e7f9be9f42",
+            "pos": {
+              "x": 960.0,
+              "y": 22.0
+            },
+            "scale": {
+              "x": 0.22,
+              "y": 0.22
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 5,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Left Team Image",
+            "source_uuid": "636d9f12-f505-4ef3-942e-da8e906ade8f",
+            "pos": {
+              "x": 20.0,
+              "y": 30.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 50.0,
+              "y": 50.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 6,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Right Team Image",
+            "source_uuid": "3638808e-e4c0-4c89-b82d-99be5e165799",
+            "pos": {
+              "x": 1870.0,
+              "y": 30.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 50.0,
+              "y": 50.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 7,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Left Team Bar",
+            "source_uuid": "248311ee-c3b2-428e-8fc1-73d4c6c93438",
+            "pos": {
+              "x": 0.0,
+              "y": 15.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 8,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Right Team Bar",
+            "source_uuid": "2746fea9-728d-49a0-b5f9-cc2dfb6936b2",
+            "pos": {
+              "x": 872.0,
+              "y": 15.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 9,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          },
+          {
+            "name": "Gameplay HUD BS",
+            "source_uuid": "0872af52-6b20-4865-ae74-78b941ac3414",
+            "pos": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0.0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920.0,
+              "y": 1080.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 10,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": false
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 10
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    }
+  ]
+}

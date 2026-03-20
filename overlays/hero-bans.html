@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hero Bans Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; width: 1920px; height: 1080px; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap');
+
+    .bans-container {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 40px;
+      opacity: 0;
+      animation: fadeIn 0.4s ease 0.1s forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .team-bans {
+      text-align: center;
+    }
+
+    .team-bans-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+      padding: 3px 12px;
+      border-radius: 4px;
+    }
+
+    .team1-label { color: #3b82f6; background: rgba(59, 130, 246, 0.15); }
+    .team2-label { color: #ef4444; background: rgba(239, 68, 68, 0.15); }
+
+    .ban-icons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .ban-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid rgba(239, 68, 68, 0.6);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+    }
+
+    .ban-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: grayscale(60%);
+    }
+
+    .ban-icon::after {
+      content: '✕';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(239, 68, 68, 0.4);
+      color: white;
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="bans" class="bans-container hidden"></div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const es = new EventSource(`${API}/api/events`);
+    let heroData = [];
+
+    async function loadHeroes() {
+      const res = await fetch(`${API}/api/heroes`);
+      heroData = await res.json();
+    }
+
+    function update(state) {
+      const container = document.getElementById('bans');
+      const t1bans = state.heroBans?.team1 || [];
+      const t2bans = state.heroBans?.team2 || [];
+
+      if (t1bans.length === 0 && t2bans.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      const makeIcons = (bans) => bans.map(key => {
+        const hero = heroData.find(h => h.key === key);
+        return hero ? `<div class="ban-icon"><img src="${hero.portrait}" alt="${hero.name}"></div>` : '';
+      }).join('');
+
+      container.innerHTML = `
+        <div class="team-bans">
+          <div class="team-bans-label team1-label">${state.teams.team1.name} BANS</div>
+          <div class="ban-icons">${makeIcons(t1bans)}</div>
+        </div>
+        <div class="team-bans">
+          <div class="team-bans-label team2-label">${state.teams.team2.name} BANS</div>
+          <div class="ban-icons">${makeIcons(t2bans)}</div>
+        </div>
+      `;
+    }
+
+    loadHeroes().then(() => {
+      es.addEventListener('state', e => update(JSON.parse(e.data)));
+      fetch(`${API}/api/state`).then(r => r.json()).then(update);
+    });
+  </script>
+</body>
+</html>

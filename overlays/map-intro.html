@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Map Intro Overlay</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: 'Oswald', 'Bebas Neue', sans-serif; color: white;
+    }
+
+    .overlay {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      display: flex; align-items: flex-end; justify-content: center;
+      padding-bottom: 80px;
+    }
+
+    .intro-card {
+      display: flex; align-items: center; gap: 0;
+      animation: slideUp 0.5s ease forwards;
+      opacity: 0; transform: translateY(30px);
+    }
+    @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+
+    /* Team panels */
+    .team-panel {
+      width: 280px; height: 300px; background: rgba(255,255,255,0.95);
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; position: relative;
+    }
+    .team-panel.left { border-radius: 12px 0 0 12px; }
+    .team-panel.right { border-radius: 0 12px 12px 0; }
+    .team-panel .team-logo {
+      width: 140px; height: 140px; object-fit: contain;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.1));
+    }
+    .team-panel .team-record {
+      position: absolute; bottom: 12px; left: 16px;
+      font-size: 11px; font-weight: 600; color: rgba(0,0,0,0.35); letter-spacing: 1px;
+    }
+    .team-panel .map-pick-label {
+      position: absolute; bottom: 8px; right: 8px; left: 8px;
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 2px; color: white; text-align: center;
+      padding: 6px 8px; background: rgba(0,0,0,0.75); border-radius: 4px;
+      z-index: 2;
+    }
+
+    /* Ban icons */
+    .ban-area {
+      display: flex; gap: 6px; margin-top: 10px;
+    }
+    .ban-chip {
+      width: 44px; height: 44px; border-radius: 7px; overflow: hidden;
+      border: 1.5px solid rgba(239,68,68,0.6); position: relative;
+    }
+    .ban-chip img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(15%) brightness(0.85); }
+    .ban-chip::after {
+      content: ''; position: absolute; top: -1px; right: -1px;
+      width: 16px; height: 16px; background: #ef4444;
+      clip-path: polygon(100% 0, 0 0, 100% 100%);
+    }
+
+    /* Center score block */
+    .score-block {
+      width: 220px; height: 300px;
+      background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; position: relative; z-index: 2;
+    }
+    .score-block .org-logo {
+      width: 48px; height: 48px; margin-bottom: 8px;
+      filter: brightness(10);
+    }
+    .score-block .scores {
+      display: flex; align-items: center; gap: 16px;
+    }
+    .score-block .score {
+      font-size: 72px; font-weight: 700; line-height: 1;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .score-block .diamond {
+      width: 16px; height: 16px; background: rgba(255,255,255,0.4);
+      transform: rotate(45deg);
+    }
+    .score-block .map-label {
+      font-size: 18px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 3px; margin-top: 8px; opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay" id="root"></div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const es = new EventSource(`${API}/api/events`);
+    let heroData = [];
+
+    async function loadHeroes() {
+      heroData = await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+    }
+
+    function getHeroPortrait(key) {
+      const hero = heroData.find(h => h.key === key);
+      return hero ? hero.portrait : '';
+    }
+
+    function update(state) {
+      const el = document.getElementById('root');
+      const t1 = state.teams?.team1 || {};
+      const t2 = state.teams?.team2 || {};
+      const currentMap = (state.maps || []).find(m => m.status === 'current') || state.maps?.[0] || {};
+      const mapIndex = (state.maps || []).findIndex(m => m.status === 'current');
+      // Calculate actual map number: sum of scores + 1 (e.g., 1-3 = map 5)
+      const totalPlayed = (t1.score || 0) + (t2.score || 0);
+      const mapNum = totalPlayed + 1;
+      const mapName = currentMap.name || null;
+      const t1bans = (state.heroBans?.team1 || []).slice(0, 2);
+      const t2bans = (state.heroBans?.team2 || []).slice(0, 2);
+
+      // Determine who has map pick (if available from FACEIT data)
+      const mapPicker = currentMap.picker || null;
+
+      el.innerHTML = `
+        <div class="intro-card">
+          <div class="team-panel left">
+            ${t1.logo ? `<img class="team-logo" src="${t1.logo}">` : `<div style="font-size:32px;font-weight:800;color:#333">${t1.name || 'TEAM 1'}</div>`}
+            ${t1bans.length > 0 ? `<div class="ban-area">${t1bans.map(k => `<div class="ban-chip"><img src="${getHeroPortrait(k)}"></div>`).join('')}</div>` : ''}
+          </div>
+
+          <div class="score-block">
+            <div class="scores">
+              <span class="score">${t1.score || 0}</span>
+              <div class="diamond"></div>
+              <span class="score">${t2.score || 0}</span>
+            </div>
+            <div class="map-label">${mapName ? mapName : 'MAP ' + mapNum}</div>
+          </div>
+
+          <div class="team-panel right">
+            ${t2.logo ? `<img class="team-logo" src="${t2.logo}">` : `<div style="font-size:32px;font-weight:800;color:#333">${t2.name || 'TEAM 2'}</div>`}
+            ${t2bans.length > 0 ? `<div class="ban-area">${t2bans.map(k => `<div class="ban-chip"><img src="${getHeroPortrait(k)}"></div>`).join('')}</div>` : ''}
+            ${mapPicker ? `<div class="map-pick-label">${mapPicker === 'team2' ? (t2.name || 'TEAM 2') + ' PICK' : 'MAP PICK'}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    loadHeroes().then(() => {
+      es.addEventListener('state', e => update(JSON.parse(e.data)));
+      fetch(`${API}/api/state`).then(r => r.json()).then(update);
+    });
+  </script>
+</body>
+</html>

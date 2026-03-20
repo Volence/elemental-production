@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Player Stats Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; width: 1920px; height: 1080px; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+    .stats-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 1200px;
+      width: 90%;
+      opacity: 0;
+      animation: fadeIn 0.5s ease 0.2s forwards;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .team-stats {
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(15px);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .team-stats.team1 { border-top: 3px solid #3b82f6; }
+    .team-stats.team2 { border-top: 3px solid #ef4444; }
+
+    .team-header {
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .player-row {
+      display: grid;
+      grid-template-columns: 100px repeat(5, 1fr);
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .player-row.header {
+      color: rgba(255,255,255,0.4);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 9px;
+      letter-spacing: 1px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 8px;
+    }
+
+    .player-name {
+      font-weight: 700;
+      color: white;
+    }
+
+    .stat-value {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .role-tag {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .role-tank { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .role-damage { background: rgba(239,68,68,0.2); color: #ef4444; }
+    .role-support { background: rgba(34,197,94,0.2); color: #22c55e; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="stats" class="stats-overlay hidden"></div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const es = new EventSource(`${API}/api/events`);
+
+    function update(state) {
+      const container = document.getElementById('stats');
+      const stats = state.playerStats;
+      if (!stats || stats.length === 0) { container.classList.add('hidden'); return; }
+
+      const latest = stats[stats.length - 1];
+      if (!latest.teams || latest.teams.length < 2) { container.classList.add('hidden'); return; }
+
+      container.classList.remove('hidden');
+      container.innerHTML = latest.teams.map((team, ti) => {
+        const teamClass = ti === 0 ? 'team1' : 'team2';
+        const rows = team.players.map(p => {
+          const roleClass = p.role === 'Tank' ? 'role-tank' : p.role === 'Damage' ? 'role-damage' : 'role-support';
+          return `<div class="player-row">
+            <div class="player-name">${p.nickname} <span class="role-tag ${roleClass}">${p.role}</span></div>
+            <div class="stat-value">${p.kills}</div>
+            <div class="stat-value">${p.deaths}</div>
+            <div class="stat-value">${p.kdRatio.toFixed(1)}</div>
+            <div class="stat-value">${p.damageDealt.toLocaleString()}</div>
+            <div class="stat-value">${p.healingDone.toLocaleString()}</div>
+          </div>`;
+        }).join('');
+
+        return `<div class="team-stats ${teamClass}">
+          <div class="team-header">${team.name}</div>
+          <div class="player-row header">
+            <div>Player</div><div class="stat-value">Elims</div><div class="stat-value">Deaths</div>
+            <div class="stat-value">K/D</div><div class="stat-value">Damage</div><div class="stat-value">Healing</div>
+          </div>
+          ${rows}
+        </div>`;
+      }).join('');
+    }
+
+    es.addEventListener('state', e => update(JSON.parse(e.data)));
+    fetch(`${API}/api/state`).then(r => r.json()).then(update);
+  </script>
+</body>
+</html>

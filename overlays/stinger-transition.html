@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stinger Transition</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; width: 1920px; height: 1080px; }
+
+    .stinger {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+
+    .wipe-left, .wipe-right {
+      position: absolute; top: 0; bottom: 0; width: 55%;
+      background: linear-gradient(135deg, #0f1923 0%, #1a1a2e 50%, #0f1923 100%);
+    }
+    .wipe-left { left: -55%; animation: wipeInLeft 0.4s 0s ease forwards, wipeOutLeft 0.4s 0.6s ease forwards; }
+    .wipe-right { right: -55%; animation: wipeInRight 0.4s 0s ease forwards, wipeOutRight 0.4s 0.6s ease forwards; }
+
+    @keyframes wipeInLeft { from { transform: translateX(0); } to { transform: translateX(100%); } }
+    @keyframes wipeOutLeft { from { transform: translateX(100%); } to { transform: translateX(200%); } }
+    @keyframes wipeInRight { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+    @keyframes wipeOutRight { from { transform: translateX(-100%); } to { transform: translateX(-200%); } }
+
+    .logo-container {
+      position: absolute; z-index: 10;
+      opacity: 0;
+      animation: logoFade 1s ease forwards;
+    }
+    @keyframes logoFade {
+      0% { opacity: 0; transform: scale(0.7) rotate(-10deg); }
+      30% { opacity: 1; transform: scale(1.05) rotate(0deg); }
+      70% { opacity: 1; transform: scale(1) rotate(0deg); }
+      100% { opacity: 0; transform: scale(0.9) rotate(5deg); }
+    }
+
+    .logo-container svg { width: 180px; height: 180px; }
+
+    .accent-line {
+      position: absolute; height: 3px; background: linear-gradient(90deg, transparent, #6366f1, #a855f7, transparent);
+      top: 50%; width: 0;
+      animation: lineExpand 0.4s 0.1s ease forwards, lineFade 0.3s 0.7s ease forwards;
+    }
+    @keyframes lineExpand { from { width: 0; } to { width: 100%; } }
+    @keyframes lineFade { from { opacity: 1; } to { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div class="stinger">
+    <div class="wipe-left"></div>
+    <div class="wipe-right"></div>
+    <div class="accent-line"></div>
+    <div class="logo-container">
+      <!-- Simple "E" logo placeholder — replace with actual Elemental logo -->
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="48" stroke="url(#grad)" stroke-width="2" fill="rgba(15,25,35,0.9)"/>
+        <text x="50" y="62" text-anchor="middle" font-family="Bebas Neue, sans-serif" font-size="48" fill="url(#grad)">E</text>
+        <defs>
+          <linearGradient id="grad" x1="0" y1="0" x2="100" y2="100">
+            <stop offset="0%" stop-color="#6366f1"/>
+            <stop offset="100%" stop-color="#a855f7"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>

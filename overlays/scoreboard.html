@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scoreboard Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; width: 1920px; height: 1080px; font-family: 'Inter', sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700;800&display=swap');
+
+    .scoreboard {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      opacity: 0;
+      animation: slideDown 0.5s ease forwards;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    .team-block {
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 200px;
+    }
+
+    .team1-block {
+      background: linear-gradient(90deg, rgba(59,130,246,0.9), rgba(59,130,246,0.7));
+      border-radius: 8px 0 0 8px;
+      flex-direction: row-reverse;
+      text-align: right;
+    }
+
+    .team2-block {
+      background: linear-gradient(90deg, rgba(239,68,68,0.7), rgba(239,68,68,0.9));
+      border-radius: 0 8px 8px 0;
+    }
+
+    .team-name {
+      font-weight: 800;
+      font-size: 18px;
+      color: white;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      white-space: nowrap;
+    }
+
+    .team-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .score-block {
+      background: rgba(0,0,0,0.85);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .score {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px;
+      color: white;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .score-divider {
+      font-size: 20px;
+      color: #666;
+    }
+
+    .series-info {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+      background: rgba(0,0,0,0.6);
+      padding: 3px 12px;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div id="scoreboard" class="scoreboard hidden">
+    <div class="team-block team1-block">
+      <span id="t1name" class="team-name">Team 1</span>
+      <img id="t1logo" class="team-logo" src="" alt="" style="display:none">
+    </div>
+    <div class="score-block">
+      <span id="t1score" class="score">0</span>
+      <span class="score-divider">–</span>
+      <span id="t2score" class="score">0</span>
+    </div>
+    <div class="team-block team2-block">
+      <img id="t2logo" class="team-logo" src="" alt="" style="display:none">
+      <span id="t2name" class="team-name">Team 2</span>
+    </div>
+  </div>
+  <div id="series" class="series-info hidden"></div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const es = new EventSource(`${API}/api/events`);
+
+    function update(state) {
+      const sb = document.getElementById('scoreboard');
+      sb.classList.remove('hidden');
+      document.getElementById('t1name').textContent = state.teams.team1.name;
+      document.getElementById('t2name').textContent = state.teams.team2.name;
+      document.getElementById('t1score').textContent = state.teams.team1.score;
+      document.getElementById('t2score').textContent = state.teams.team2.score;
+
+      const t1logo = document.getElementById('t1logo');
+      const t2logo = document.getElementById('t2logo');
+      if (state.teams.team1.logo) { t1logo.src = state.teams.team1.logo; t1logo.style.display = 'block'; }
+      if (state.teams.team2.logo) { t2logo.src = state.teams.team2.logo; t2logo.style.display = 'block'; }
+
+      const series = document.getElementById('series');
+      if (state.bestOf > 1) {
+        series.classList.remove('hidden');
+        series.textContent = `Best of ${state.bestOf}`;
+      }
+    }
+
+    es.addEventListener('state', e => update(JSON.parse(e.data)));
+    fetch(`${API}/api/state`).then(r => r.json()).then(update);
+  </script>
+</body>
+</html>

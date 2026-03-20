@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FACEIT Lobby Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: transparent; overflow: hidden; font-family: 'Inter', sans-serif; color: white; }
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap');
+
+    .lobby { padding: 20px; opacity: 0; animation: fadeIn 0.5s ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .lobby-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .lobby-title { font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+    .lobby-bestof { font-size: 13px; color: rgba(255,255,255,0.5); }
+
+    .matchup {
+      display: flex; align-items: center; justify-content: center; gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    .team-col { text-align: center; min-width: 180px; }
+    .team-logo { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; margin: 0 auto 6px; display: block; }
+    .team-name { font-size: 18px; font-weight: 800; }
+    .team1 .team-name { color: #3b82f6; }
+    .team2 .team-name { color: #ef4444; }
+    .vs-text { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: rgba(255,255,255,0.3); }
+
+    .section-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.4); margin-bottom: 10px; margin-top: 16px;
+    }
+
+    .maps-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+    .map-chip {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600;
+    }
+    .map-chip.current { border-color: #f59e0b; color: #f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.2); }
+    .map-chip.completed { opacity: 0.5; }
+    .map-chip .map-mode { font-size: 9px; color: rgba(255,255,255,0.4); display: block; margin-top: 2px; }
+
+    .bans-section { display: flex; gap: 24px; }
+    .ban-team { flex: 1; }
+    .ban-team-label { font-size: 10px; font-weight: 700; margin-bottom: 6px; }
+    .ban-team-label.t1 { color: #3b82f6; }
+    .ban-team-label.t2 { color: #ef4444; }
+    .ban-icons { display: flex; gap: 4px; flex-wrap: wrap; }
+    .ban-icon {
+      width: 36px; height: 36px; border-radius: 6px; overflow: hidden;
+      position: relative; border: 1px solid rgba(239,68,68,0.5);
+    }
+    .ban-icon img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(50%); }
+    .ban-icon::after {
+      content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(239,68,68,0.35); color: white; font-size: 14px; font-weight: 900;
+    }
+
+    .roster-section { display: flex; gap: 24px; }
+    .roster-team { flex: 1; }
+    .roster-player {
+      font-size: 12px; padding: 3px 0; color: rgba(255,255,255,0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .roster-player .nickname { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="lobby" class="lobby"></div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const es = new EventSource(`${API}/api/events`);
+    let heroData = [];
+
+    async function loadHeroes() {
+      heroData = await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+    }
+
+    function update(state) {
+      const el = document.getElementById('lobby');
+      if (!state.teams?.team1?.name) { el.innerHTML = ''; return; }
+
+      const t1 = state.teams.team1;
+      const t2 = state.teams.team2;
+
+      let mapsHtml = '';
+      if (state.maps?.length > 0) {
+        mapsHtml = `<div class="section-label">Map Pool</div><div class="maps-grid">${
+          state.maps.map(m => {
+            const cls = m.status === 'current' ? 'current' : m.status === 'completed' ? 'completed' : '';
+            return `<div class="map-chip ${cls}">${m.name}<span class="map-mode">${m.mode || ''}</span></div>`;
+          }).join('')
+        }</div>`;
+      }
+
+      let bansHtml = '';
+      const t1bans = state.heroBans?.team1 || [];
+      const t2bans = state.heroBans?.team2 || [];
+      if (t1bans.length > 0 || t2bans.length > 0) {
+        const icons = (bans) => bans.map(key => {
+          const hero = heroData.find(h => h.key === key);
+          return hero ? `<div class="ban-icon"><img src="${hero.portrait}" alt="${hero.name}"></div>` : '';
+        }).join('');
+
+        bansHtml = `<div class="section-label">Hero Bans</div><div class="bans-section">
+          <div class="ban-team"><div class="ban-team-label t1">${t1.name}</div><div class="ban-icons">${icons(t1bans)}</div></div>
+          <div class="ban-team"><div class="ban-team-label t2">${t2.name}</div><div class="ban-icons">${icons(t2bans)}</div></div>
+        </div>`;
+      }
+
+      let rosterHtml = '';
+      if (state.players?.team1?.length > 0) {
+        rosterHtml = `<div class="section-label">Rosters</div><div class="roster-section">
+          <div class="roster-team">${state.players.team1.map(p => `<div class="roster-player"><span class="nickname">${p.nickname}</span></div>`).join('')}</div>
+          <div class="roster-team">${state.players.team2.map(p => `<div class="roster-player"><span class="nickname">${p.nickname}</span></div>`).join('')}</div>
+        </div>`;
+      }
+
+      el.innerHTML = `
+        <div class="lobby-header">
+          <div class="lobby-title">Match Lobby</div>
+          <div class="lobby-bestof">Best of ${state.bestOf || 1}</div>
+        </div>
+        <div class="matchup">
+          <div class="team-col team1">
+            ${t1.logo ? `<img class="team-logo" src="${t1.logo}">` : ''}
+            <div class="team-name">${t1.name}</div>
+          </div>
+          <div class="vs-text">VS</div>
+          <div class="team-col team2">
+            ${t2.logo ? `<img class="team-logo" src="${t2.logo}">` : ''}
+            <div class="team-name">${t2.name}</div>
+          </div>
+        </div>
+        ${mapsHtml}
+        ${bansHtml}
+        ${rosterHtml}
+      `;
+    }
+
+    loadHeroes().then(() => {
+      es.addEventListener('state', e => update(JSON.parse(e.data)));
+      fetch(`${API}/api/state`).then(r => r.json()).then(update);
+    });
+  </script>
+</body>
+</html>

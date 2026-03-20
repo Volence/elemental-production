@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Map Pick Overlay</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: 'Oswald', 'Bebas Neue', sans-serif; color: white;
+    }
+
+    .container { position: relative; width: 1920px; height: 1080px; }
+
+    /* Top scoreboard bar */
+    .top-bar {
+      position: absolute; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: center;
+      height: 64px; background: rgba(10,10,20,0.92);
+      border-bottom: 2px solid rgba(255,255,255,0.08);
+      animation: fadeIn 0.3s ease forwards;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .top-team {
+      display: flex; align-items: center; gap: 10px; padding: 0 20px;
+      min-width: 300px;
+    }
+    .top-team.left { justify-content: flex-start; }
+    .top-team.right { justify-content: flex-end; }
+    .top-team .logo { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+    .top-team .name { font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .top-team .score { font-size: 32px; font-weight: 700; }
+
+    .top-center {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 0 24px;
+    }
+    .top-center .org-link {
+      font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4);
+      text-transform: uppercase; letter-spacing: 2px;
+    }
+
+    /* Map grid — fixed height, no overflow issues */
+    .map-grid {
+      position: absolute; top: 80px; left: 40px; right: 40px;
+      height: 960px; /* 1080 - 80 top - 40 bottom */
+      display: flex; gap: 4px;
+      animation: slideUp 0.5s 0.2s ease forwards; opacity: 0; transform: translateY(10px);
+    }
+    @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+
+    .map-slot {
+      flex: 1; position: relative;
+      background: rgba(10,10,20,0.9);
+      border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    .map-slot .map-header {
+      font-size: 15px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 2px; padding: 10px 14px;
+      background: rgba(255,255,255,0.04);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 6px; flex-shrink: 0;
+    }
+    .map-header-left { display: flex; flex-direction: column; }
+    .map-header .header-label { font-size: 15px; font-weight: 700; letter-spacing: 2px; }
+    .map-header .picker-label { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.4); letter-spacing: 1px; }
+    .map-header .round-score {
+      font-size: 18px; font-weight: 700; color: rgba(255,255,255,0.6);
+      font-family: 'Oswald', sans-serif;
+    }
+
+    /* Map image fills available space */
+    .map-slot .map-image {
+      flex: 1; position: relative; overflow: hidden; min-height: 0;
+    }
+    .map-slot .map-image img {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; object-fit: cover;
+      opacity: 0.9;
+    }
+    .map-slot.completed .map-image img {
+      filter: brightness(0.45) saturate(0.5);
+    }
+
+    /* Team color overlay */
+    .win-overlay {
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    }
+
+    /* Winner logo — positioned on .map-slot, above everything */
+    .winner-logo-wrap {
+      position: absolute; top: 45%; left: 50%;
+      transform: translate(-50%, -50%); z-index: 10;
+      width: 90px; height: 90px;
+      pointer-events: none;
+    }
+    .winner-logo-wrap img {
+      width: 90px; height: 90px;
+      border-radius: 12px; object-fit: cover;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+
+    /* Current map accent */
+    .map-slot.current .map-header {
+      background: rgba(249,115,22,0.15);
+      border-bottom: 2px solid #f97316;
+    }
+
+    /* Map name label — sits below image */
+    .map-name-label {
+      font-size: 14px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; background: rgba(0,0,0,0.75);
+      padding: 6px 10px; text-align: center; flex-shrink: 0;
+    }
+    .mode-label {
+      font-size: 9px; color: rgba(255,255,255,0.4);
+      text-transform: uppercase; letter-spacing: 1px; display: block;
+    }
+
+    /* Hero bans row — sits below map name */
+    .map-bans {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 6px; background: rgba(0,0,0,0.6);
+      border-top: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;
+    }
+    .ban-group { display: flex; align-items: center; gap: 6px; }
+    .ban-hero {
+      width: 40px; height: 40px; border-radius: 8px; overflow: hidden;
+      position: relative;
+    }
+    .ban-hero img { width: 100%; height: 100%; object-fit: cover; }
+    .ban-hero .ban-tag {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      font-size: 6px; font-weight: 800; text-align: center;
+      padding: 1px; letter-spacing: 1px; color: white;
+    }
+    .ban-divider {
+      width: 2px; height: 28px; background: rgba(255,255,255,0.15); margin: 0 2px;
+    }
+
+    /* Upcoming empty slots */
+    .map-slot .map-status {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 12px; color: rgba(255,255,255,0.25); letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="root"></div>
+
+  <script>
+    const API = 'http://localhost:3001';
+    const es = new EventSource(`${API}/api/events`);
+    let heroData = [];
+    let mapData = [];
+
+    async function loadHeroes() {
+      heroData = await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+    }
+
+    async function loadMaps() {
+      mapData = await fetch('https://overfast-api.tekrop.fr/maps').then(r => r.json()).catch(() => []);
+    }
+
+    function getMapScreenshot(mapName, faceitImage) {
+      if (!mapName) return faceitImage || '';
+      const normalized = mapName.toLowerCase().trim();
+      const match = mapData.find(m =>
+        m.name.toLowerCase() === normalized ||
+        m.key === normalized.replace(/[^a-z0-9]+/g, '-')
+      );
+      return match ? match.screenshot : (faceitImage || '');
+    }
+
+    function getHeroPortrait(key) {
+      const hero = heroData.find(h => h.key === key);
+      return hero ? hero.portrait : '';
+    }
+
+    const nameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
+    function heroNameToKey(name) {
+      if (!name) return '';
+      if (nameOverrides[name]) return nameOverrides[name];
+      return name.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+    }
+
+    function update(state) {
+      const el = document.getElementById('root');
+      const t1 = state.teams?.team1 || {};
+      const t2 = state.teams?.team2 || {};
+      const maps = state.maps || [];
+      const bestOf = state.bestOf || 5;
+      const perMapBans = state.perMapBans || [];
+      const t1Color = t1.color || '#3b82f6';
+      const t2Color = t2.color || '#ef4444';
+
+      const slots = [];
+      for (let i = 0; i < bestOf; i++) {
+        slots.push(maps[i] || { name: null, mode: null, status: 'upcoming', image: null, winner: null });
+      }
+
+      const mapSlotsHtml = slots.map((m, i) => {
+        const statusClass = m.status || 'upcoming';
+        const isCurrent = i === maps.findIndex(mp => mp.status === 'current');
+        const mapImg = getMapScreenshot(m.name, m.image);
+        const mapBans = perMapBans[i];
+        const winnerColor = m.winner === 'team1' ? t1Color : m.winner === 'team2' ? t2Color : null;
+
+        // Header with team color accent
+        let headerStyle = '';
+        if (statusClass === 'completed' && winnerColor) {
+          headerStyle = `style="background: ${winnerColor}20; border-bottom: 2px solid ${winnerColor}55;"`;
+        }
+        let pickerText = '';
+        if (mapBans?.picker) {
+          const pName = mapBans.picker === 'team1' ? t1.name : t2.name;
+          pickerText = `<span class="picker-label">${pName} PICK</span>`;
+        }
+        let roundScore = m.roundScore ? `<span class="round-score">${m.roundScore}</span>` : '';
+
+        // Winner logo — placed on slot, not inside map-image
+        let winnerLogo = '';
+        if (m.winner) {
+          const wt = m.winner === 'team1' ? t1 : t2;
+          if (wt.logo) {
+            winnerLogo = `<div class="winner-logo-wrap"><img src="${wt.logo}" alt="${wt.name}"></div>`;
+          }
+        }
+
+        // Map image + color overlay
+        let imageContent = '';
+        let nameLabel = '';
+        if (mapImg) {
+          let colorOverlay = '';
+          if (m.winner && winnerColor) {
+            colorOverlay = `<div class="win-overlay" style="background: linear-gradient(135deg, ${winnerColor}40 0%, ${winnerColor}15 100%);"></div>`;
+          }
+          imageContent = `<div class="map-image">
+            <img src="${mapImg}">
+            ${colorOverlay}
+          </div>`;
+          nameLabel = `<div class="map-name-label">${m.name}<span class="mode-label">${m.mode || ''}</span></div>`;
+        } else if (m.name) {
+          imageContent = `<div class="map-image" style="display:flex;align-items:center;justify-content:center">
+            <div style="text-align:center;padding:20px;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:1px">${m.name}<br><span style="font-size:9px;color:rgba(255,255,255,0.4)">${m.mode || ''}</span></div>
+          </div>`;
+        } else {
+          imageContent = `<div class="map-image"><span class="map-status">—</span></div>`;
+        }
+
+        // Per-map hero bans
+        let bansHtml = '';
+        if (mapBans && (mapBans.ban1 || mapBans.ban2)) {
+          const b1Key = mapBans.team1Ban ? heroNameToKey(mapBans.team1Ban.name) : '';
+          const b2Key = mapBans.team2Ban ? heroNameToKey(mapBans.team2Ban.name) : '';
+          const b1Port = b1Key ? getHeroPortrait(b1Key) : '';
+          const b2Port = b2Key ? getHeroPortrait(b2Key) : '';
+
+          const b1Html = b1Port ? `<div class="ban-hero" style="border: 2px solid ${t1Color}cc"><img src="${b1Port}"><div class="ban-tag" style="background: ${t1Color}dd">BAN</div></div>` : '';
+          const b2Html = b2Port ? `<div class="ban-hero" style="border: 2px solid ${t2Color}cc"><img src="${b2Port}"><div class="ban-tag" style="background: ${t2Color}dd">BAN</div></div>` : '';
+
+          bansHtml = `<div class="map-bans">
+            <div class="ban-group">${b1Html}</div>
+            <div class="ban-divider"></div>
+            <div class="ban-group">${b2Html}</div>
+          </div>`;
+        }
+
+        const slotBorder = m.winner && winnerColor ? `border-bottom: 3px solid ${winnerColor}aa;` : '';
+
+        return `<div class="map-slot ${statusClass} ${isCurrent ? 'current' : ''}" style="${slotBorder}">
+          ${winnerLogo}
+          <div class="map-header" ${headerStyle}>
+            <div class="map-header-left">
+              <span class="header-label">MAP ${i + 1}</span>
+              ${pickerText}
+            </div>
+            ${roundScore}
+          </div>
+          ${imageContent}
+          ${nameLabel}
+          ${bansHtml}
+        </div>`;
+      }).join('');
+
+      el.innerHTML = `
+        <div class="top-bar">
+          <div class="top-team left">
+            ${t1.logo ? `<img class="logo" src="${t1.logo}">` : ''}
+            <span class="name">${t1.name || 'TEAM 1'}</span>
+            <span class="score" style="color: ${t1Color}">${t1.score || 0}</span>
+          </div>
+          <div class="top-center">
+            <span class="org-link">${state.eventName || 'FACEIT SEASON 8'}</span>
+          </div>
+          <div class="top-team right">
+            <span class="score" style="color: ${t2Color}">${t2.score || 0}</span>
+            <span class="name">${t2.name || 'TEAM 2'}</span>
+            ${t2.logo ? `<img class="logo" src="${t2.logo}">` : ''}
+          </div>
+        </div>
+        <div class="map-grid">${mapSlotsHtml}</div>
+      `;
+    }
+
+    Promise.all([loadHeroes(), loadMaps()]).then(() => {
+      es.addEventListener('state', e => update(JSON.parse(e.data)));
+      fetch(`${API}/api/state`).then(r => r.json()).then(update);
+    });
+  </script>
+</body>
+</html>
