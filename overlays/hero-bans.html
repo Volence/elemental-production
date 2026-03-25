@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Hero Bans Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: transparent; overflow: hidden; width: 1920px; height: 1080px; }
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap');
 
     .bans-container {
       position: absolute;
@@ -79,16 +81,22 @@
 
     .hidden { display: none; }
   </style>
+  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
   <div id="bans" class="bans-container hidden"></div>
 
+  <script src="./state-sync.js"></script>
   <script>
+    // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
-    const es = new EventSource(`${API}/api/events`);
     let heroData = [];
 
     async function loadHeroes() {
+      if (window.__HERO_DATA__ && window.__HERO_DATA__.length) {
+        heroData = window.__HERO_DATA__;
+        return;
+      }
       const res = await fetch(`${API}/api/heroes`);
       heroData = await res.json();
     }
@@ -121,10 +129,7 @@
       `;
     }
 
-    loadHeroes().then(() => {
-      es.addEventListener('state', e => update(JSON.parse(e.data)));
-      fetch(`${API}/api/state`).then(r => r.json()).then(update);
-    });
+    loadHeroes().then(() => stateSync(update));
   </script>
 </body>
 </html>

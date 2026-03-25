@@ -1,0 +1,57 @@
+/**
+ * Shared overlay entrance animations.
+ * Triggered when the page loads (scene becomes visible in OBS).
+ * OBS browser sources reload when entering the scene, so these
+ * play automatically on each scene switch.
+ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideLeft {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+  50% { box-shadow: 0 0 20px 4px rgba(255,255,255,0.08); }
+}
+
+/* Utility classes for use in overlays */
+.anim-fade   { animation: fadeIn 0.6s ease-out both; }
+.anim-up     { animation: slideUp 0.6s ease-out both; }
+.anim-down   { animation: slideDown 0.5s ease-out both; }
+.anim-left   { animation: slideLeft 0.5s ease-out both; }
+.anim-right  { animation: slideRight 0.5s ease-out both; }
+.anim-scale  { animation: scaleIn 0.5s ease-out both; }
+
+/* Stagger delays */
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+.delay-5 { animation-delay: 0.5s; }
+.delay-6 { animation-delay: 0.6s; }

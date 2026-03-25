@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>Gameplay HUD Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;600;700;800&display=swap">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;600;700;800&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: transparent; overflow: hidden; width: 1920px; height: 1080px;
@@ -134,17 +136,17 @@
       position: absolute;
       top: 46px;
       width: 100%;
-      height: 48px;
+      height: 54px;
       display: flex;
       justify-content: space-between;
       z-index: 10;
       pointer-events: none;
-      padding: 0 38px;
+      padding: 0 72px;
     }
 
     .team-bar {
       position: relative;
-      height: 48px;
+      height: 54px;
       display: flex;
       align-items: center;
       overflow: hidden;
@@ -165,7 +167,7 @@
 
     /* Left bar */
     .team-bar.left {
-      width: 27%;
+      width: 29%;
       border-radius: 0 4px 4px 0;
       background-image: url('LeftTeam_1.png');
       background-size: cover;
@@ -182,7 +184,7 @@
 
     /* Right bar */
     .team-bar.right {
-      width: 27%;
+      width: 29%;
       border-radius: 4px 0 0 4px;
       background-image: url('RightTeam_1.png');
       background-size: cover;
@@ -264,26 +266,28 @@
     }
 
     /* Animations */
-    .top-strip { animation: dropDown 0.3s ease forwards; opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    .top-strip { transform: translateX(-50%); }
     @keyframes dropDown { to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-    .team-bar { animation: slideIn 0.4s ease forwards; opacity: 0; }
+    .team-bar {  }
     .team-bar.left { transform: translateX(-20px); }
     .team-bar.right { transform: translateX(20px); animation-delay: 0.1s; }
     @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
   </style>
+  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="hud" id="root"></div>
+  <div class="hud" id="root" style="animation: fadeIn 0.4s ease-out both;"></div>
 
+  <script src="./state-sync.js"></script>
   <script>
+    // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
     const GRAPHICS = `${API}/assets/graphics`;
     const CACHE_BUST = `v=${Date.now()}`;
-    const es = new EventSource(`${API}/api/events`);
     let heroData = [];
 
     async function loadHeroes() {
-      heroData = await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+      heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
     }
 
     function getHeroPortrait(key) {
@@ -363,10 +367,7 @@
       `;
     }
 
-    loadHeroes().then(() => {
-      es.addEventListener('state', e => update(JSON.parse(e.data)));
-      fetch(`${API}/api/state`).then(r => r.json()).then(update);
-    });
+    loadHeroes().then(() => stateSync(update));
   </script>
 </body>
 </html>

@@ -1,0 +1,385 @@
+{
+  "name": "Elemental Production",
+  "current_scene": "Starting",
+  "scene_order": [
+    {"name": "Starting"},
+    {"name": "Map Pick"},
+    {"name": "Map Intro"},
+    {"name": "Casters Flythrough"},
+    {"name": "Gameplay"},
+    {"name": "Casters"},
+    {"name": "Casters Lobby"},
+    {"name": "Casters Scoreboard"},
+    {"name": "Map Score"},
+    {"name": "Between Matches"},
+    {"name": "BRB"},
+    {"name": "Interview"},
+    {"name": "Series Winner"},
+    {"name": "Ending"}
+  ],
+  "sources": [
+    {
+      "name": "Starting Soon BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/starting-soon.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Map Pick BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/map-pick.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Map Intro BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/map-intro.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Casters Flythrough Hud",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/casters-flythrough-hud.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Gameplay HUD",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/gameplay-hud.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Casters BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/casters.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Casters Lobby BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/casters-lobby.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Casters Scoreboard BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/casters-scoreboard.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Casters Map Score BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/casters-map-score.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Between Matches BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/between-matches.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "BRB BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/brb.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Interview BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/interview.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Series Winner BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/series-winner.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "End Stream BS",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/end-of-stream.html",
+        "width": 1920, "height": 1080, "css": "",
+        "shutdown": false, "restart_when_active": false
+      },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": false
+    },
+    {
+      "name": "Background Music",
+      "id": "ffmpeg_source",
+      "versioned_id": "ffmpeg_source",
+      "settings": { "local_file": "", "looping": true, "restart_on_activate": false },
+      "mixers": 255, "volume": 0.25, "enabled": true, "muted": false,
+      "notes": "Server auto-sets file from Settings → Background Music"
+    },
+    {
+      "name": "Casters Background Music",
+      "id": "ffmpeg_source",
+      "versioned_id": "ffmpeg_source",
+      "settings": { "local_file": "", "looping": true, "restart_on_activate": false },
+      "mixers": 255, "volume": 0.1, "enabled": true, "muted": false,
+      "notes": "Server auto-sets file from Settings → Background Music"
+    },
+    {
+      "name": "Map Flythrough",
+      "id": "ffmpeg_source",
+      "versioned_id": "ffmpeg_source",
+      "settings": { "local_file": "", "looping": true, "restart_on_activate": false },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": true,
+      "notes": "Video only — no audio. Server auto-sets video file based on current map."
+    },
+    {
+      "name": "Map Music",
+      "id": "ffmpeg_source",
+      "versioned_id": "ffmpeg_source",
+      "settings": { "local_file": "", "looping": true, "restart_on_activate": false },
+      "mixers": 255, "volume": 0.5, "enabled": true, "muted": false,
+      "notes": "Server auto-sets audio file based on current map"
+    },
+    {
+      "name": "Replay",
+      "id": "ffmpeg_source",
+      "versioned_id": "ffmpeg_source",
+      "settings": { "local_file": "", "looping": false, "restart_on_activate": true, "close_when_inactive": false },
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": true,
+      "notes": "Replay highlight clips — server auto-loads from replay buffer. No loop (server auto-cycles). Video only."
+    },
+    {
+      "name": "Caster 1",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": { "url": "", "width": 1920, "height": 1080, "css": "" },
+      "mixers": 255, "volume": 1.0, "enabled": true, "muted": false,
+      "notes": "Server auto-sets URL from Production Controls → Caster cam URL (VDO.Ninja, etc.)"
+    },
+    {
+      "name": "Caster 2",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": { "url": "", "width": 1920, "height": 1080, "css": "" },
+      "mixers": 255, "volume": 1.0, "enabled": true, "muted": false,
+      "notes": "Server auto-sets URL from Production Controls → Caster cam URL (VDO.Ninja, etc.)"
+    },
+    {
+      "name": "Interviewee",
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "settings": { "url": "", "width": 1920, "height": 1080, "css": "" },
+      "mixers": 255, "volume": 1.0, "enabled": true, "muted": false,
+      "notes": "Server auto-sets URL from Production Controls → Interview cam URL"
+    },
+    {
+      "name": "Overwatch",
+      "id": "pipewire-screen-capture-source",
+      "versioned_id": "pipewire-screen-capture-source",
+      "settings": {},
+      "mixers": 0, "volume": 1.0, "enabled": true, "muted": true,
+      "notes": "Screen Capture (PipeWire) — select the Overwatch window. Video only. On Windows, use Game Capture instead."
+    },
+    {
+      "name": "Overwatch Audio Only",
+      "id": "pipewire_audio_application_capture",
+      "versioned_id": "pipewire_audio_application_capture",
+      "settings": {},
+      "mixers": 255, "volume": 1.0, "enabled": true, "muted": false,
+      "notes": "Application Audio Capture (PipeWire) — select Overwatch. On Windows, use Application Audio Output Capture."
+    },
+    {
+      "name": "Discord Audio",
+      "id": "pipewire_audio_application_capture",
+      "versioned_id": "pipewire_audio_application_capture",
+      "settings": {},
+      "mixers": 255, "volume": 1.0, "enabled": true, "muted": false,
+      "notes": "Application Audio Capture (PipeWire) — select Discord. On Windows, use Application Audio Output Capture."
+    }
+  ],
+  "scenes": {
+    "Starting": {
+      "items": [
+        {"source": "Starting Soon BS"},
+        {"source": "Background Music"}
+      ]
+    },
+    "Map Pick": {
+      "items": [
+        {"source": "Map Pick BS"},
+        {"source": "Casters Background Music"},
+        {"source": "Caster 1"},
+        {"source": "Caster 2"}
+      ]
+    },
+    "Map Intro": {
+      "items": [
+        {"source": "Map Flythrough"},
+        {"source": "Map Intro BS"},
+        {"source": "Map Music"},
+        {"source": "Caster 1"},
+        {"source": "Caster 2"}
+      ]
+    },
+    "Casters Flythrough": {
+      "items": [
+        {"source": "Map Flythrough"},
+        {"source": "Caster 1"},
+        {"source": "Caster 2"},
+        {"source": "Casters Flythrough Hud"},
+        {"source": "Map Music"}
+      ]
+    },
+    "Gameplay": {
+      "items": [
+        {"source": "Overwatch"},
+        {"source": "Gameplay HUD"},
+        {"source": "Overwatch Audio Only"},
+        {"source": "Discord Audio"},
+        {"source": "Caster 1"},
+        {"source": "Caster 2"}
+      ]
+    },
+    "Casters": {
+      "items": [
+        {"source": "Caster 1"},
+        {"source": "Caster 2"},
+        {"source": "Casters BS"},
+        {"source": "Casters Background Music"}
+      ]
+    },
+    "Casters Lobby": {
+      "items": [
+        {"source": "Caster 1"},
+        {"source": "Caster 2"},
+        {"source": "Casters Lobby BS"},
+        {"source": "Casters Background Music"}
+      ]
+    },
+    "Casters Scoreboard": {
+      "items": [
+        {"source": "Caster 1"},
+        {"source": "Caster 2"},
+        {"source": "Casters Scoreboard BS"},
+        {"source": "Casters Background Music"}
+      ]
+    },
+    "Map Score": {
+      "items": [
+        {"source": "Caster 1"},
+        {"source": "Caster 2"},
+        {"source": "Casters Map Score BS"},
+        {"source": "Casters Background Music"}
+      ]
+    },
+    "Between Matches": {
+      "items": [
+        {"source": "Between Matches BS"},
+        {"source": "Replay"},
+        {"source": "Background Music"}
+      ]
+    },
+    "BRB": {
+      "items": [
+        {"source": "BRB BS"},
+        {"source": "Background Music"}
+      ]
+    },
+    "Interview": {
+      "items": [
+        {"source": "Interviewee"},
+        {"source": "Interview BS"},
+        {"source": "Discord Audio"},
+        {"source": "Casters Background Music"}
+      ]
+    },
+    "Series Winner": {
+      "items": [
+        {"source": "Series Winner BS"},
+        {"source": "Casters Background Music"},
+        {"source": "Caster 1"},
+        {"source": "Caster 2"}
+      ]
+    },
+    "Ending": {
+      "items": [
+        {"source": "End Stream BS"},
+        {"source": "Background Music"}
+      ]
+    }
+  },
+  "_meta": {
+    "version": "1.3",
+    "app": "Elemental Production Companion",
+    "description": "Complete OBS scene collection for Elemental Production. All sources pre-placed in correct scenes with proper audio routing. Browser overlays have no audio. Music and caster audio handled by dedicated sources. Replay buffer support for Between Matches highlights.",
+    "resolution": "1920x1080",
+    "platform_notes": {
+      "linux": "Uses PipeWire Screen Capture + Application Audio Capture for Overwatch and Discord.",
+      "windows": "Replace Screen Capture with Game Capture. Replace PipeWire Audio with Application Audio Output Capture."
+    }
+  }
+}

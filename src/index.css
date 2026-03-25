@@ -10,7 +10,7 @@
   --border-glow: rgba(99, 102, 241, 0.3);
   --text-primary: #e8e8f0;
   --text-secondary: #9898b0;
-  --text-muted: #6868880;
+  --text-muted: #686888;
   --accent: #6366f1;
   --accent-hover: #818cf8;
   --accent-glow: rgba(99, 102, 241, 0.15);
@@ -149,12 +149,7 @@ body {
 }
 
 /* ========== MAIN CONTENT ========== */
-
-.main-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px 32px;
-}
+/* See bottom of file for actual .main-content + .content-body rules */
 
 .page-header {
   margin-bottom: 24px;
@@ -793,4 +788,270 @@ select.input {
 
 .pulse {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ========== STICKY SCENE TOOLBAR ========== */
+
+.scene-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 12px;
+  background: var(--bg-primary);
+}
+
+.scene-toolbar-inner {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  align-items: center;
+}
+
+.scene-toolbar-inner::-webkit-scrollbar { display: none; }
+
+.scene-toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.scene-toolbar-btn .scene-icon {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.scene-toolbar-btn .scene-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.scene-toolbar-btn:hover {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+.scene-toolbar-btn:hover .scene-label {
+  color: var(--text-primary);
+}
+
+.scene-toolbar-btn.active {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+}
+
+.scene-toolbar-btn.active .scene-label {
+  color: var(--accent);
+}
+
+/* ========== SWAP SIDES BUTTON ========== */
+
+.swap-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border: 2px solid var(--warning);
+  background: var(--warning-glow);
+  color: var(--warning);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+
+.swap-btn:hover {
+  background: var(--warning);
+  color: #000;
+  box-shadow: 0 0 20px var(--warning-glow);
+}
+
+.swap-btn.swapped {
+  background: var(--warning);
+  color: #000;
+  box-shadow: 0 0 15px var(--warning-glow);
+}
+
+/* ========== QUICK ACTION BAR ========== */
+
+.quick-action-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* ========== AUDIO MIXER ========== */
+
+.audio-source {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+}
+
+.audio-source .audio-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audio-source input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+
+.audio-source input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+.audio-source .audio-db {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+  text-align: right;
+}
+
+.mute-btn {
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all var(--transition);
+}
+
+.mute-btn:hover { background: var(--bg-card); }
+.mute-btn.muted { color: var(--danger); }
+
+/* ========== SCENE PREVIEWS ========== */
+
+.scene-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.scene-preview-card {
+  background: var(--bg-input);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.scene-preview-card:hover {
+  border-color: var(--accent);
+}
+
+.scene-preview-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.scene-preview-card img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  background: #000;
+}
+
+.scene-preview-card .preview-label {
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.scene-preview-card.active .preview-label {
+  color: var(--accent);
+}
+
+/* ========== CASTER LAYOUT SELECTOR ========== */
+
+.caster-layout-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.caster-layout-btn {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+  font-family: inherit;
+  color: var(--text-secondary);
+}
+
+.caster-layout-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.caster-layout-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
+.caster-layout-btn .layout-icon {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.caster-layout-btn .layout-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* ========== MAIN CONTENT (updated for toolbar) ========== */
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.content-body {
+  padding: 24px 32px;
 }

@@ -3,7 +3,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const STATE_FILE = path.join(__dirname, '..', 'data', 'state.json');
+
+// In Electron, save state to the persistent userData directory
+// In dev/standalone, save to data/state.json next to the app
+const STATE_FILE = process.env.ELEMENTAL_USER_DATA
+  ? path.join(process.env.ELEMENTAL_USER_DATA, 'state.json')
+  : path.join(__dirname, '..', 'data', 'state.json');
 
 const defaultState = {
   mode: 'manual', // 'faceit' or 'manual'
@@ -33,6 +38,14 @@ const defaultState = {
   matchHistory: [],
   graphicsPreset: 'default',
   swapSides: false, // swap team1/team2 positions in OBS
+  flythroughsDir: '', // path to folder containing map flythrough videos
+  mapMusicDir: '', // path to folder containing map music audio files
+  bgMusicDir: '', // path to folder containing royalty-free background music
+  bgMusicFile: '', // selected file for "Background Music" OBS source
+  castersBgMusicFile: '', // selected file for "Casters Background Music" OBS source
+  lastReplayPath: '', // path to the last saved replay clip
+  replayClips: [], // array of saved replay clip paths for current match
+  replayIndex: 0, // current replay index for cycling
   overrides: {}, // e.g. { 'teams.team1.name': true, 'maps': true }
   graphicsPresets: {
     default: { name: 'Default', graphics: {} }

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>End of Stream</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent; overflow: hidden;
+      width: 1920px; height: 1080px;
+      font-family: 'Inter', sans-serif; color: white;
+    }
+
+    .container {
+      position: relative; width: 1920px; height: 1080px;
+      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Rainbow bar top */
+    .rainbow-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316);
+    }
+
+    .org-logo {
+      position: absolute; top: 40px; right: 60px;
+      width: 80px; height: 80px; object-fit: contain;
+    }
+
+    /* Main text */
+    .end-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 140px; line-height: 1; letter-spacing: 6px;
+      text-align: center;
+      text-shadow: 0 6px 40px rgba(0,0,0,0.5);
+    }
+
+    .event-badge {
+      margin-top: 24px;
+      padding: 10px 40px; border-radius: 4px;
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 24px; letter-spacing: 4px;
+    }
+
+    .socials {
+      position: absolute; bottom: 80px;
+      display: flex; gap: 40px;
+    }
+    .social-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 16px; font-weight: 700;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 1px;
+    }
+    .social-icon {
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+  </style>
+  <link rel="stylesheet" href="./animations.css">
+</head>
+<body>
+  <div class="container" id="root" style="animation: fadeIn 0.8s ease-out both;"></div>
+
+  <script src="./state-sync.js"></script>
+  <script>
+    // Loaded via state-sync.js for SSE + polling fallback
+    const API = 'http://localhost:3001';
+    function update(state) {
+      const el = document.getElementById('root');
+
+      el.innerHTML = `
+        <div class="rainbow-bar"></div>
+        <img class="org-logo" src="./org.png">
+
+        <div class="end-text">SEE YOU<br>NEXT TIME!</div>
+        <div class="event-badge">${state.eventName || 'FACEIT SEASON 8'}</div>
+
+        <div class="socials">
+          <div class="social-item">
+            <div class="social-icon">📺</div>
+            <span>YOUTUBE</span>
+          </div>
+          <div class="social-item">
+            <div class="social-icon">🎮</div>
+            <span>TWITCH</span>
+          </div>
+          <div class="social-item">
+            <div class="social-icon">💬</div>
+            <span>DISCORD</span>
+          </div>
+          <div class="social-item">
+            <div class="social-icon">🐦</div>
+            <span>TWITTER</span>
+          </div>
+        </div>
+      `;
+    }
+    stateSync(update);
+  </script>
+</body>
+</html>

@@ -1,1133 +1,144 @@
 {
-  "mode": "faceit",
-  "faceitMatchId": "1-2437b083-cba2-4ba2-8199-a573534519ef",
+  "mode": "scrim",
+  "faceitMatchId": "1-53b654df-2494-41d6-b679-74349b578d6b",
   "bestOf": 5,
   "teams": {
     "team1": {
-      "name": "ELMT Inferno",
-      "logo": "https://distribution.faceit-cdn.net/images/40e43cbe-53b5-4cef-8d32-a736649bcabb.jpg",
+      "name": "ELMT Star",
+      "logo": "",
       "color": "#3b82f6",
       "score": 3,
-      "faceitId": "64c25556-9231-47dc-8c4e-de5aea88494b"
+      "faceitId": "71896092-2e9b-41c1-9ecb-210a2102641c"
     },
     "team2": {
-      "name": "Shiki Daruma",
-      "logo": "https://distribution.faceit-cdn.net/images/72aa1c55-3517-4716-898c-275786a1b571.jpg",
+      "name": "ELMT Bug",
+      "logo": "",
       "color": "#ef4444",
-      "score": 1,
-      "faceitId": "046747af-73f7-4306-8f7f-963dee55bd6f"
+      "score": 2,
+      "faceitId": "5b6400ef-ceaf-4060-ac1a-bc2354a92999"
     }
   },
   "maps": [
     {
-      "name": "Lijiang Tower",
-      "mode": "Control",
-      "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/ffb0acdb-ce25-41d8-a589-e0a7c447b2dd_1703102999443.jpeg",
+      "name": "Esperança",
+      "mode": "Push",
+      "image": "",
       "status": "completed",
-      "winner": "team1",
-      "roundScore": "2 / 1"
+      "winner": "team1"
     },
     {
-      "name": "Midtown",
-      "mode": "Hybrid",
-      "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/8a66c21b-bab9-4fa0-923d-f954b5bc8d4a_1703103072451.jpeg",
+      "name": "Shambali Monastery",
+      "mode": "Escort",
+      "image": "",
       "status": "completed",
-      "winner": "team1",
-      "roundScore": "1 / 0"
+      "winner": "team1"
     },
     {
       "name": "Suravasa",
       "mode": "Flashpoint",
-      "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/f0b94a8e-bfbb-414b-b2ac-6135a2c902da_1703103053805.jpeg",
+      "image": "",
       "status": "completed",
-      "winner": "team2",
-      "roundScore": "1 / 3"
+      "winner": "team1"
     },
     {
-      "name": "Esperança",
-      "mode": "Push",
-      "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/57d6237f-9228-42e5-8035-07a734e2e5cc_1703103087193.jpeg",
+      "name": "Dorado",
+      "mode": "Escort",
+      "image": "",
       "status": "completed",
-      "winner": "team1",
-      "roundScore": "1 / 0"
+      "winner": "team2"
+    },
+    {
+      "name": "Ilios",
+      "mode": "Control",
+      "image": "",
+      "status": "current",
+      "winner": null
     }
   ],
   "heroBans": {
     "team1": [
-      "venture"
+      "dva"
     ],
-    "team2": [
-      "brigitte"
-    ]
+    "team2": []
   },
-  "perMapBans": [
-    {
-      "ban1": {
-        "name": "Bastion",
-        "role": "Damage",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/2689399e-6752-4018-9f45-a3736e8bbbd4_1724318235776.jpeg"
-      },
-      "ban2": {
-        "name": "Domina",
-        "role": "Tank",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/414c7c26-6c85-4658-9f3e-8f3d73e61526_1770830184165.jpeg"
-      },
-      "picker": "team1",
-      "team1Ban": {
-        "name": "Bastion",
-        "role": "Damage",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/2689399e-6752-4018-9f45-a3736e8bbbd4_1724318235776.jpeg"
-      },
-      "team2Ban": {
-        "name": "Domina",
-        "role": "Tank",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/414c7c26-6c85-4658-9f3e-8f3d73e61526_1770830184165.jpeg"
-      }
-    },
-    {
-      "ban1": {
-        "name": "Cassidy",
-        "role": "Damage",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/6d265ed7-e8d8-4d2f-b2a1-9abaa810a9d0_1724318309772.jpeg"
-      },
-      "ban2": {
-        "name": "Lucio",
-        "role": "Support",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/191e6d3e-1575-49b3-a3fe-5a06f2b8fb59_1724318605712.jpeg"
-      },
-      "picker": "team2",
-      "team1Ban": {
-        "name": "Lucio",
-        "role": "Support",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/191e6d3e-1575-49b3-a3fe-5a06f2b8fb59_1724318605712.jpeg"
-      },
-      "team2Ban": {
-        "name": "Cassidy",
-        "role": "Damage",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/6d265ed7-e8d8-4d2f-b2a1-9abaa810a9d0_1724318309772.jpeg"
-      }
-    },
-    {
-      "ban1": {
-        "name": "Wrecking Ball",
-        "role": "Tank",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/e1dbee8d-9875-4db1-a554-61571f2fa19e_1724318206587.jpeg"
-      },
-      "ban2": {
-        "name": "Lucio",
-        "role": "Support",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/191e6d3e-1575-49b3-a3fe-5a06f2b8fb59_1724318605712.jpeg"
-      },
-      "picker": "team2",
-      "team1Ban": {
-        "name": "Lucio",
-        "role": "Support",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/191e6d3e-1575-49b3-a3fe-5a06f2b8fb59_1724318605712.jpeg"
-      },
-      "team2Ban": {
-        "name": "Wrecking Ball",
-        "role": "Tank",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/e1dbee8d-9875-4db1-a554-61571f2fa19e_1724318206587.jpeg"
-      }
-    },
-    {
-      "ban1": {
-        "name": "Venture",
-        "role": "Damage",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/c9a2661b-4ade-40c4-b518-5fa86f803503_1724318473682.jpeg"
-      },
-      "ban2": {
-        "name": "Brigitte",
-        "role": "Support",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/6c15a438-deae-403f-b24f-493dc475aa61_1724318504870.jpeg"
-      },
-      "picker": "team1",
-      "team1Ban": {
-        "name": "Venture",
-        "role": "Damage",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/c9a2661b-4ade-40c4-b518-5fa86f803503_1724318473682.jpeg"
-      },
-      "team2Ban": {
-        "name": "Brigitte",
-        "role": "Support",
-        "image": "https://assets.faceit-cdn.net/third_party/games/8b5e34c5-2591-427b-916e-5b93a7ab4564/assets/votables/6c15a438-deae-403f-b24f-493dc475aa61_1724318504870.jpeg"
-      }
-    }
-  ],
+  "perMapBans": [],
   "players": {
     "team1": [
       {
-        "playerId": "54dd4782-c01d-4c7f-bfde-b2a972fc0a2a",
-        "nickname": "YummyDrywall",
+        "playerId": "f18265c8-281c-452c-ae48-6e4bfaf911b2",
+        "nickname": "HoxyVoxy",
+        "avatar": "https://distribution.faceit-cdn.net/images/03edceca-f685-4c83-824f-bac91a8b1d10.jpg",
+        "gamePlayerName": "HoxyVoxy",
+        "skillLevel": 7
+      },
+      {
+        "playerId": "f7617711-1529-4409-98ef-06c9d2b9b2d1",
+        "nickname": "ClairityOW",
         "avatar": "",
-        "gamePlayerName": "YummyDrywall",
-        "skillLevel": 4
+        "gamePlayerName": "Clairity",
+        "skillLevel": 7
       },
       {
-        "playerId": "8aa58a88-3ce0-4af8-a230-97fcc517d111",
-        "nickname": "v2ntur4",
-        "avatar": "https://distribution.faceit-cdn.net/images/a134b0e5-9236-41f7-87aa-50a72d5f8cbb.jpg",
-        "gamePlayerName": "ventura",
-        "skillLevel": 6
-      },
-      {
-        "playerId": "6c1e0a47-675c-4886-8022-97fba19dd1e1",
-        "nickname": "ItsFibbles",
-        "avatar": "https://distribution.faceit-cdn.net/images/1d634bf7-9050-48ae-87f5-7210c811ddbf.jpeg",
-        "gamePlayerName": "Lilly",
-        "skillLevel": 9
-      },
-      {
-        "playerId": "602faa4d-21b1-425a-88e9-5306bfc7e52d",
-        "nickname": "Xdsnowey",
-        "avatar": "https://distribution.faceit-cdn.net/images/51cccb41-60ec-478d-bac2-d18c96f73b26.jpeg",
-        "gamePlayerName": "GuitarMaster",
+        "playerId": "a941d90a-eaa6-4e50-878d-42f8bf7208cc",
+        "nickname": "0rangee",
+        "avatar": "",
+        "gamePlayerName": "orangee",
         "skillLevel": 8
       },
       {
-        "playerId": "e059a57e-ae71-46f4-a041-f0abb4a4dfec",
-        "nickname": "cracksm0ker",
-        "avatar": "https://distribution.faceit-cdn.net/images/086832dd-9986-442d-9207-9a9aaa7c0ba5.jpg",
-        "gamePlayerName": "cracksmokërǃ",
-        "skillLevel": 7
+        "playerId": "2e62b634-fd6b-4117-93da-c967ac2476f8",
+        "nickname": "ShogunApple",
+        "avatar": "https://distribution.faceit-cdn.net/images/497ccc23-1c36-4dcf-8446-18a54df9d6c3.jpeg",
+        "gamePlayerName": "ShogunApple",
+        "skillLevel": 8
+      },
+      {
+        "playerId": "9c0a960a-690c-4a20-8042-904652f286d3",
+        "nickname": "BendMax",
+        "avatar": "",
+        "gamePlayerName": "BendMax",
+        "skillLevel": 8
       }
     ],
     "team2": [
       {
-        "playerId": "318fab85-107a-4311-a33e-e2e15c81c7ab",
-        "nickname": "yoDaryl",
-        "avatar": "https://distribution.faceit-cdn.net/images/f603571c-896a-4779-b194-4e462dd743a6.jpg",
-        "gamePlayerName": "Daryl",
-        "skillLevel": 6
+        "playerId": "4d31affe-3b99-4749-a9ff-8c00162d9857",
+        "nickname": "Akiyoto",
+        "avatar": "https://distribution.faceit-cdn.net/images/be463289-0f1d-4ac4-964a-0f290ad7c706.jpg",
+        "gamePlayerName": "Akiyoto",
+        "skillLevel": 9
       },
       {
-        "playerId": "a79be631-5f2f-44db-bf47-76aa7ac6daa5",
-        "nickname": "RubyCantAim",
-        "avatar": "https://distribution.faceit-cdn.net/images/90a7d2c6-a863-4814-a74a-fd9b3b0444dd.jpg",
-        "gamePlayerName": "Ruby",
+        "playerId": "8eca7edc-543f-45d6-b410-e37fbe707291",
+        "nickname": "1ccp_ow",
+        "avatar": "https://distribution.faceit-cdn.net/images/2639eeed-b12d-4d02-9184-15e795f65c50.jpg",
+        "gamePlayerName": "CCP",
         "skillLevel": 8
       },
       {
-        "playerId": "868d2a62-b29f-4a68-8b9d-f9ba12641df0",
-        "nickname": "Raisin_OW",
+        "playerId": "78c6d83f-2362-4855-bd55-36967d27a8e4",
+        "nickname": "Zombloid",
         "avatar": "",
-        "gamePlayerName": "Raisin",
+        "gamePlayerName": "Zombies",
         "skillLevel": 8
       },
       {
-        "playerId": "5f8acc24-21c3-4f09-98fe-5aced9feeb62",
-        "nickname": "Phy_IV",
-        "avatar": "https://distribution.faceit-cdn.net/images/18c3491b-93e0-4c41-b679-3f1a652a542c.jpeg",
-        "gamePlayerName": "Phy",
-        "skillLevel": 8
+        "playerId": "cc25a96f-ce03-46ef-b146-230e5ebd34f9",
+        "nickname": "pewdie1",
+        "avatar": "https://distribution.faceit-cdn.net/images/ec79cbb2-fd64-41b2-ac8b-d0281c989b46.jpg",
+        "gamePlayerName": "PewDiePie1v9",
+        "skillLevel": 9
       },
       {
-        "playerId": "9b99b80c-e3f7-400c-8d9b-ac19b6403c40",
-        "nickname": "Vaporousss",
+        "playerId": "03eab62f-e833-4cb9-9b65-123cc6c35ed3",
+        "nickname": "FlipStingray",
         "avatar": "",
-        "gamePlayerName": "Vapor",
-        "skillLevel": 6
+        "gamePlayerName": "Stingray",
+        "skillLevel": 8
       }
     ]
   },
-  "playerStats": [
-    {
-      "matchRound": "1",
-      "bestOf": "5",
-      "map": "0x0800000000000662",
-      "mapMode": "Control",
-      "scoreSummary": "2 / 1",
-      "winner": "64c25556-9231-47dc-8c4e-de5aea88494b",
-      "teams": [
-        {
-          "teamId": "64c25556-9231-47dc-8c4e-de5aea88494b",
-          "name": "ELMT Inferno",
-          "stats": {
-            "totalEliminations": 120,
-            "totalDeaths": 38,
-            "avgEliminations": 24,
-            "avgDeaths": 7.6,
-            "totalFinalBlows": 43,
-            "totalObjectiveTime": 543,
-            "totalMultiKills": 3,
-            "teamScore": 2,
-            "teamWin": true
-          },
-          "players": [
-            {
-              "playerId": "54dd4782-c01d-4c7f-bfde-b2a972fc0a2a",
-              "nickname": "YummyDrywall",
-              "role": "Support",
-              "kills": 25,
-              "deaths": 5,
-              "finalBlows": 12,
-              "assists": 8,
-              "damageDealt": 8196,
-              "damageMitigated": 0,
-              "healingDone": 8366,
-              "objectiveTime": 87,
-              "kdRatio": 5,
-              "multiKills": 1,
-              "soloKills": 0,
-              "environmentalKills": 1,
-              "timePlayed": 800
-            },
-            {
-              "playerId": "8aa58a88-3ce0-4af8-a230-97fcc517d111",
-              "nickname": "v2ntur4",
-              "role": "Damage",
-              "kills": 29,
-              "deaths": 7,
-              "finalBlows": 10,
-              "assists": 0,
-              "damageDealt": 10517,
-              "damageMitigated": 0,
-              "healingDone": 21,
-              "objectiveTime": 53,
-              "kdRatio": 4.14,
-              "multiKills": 0,
-              "soloKills": 1,
-              "environmentalKills": 0,
-              "timePlayed": 800
-            },
-            {
-              "playerId": "1c60313e-53bf-4716-9f53-70984aaae18c",
-              "nickname": "Junohstar",
-              "role": "Damage",
-              "kills": 18,
-              "deaths": 12,
-              "finalBlows": 6,
-              "assists": 3,
-              "damageDealt": 9292,
-              "damageMitigated": 2172,
-              "healingDone": 125,
-              "objectiveTime": 80,
-              "kdRatio": 1.5,
-              "multiKills": 0,
-              "soloKills": 3,
-              "environmentalKills": 1,
-              "timePlayed": 800
-            },
-            {
-              "playerId": "e059a57e-ae71-46f4-a041-f0abb4a4dfec",
-              "nickname": "cracksm0ker",
-              "role": "Support",
-              "kills": 18,
-              "deaths": 9,
-              "finalBlows": 3,
-              "assists": 17,
-              "damageDealt": 7818,
-              "damageMitigated": 784,
-              "healingDone": 7453,
-              "objectiveTime": 98,
-              "kdRatio": 2,
-              "multiKills": 0,
-              "soloKills": 1,
-              "environmentalKills": 1,
-              "timePlayed": 800
-            },
-            {
-              "playerId": "6c1e0a47-675c-4886-8022-97fba19dd1e1",
-              "nickname": "ItsFibbles",
-              "role": "Tank",
-              "kills": 30,
-              "deaths": 5,
-              "finalBlows": 12,
-              "assists": 10,
-              "damageDealt": 13050,
-              "damageMitigated": 7740,
-              "healingDone": 1889,
-              "objectiveTime": 225,
-              "kdRatio": 6,
-              "multiKills": 2,
-              "soloKills": 1,
-              "environmentalKills": 2,
-              "timePlayed": 800
-            }
-          ]
-        },
-        {
-          "teamId": "046747af-73f7-4306-8f7f-963dee55bd6f",
-          "name": "Shiki Daruma",
-          "stats": {
-            "totalEliminations": 83,
-            "totalDeaths": 48,
-            "avgEliminations": 16.6,
-            "avgDeaths": 9.6,
-            "totalFinalBlows": 32,
-            "totalObjectiveTime": 579,
-            "totalMultiKills": 0,
-            "teamScore": 1,
-            "teamWin": false
-          },
-          "players": [
-            {
-              "playerId": "318fab85-107a-4311-a33e-e2e15c81c7ab",
-              "nickname": "yoDaryl",
-              "role": "Support",
-              "kills": 7,
-              "deaths": 9,
-              "finalBlows": 2,
-              "assists": 15,
-              "damageDealt": 3361,
-              "damageMitigated": 0,
-              "healingDone": 11402,
-              "objectiveTime": 71,
-              "kdRatio": 0.78,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 800
-            },
-            {
-              "playerId": "9b99b80c-e3f7-400c-8d9b-ac19b6403c40",
-              "nickname": "Vaporousss",
-              "role": "Damage",
-              "kills": 14,
-              "deaths": 11,
-              "finalBlows": 8,
-              "assists": 1,
-              "damageDealt": 10399,
-              "damageMitigated": 915,
-              "healingDone": 74,
-              "objectiveTime": 80,
-              "kdRatio": 1.27,
-              "multiKills": 0,
-              "soloKills": 2,
-              "environmentalKills": 0,
-              "timePlayed": 800
-            },
-            {
-              "playerId": "a79be631-5f2f-44db-bf47-76aa7ac6daa5",
-              "nickname": "RubyCantAim",
-              "role": "Support",
-              "kills": 17,
-              "deaths": 10,
-              "finalBlows": 4,
-              "assists": 19,
-              "damageDealt": 6081,
-              "damageMitigated": 1220,
-              "healingDone": 14115,
-              "objectiveTime": 80,
-              "kdRatio": 1.7,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 800
-            },
-            {
-              "playerId": "868d2a62-b29f-4a68-8b9d-f9ba12641df0",
-              "nickname": "Raisin_OW",
-              "role": "Tank",
-              "kills": 24,
-              "deaths": 9,
-              "finalBlows": 11,
-              "assists": 3,
-              "damageDealt": 13183,
-              "damageMitigated": 6066,
-              "healingDone": 472,
-              "objectiveTime": 260,
-              "kdRatio": 2.67,
-              "multiKills": 0,
-              "soloKills": 4,
-              "environmentalKills": 4,
-              "timePlayed": 800
-            },
-            {
-              "playerId": "5f8acc24-21c3-4f09-98fe-5aced9feeb62",
-              "nickname": "Phy_IV",
-              "role": "Damage",
-              "kills": 21,
-              "deaths": 9,
-              "finalBlows": 7,
-              "assists": 2,
-              "damageDealt": 13313,
-              "damageMitigated": 388,
-              "healingDone": 441,
-              "objectiveTime": 88,
-              "kdRatio": 2.33,
-              "multiKills": 0,
-              "soloKills": 1,
-              "environmentalKills": 0,
-              "timePlayed": 800
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "matchRound": "2",
-      "bestOf": "5",
-      "map": "0x0800000000000B4C",
-      "mapMode": "Hybrid",
-      "scoreSummary": "1 / 0",
-      "winner": "64c25556-9231-47dc-8c4e-de5aea88494b",
-      "teams": [
-        {
-          "teamId": "64c25556-9231-47dc-8c4e-de5aea88494b",
-          "name": "ELMT Inferno",
-          "stats": {
-            "totalEliminations": 93,
-            "totalDeaths": 22,
-            "avgEliminations": 18.6,
-            "avgDeaths": 4.4,
-            "totalFinalBlows": 35,
-            "totalObjectiveTime": 217,
-            "totalMultiKills": 1,
-            "teamScore": 1,
-            "teamWin": true
-          },
-          "players": [
-            {
-              "playerId": "54dd4782-c01d-4c7f-bfde-b2a972fc0a2a",
-              "nickname": "YummyDrywall",
-              "role": "Support",
-              "kills": 23,
-              "deaths": 4,
-              "finalBlows": 9,
-              "assists": 8,
-              "damageDealt": 4019,
-              "damageMitigated": 0,
-              "healingDone": 6961,
-              "objectiveTime": 31,
-              "kdRatio": 5.75,
-              "multiKills": 1,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            },
-            {
-              "playerId": "8aa58a88-3ce0-4af8-a230-97fcc517d111",
-              "nickname": "v2ntur4",
-              "role": "Damage",
-              "kills": 21,
-              "deaths": 5,
-              "finalBlows": 5,
-              "assists": 5,
-              "damageDealt": 7307,
-              "damageMitigated": 0,
-              "healingDone": 222,
-              "objectiveTime": 33,
-              "kdRatio": 4.2,
-              "multiKills": 0,
-              "soloKills": 1,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            },
-            {
-              "playerId": "6c1e0a47-675c-4886-8022-97fba19dd1e1",
-              "nickname": "ItsFibbles",
-              "role": "Tank",
-              "kills": 24,
-              "deaths": 1,
-              "finalBlows": 10,
-              "assists": 10,
-              "damageDealt": 8821,
-              "damageMitigated": 4195,
-              "healingDone": 1620,
-              "objectiveTime": 87,
-              "kdRatio": 24,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            },
-            {
-              "playerId": "602faa4d-21b1-425a-88e9-5306bfc7e52d",
-              "nickname": "Xdsnowey",
-              "role": "Damage",
-              "kills": 12,
-              "deaths": 6,
-              "finalBlows": 7,
-              "assists": 0,
-              "damageDealt": 5562,
-              "damageMitigated": 0,
-              "healingDone": 0,
-              "objectiveTime": 48,
-              "kdRatio": 2,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            },
-            {
-              "playerId": "deaf4983-481a-428f-9594-54ab11500f0f",
-              "nickname": "parasoul_",
-              "role": "Support",
-              "kills": 13,
-              "deaths": 6,
-              "finalBlows": 4,
-              "assists": 25,
-              "damageDealt": 4786,
-              "damageMitigated": 0,
-              "healingDone": 5981,
-              "objectiveTime": 18,
-              "kdRatio": 2.17,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            }
-          ]
-        },
-        {
-          "teamId": "046747af-73f7-4306-8f7f-963dee55bd6f",
-          "name": "Shiki Daruma",
-          "stats": {
-            "totalEliminations": 46,
-            "totalDeaths": 35,
-            "avgEliminations": 9.2,
-            "avgDeaths": 7,
-            "totalFinalBlows": 22,
-            "totalObjectiveTime": 108,
-            "totalMultiKills": 1,
-            "teamScore": 0,
-            "teamWin": false
-          },
-          "players": [
-            {
-              "playerId": "318fab85-107a-4311-a33e-e2e15c81c7ab",
-              "nickname": "yoDaryl",
-              "role": "Support",
-              "kills": 6,
-              "deaths": 7,
-              "finalBlows": 1,
-              "assists": 9,
-              "damageDealt": 2452,
-              "damageMitigated": 3960,
-              "healingDone": 4922,
-              "objectiveTime": 14,
-              "kdRatio": 0.86,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            },
-            {
-              "playerId": "a79be631-5f2f-44db-bf47-76aa7ac6daa5",
-              "nickname": "RubyCantAim",
-              "role": "Support",
-              "kills": 6,
-              "deaths": 8,
-              "finalBlows": 3,
-              "assists": 6,
-              "damageDealt": 3437,
-              "damageMitigated": 0,
-              "healingDone": 7059,
-              "objectiveTime": 7,
-              "kdRatio": 0.75,
-              "multiKills": 1,
-              "soloKills": 2,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            },
-            {
-              "playerId": "868d2a62-b29f-4a68-8b9d-f9ba12641df0",
-              "nickname": "Raisin_OW",
-              "role": "Tank",
-              "kills": 11,
-              "deaths": 7,
-              "finalBlows": 9,
-              "assists": 0,
-              "damageDealt": 8419,
-              "damageMitigated": 15147,
-              "healingDone": 1285,
-              "objectiveTime": 46,
-              "kdRatio": 1.57,
-              "multiKills": 0,
-              "soloKills": 3,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            },
-            {
-              "playerId": "5f8acc24-21c3-4f09-98fe-5aced9feeb62",
-              "nickname": "Phy_IV",
-              "role": "Damage",
-              "kills": 10,
-              "deaths": 6,
-              "finalBlows": 5,
-              "assists": 0,
-              "damageDealt": 10313,
-              "damageMitigated": 0,
-              "healingDone": 994,
-              "objectiveTime": 10,
-              "kdRatio": 1.67,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            },
-            {
-              "playerId": "4cc39650-01e8-429f-9867-38018bc622b9",
-              "nickname": "Bill2277",
-              "role": "Damage",
-              "kills": 13,
-              "deaths": 7,
-              "finalBlows": 4,
-              "assists": 2,
-              "damageDealt": 9838,
-              "damageMitigated": 1582,
-              "healingDone": 59,
-              "objectiveTime": 31,
-              "kdRatio": 1.86,
-              "multiKills": 0,
-              "soloKills": 1,
-              "environmentalKills": 0,
-              "timePlayed": 663
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "matchRound": "3",
-      "bestOf": "5",
-      "map": "0x0800000000000D3E",
-      "mapMode": "Flashpoint",
-      "scoreSummary": "1 / 3",
-      "winner": "046747af-73f7-4306-8f7f-963dee55bd6f",
-      "teams": [
-        {
-          "teamId": "64c25556-9231-47dc-8c4e-de5aea88494b",
-          "name": "ELMT Inferno",
-          "stats": {
-            "totalEliminations": 36,
-            "totalDeaths": 49,
-            "avgEliminations": 7.2,
-            "avgDeaths": 9.8,
-            "totalFinalBlows": 16,
-            "totalObjectiveTime": 235,
-            "totalMultiKills": 0,
-            "teamScore": 1,
-            "teamWin": false
-          },
-          "players": [
-            {
-              "playerId": "54dd4782-c01d-4c7f-bfde-b2a972fc0a2a",
-              "nickname": "YummyDrywall",
-              "role": "Support",
-              "kills": 5,
-              "deaths": 9,
-              "finalBlows": 1,
-              "assists": 8,
-              "damageDealt": 3205,
-              "damageMitigated": 863,
-              "healingDone": 10880,
-              "objectiveTime": 9,
-              "kdRatio": 0.56,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            },
-            {
-              "playerId": "8aa58a88-3ce0-4af8-a230-97fcc517d111",
-              "nickname": "v2ntur4",
-              "role": "Damage",
-              "kills": 5,
-              "deaths": 10,
-              "finalBlows": 1,
-              "assists": 0,
-              "damageDealt": 6335,
-              "damageMitigated": 13,
-              "healingDone": 248,
-              "objectiveTime": 56,
-              "kdRatio": 0.5,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            },
-            {
-              "playerId": "6c1e0a47-675c-4886-8022-97fba19dd1e1",
-              "nickname": "ItsFibbles",
-              "role": "Tank",
-              "kills": 10,
-              "deaths": 8,
-              "finalBlows": 4,
-              "assists": 4,
-              "damageDealt": 8882,
-              "damageMitigated": 16533,
-              "healingDone": 2080,
-              "objectiveTime": 120,
-              "kdRatio": 1.25,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            },
-            {
-              "playerId": "deaf4983-481a-428f-9594-54ab11500f0f",
-              "nickname": "parasoul_",
-              "role": "Support",
-              "kills": 7,
-              "deaths": 10,
-              "finalBlows": 3,
-              "assists": 8,
-              "damageDealt": 3105,
-              "damageMitigated": 0,
-              "healingDone": 10821,
-              "objectiveTime": 23,
-              "kdRatio": 0.7,
-              "multiKills": 0,
-              "soloKills": 1,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            },
-            {
-              "playerId": "2b006d72-38c7-46ff-b2e5-23e4900ed286",
-              "nickname": "PyroUNH",
-              "role": "Damage",
-              "kills": 9,
-              "deaths": 12,
-              "finalBlows": 7,
-              "assists": 0,
-              "damageDealt": 8553,
-              "damageMitigated": 1366,
-              "healingDone": 0,
-              "objectiveTime": 27,
-              "kdRatio": 0.75,
-              "multiKills": 0,
-              "soloKills": 1,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            }
-          ]
-        },
-        {
-          "teamId": "046747af-73f7-4306-8f7f-963dee55bd6f",
-          "name": "Shiki Daruma",
-          "stats": {
-            "totalEliminations": 128,
-            "totalDeaths": 16,
-            "avgEliminations": 25.6,
-            "avgDeaths": 3.2,
-            "totalFinalBlows": 49,
-            "totalObjectiveTime": 280,
-            "totalMultiKills": 3,
-            "teamScore": 3,
-            "teamWin": true
-          },
-          "players": [
-            {
-              "playerId": "318fab85-107a-4311-a33e-e2e15c81c7ab",
-              "nickname": "yoDaryl",
-              "role": "Support",
-              "kills": 20,
-              "deaths": 4,
-              "finalBlows": 7,
-              "assists": 25,
-              "damageDealt": 5515,
-              "damageMitigated": 25,
-              "healingDone": 6889,
-              "objectiveTime": 22,
-              "kdRatio": 5,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            },
-            {
-              "playerId": "a79be631-5f2f-44db-bf47-76aa7ac6daa5",
-              "nickname": "RubyCantAim",
-              "role": "Support",
-              "kills": 16,
-              "deaths": 3,
-              "finalBlows": 6,
-              "assists": 28,
-              "damageDealt": 6453,
-              "damageMitigated": 0,
-              "healingDone": 11232,
-              "objectiveTime": 34,
-              "kdRatio": 5.33,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            },
-            {
-              "playerId": "868d2a62-b29f-4a68-8b9d-f9ba12641df0",
-              "nickname": "Raisin_OW",
-              "role": "Tank",
-              "kills": 29,
-              "deaths": 3,
-              "finalBlows": 11,
-              "assists": 4,
-              "damageDealt": 14391,
-              "damageMitigated": 19831,
-              "healingDone": 0,
-              "objectiveTime": 111,
-              "kdRatio": 9.67,
-              "multiKills": 1,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            },
-            {
-              "playerId": "5f8acc24-21c3-4f09-98fe-5aced9feeb62",
-              "nickname": "Phy_IV",
-              "role": "Damage",
-              "kills": 23,
-              "deaths": 6,
-              "finalBlows": 7,
-              "assists": 2,
-              "damageDealt": 8789,
-              "damageMitigated": 0,
-              "healingDone": 0,
-              "objectiveTime": 34,
-              "kdRatio": 3.83,
-              "multiKills": 0,
-              "soloKills": 1,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            },
-            {
-              "playerId": "9b99b80c-e3f7-400c-8d9b-ac19b6403c40",
-              "nickname": "Vaporousss",
-              "role": "Damage",
-              "kills": 40,
-              "deaths": 0,
-              "finalBlows": 18,
-              "assists": 2,
-              "damageDealt": 9895,
-              "damageMitigated": 0,
-              "healingDone": 58,
-              "objectiveTime": 79,
-              "kdRatio": 40,
-              "multiKills": 2,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 697
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "matchRound": "4",
-      "bestOf": "5",
-      "map": "0x0800000000000D53",
-      "mapMode": "Push",
-      "scoreSummary": "1 / 0",
-      "winner": "64c25556-9231-47dc-8c4e-de5aea88494b",
-      "teams": [
-        {
-          "teamId": "64c25556-9231-47dc-8c4e-de5aea88494b",
-          "name": "ELMT Inferno",
-          "stats": {
-            "totalEliminations": 96,
-            "totalDeaths": 16,
-            "avgEliminations": 19.2,
-            "avgDeaths": 3.2,
-            "totalFinalBlows": 39,
-            "totalObjectiveTime": 79,
-            "totalMultiKills": 5,
-            "teamScore": 1,
-            "teamWin": true
-          },
-          "players": [
-            {
-              "playerId": "54dd4782-c01d-4c7f-bfde-b2a972fc0a2a",
-              "nickname": "YummyDrywall",
-              "role": "Support",
-              "kills": 21,
-              "deaths": 2,
-              "finalBlows": 6,
-              "assists": 13,
-              "damageDealt": 4063,
-              "damageMitigated": 0,
-              "healingDone": 4053,
-              "objectiveTime": 12,
-              "kdRatio": 10.5,
-              "multiKills": 2,
-              "soloKills": 1,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            },
-            {
-              "playerId": "8aa58a88-3ce0-4af8-a230-97fcc517d111",
-              "nickname": "v2ntur4",
-              "role": "Damage",
-              "kills": 21,
-              "deaths": 5,
-              "finalBlows": 9,
-              "assists": 0,
-              "damageDealt": 5179,
-              "damageMitigated": 0,
-              "healingDone": 0,
-              "objectiveTime": 23,
-              "kdRatio": 4.2,
-              "multiKills": 1,
-              "soloKills": 2,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            },
-            {
-              "playerId": "6c1e0a47-675c-4886-8022-97fba19dd1e1",
-              "nickname": "ItsFibbles",
-              "role": "Tank",
-              "kills": 20,
-              "deaths": 2,
-              "finalBlows": 11,
-              "assists": 5,
-              "damageDealt": 6852,
-              "damageMitigated": 4148,
-              "healingDone": 1160,
-              "objectiveTime": 29,
-              "kdRatio": 10,
-              "multiKills": 1,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            },
-            {
-              "playerId": "602faa4d-21b1-425a-88e9-5306bfc7e52d",
-              "nickname": "Xdsnowey",
-              "role": "Damage",
-              "kills": 18,
-              "deaths": 4,
-              "finalBlows": 7,
-              "assists": 0,
-              "damageDealt": 6711,
-              "damageMitigated": 0,
-              "healingDone": 477,
-              "objectiveTime": 0,
-              "kdRatio": 4.5,
-              "multiKills": 0,
-              "soloKills": 2,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            },
-            {
-              "playerId": "e059a57e-ae71-46f4-a041-f0abb4a4dfec",
-              "nickname": "cracksm0ker",
-              "role": "Support",
-              "kills": 16,
-              "deaths": 3,
-              "finalBlows": 6,
-              "assists": 11,
-              "damageDealt": 4814,
-              "damageMitigated": 795,
-              "healingDone": 3749,
-              "objectiveTime": 15,
-              "kdRatio": 5.33,
-              "multiKills": 1,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            }
-          ]
-        },
-        {
-          "teamId": "046747af-73f7-4306-8f7f-963dee55bd6f",
-          "name": "Shiki Daruma",
-          "stats": {
-            "totalEliminations": 40,
-            "totalDeaths": 39,
-            "avgEliminations": 8,
-            "avgDeaths": 7.8,
-            "totalFinalBlows": 16,
-            "totalObjectiveTime": 426,
-            "totalMultiKills": 1,
-            "teamScore": 0,
-            "teamWin": false
-          },
-          "players": [
-            {
-              "playerId": "318fab85-107a-4311-a33e-e2e15c81c7ab",
-              "nickname": "yoDaryl",
-              "role": "Support",
-              "kills": 7,
-              "deaths": 8,
-              "finalBlows": 1,
-              "assists": 5,
-              "damageDealt": 2546,
-              "damageMitigated": 300,
-              "healingDone": 3804,
-              "objectiveTime": 93,
-              "kdRatio": 0.88,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            },
-            {
-              "playerId": "a79be631-5f2f-44db-bf47-76aa7ac6daa5",
-              "nickname": "RubyCantAim",
-              "role": "Support",
-              "kills": 6,
-              "deaths": 8,
-              "finalBlows": 1,
-              "assists": 11,
-              "damageDealt": 2951,
-              "damageMitigated": 0,
-              "healingDone": 5352,
-              "objectiveTime": 60,
-              "kdRatio": 0.75,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            },
-            {
-              "playerId": "868d2a62-b29f-4a68-8b9d-f9ba12641df0",
-              "nickname": "Raisin_OW",
-              "role": "Tank",
-              "kills": 9,
-              "deaths": 8,
-              "finalBlows": 6,
-              "assists": 2,
-              "damageDealt": 6661,
-              "damageMitigated": 7334,
-              "healingDone": 2037,
-              "objectiveTime": 107,
-              "kdRatio": 1.12,
-              "multiKills": 1,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            },
-            {
-              "playerId": "5f8acc24-21c3-4f09-98fe-5aced9feeb62",
-              "nickname": "Phy_IV",
-              "role": "Damage",
-              "kills": 8,
-              "deaths": 8,
-              "finalBlows": 4,
-              "assists": 0,
-              "damageDealt": 6557,
-              "damageMitigated": 0,
-              "healingDone": 0,
-              "objectiveTime": 93,
-              "kdRatio": 1,
-              "multiKills": 0,
-              "soloKills": 0,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            },
-            {
-              "playerId": "9b99b80c-e3f7-400c-8d9b-ac19b6403c40",
-              "nickname": "Vaporousss",
-              "role": "Damage",
-              "kills": 10,
-              "deaths": 7,
-              "finalBlows": 4,
-              "assists": 0,
-              "damageDealt": 4806,
-              "damageMitigated": 0,
-              "healingDone": 14,
-              "objectiveTime": 73,
-              "kdRatio": 1.43,
-              "multiKills": 0,
-              "soloKills": 2,
-              "environmentalKills": 0,
-              "timePlayed": 605
-            }
-          ]
-        }
-      ]
-    }
-  ],
+  "playerStats": [],
   "mapVeto": [],
   "casters": [
     {
@@ -1142,13 +153,16 @@
     }
   ],
   "interviewee": {
-    "name": "",
+    "name": "Person",
     "camUrl": "",
-    "visible": false
+    "visible": false,
+    "teamName": "Evil Team",
+    "role": "Tank",
+    "label": "Bads"
   },
   "countdown": {
     "duration": 300,
-    "remaining": 0,
+    "remaining": 300,
     "running": false,
     "label": "Starting Soon"
   },
@@ -1157,21 +171,30 @@
     "url": "https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;700&display=swap"
   },
   "lowerThird": {
-    "title": "",
+    "title": "Player",
     "subtitle": "",
     "visible": false
   },
-  "currentScene": "Casters Lobby",
-  "eventName": "FACEIT Season 8",
+  "currentScene": "Starting",
+  "eventName": "Scrim Test",
   "schedule": [],
   "matchHistory": [],
   "graphicsPreset": "default",
   "swapSides": false,
-  "overrides": {},
+  "flythroughsDir": "/home/volence/Videos/OW Flythroughs",
+  "mapMusicDir": "/home/volence/Music/OW Map Music",
+  "bgMusicDir": "/home/volence/Music/Royalty Free/",
+  "bgMusicFile": "bensound-moose.mp3",
+  "castersBgMusicFile": "bensound-nassau.mp3",
+  "overrides": {
+    "maps": true
+  },
   "graphicsPresets": {
     "default": {
       "name": "Default",
       "graphics": {}
     }
-  }
+  },
+  "selectedMapIdx": -1,
+  "casterLayout": 2
 }

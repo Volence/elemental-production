@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Casters Map Score</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent; overflow: hidden;
+      width: 1920px; height: 1080px;
+      font-family: 'Inter', sans-serif; color: white;
+    }
+
+    .container {
+      position: relative; width: 1920px; height: 1080px;
+      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Branding ── */
+    .branding {
+      position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 18px;
+    }
+    .branding .org-logo { width: 56px; height: 56px; object-fit: contain; }
+    .branding .divider { width: 3px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+    .branding .event-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px; letter-spacing: 3px; line-height: 1.1;
+    }
+
+    /* ── Caster cam slots ── */
+    .caster-area { display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; }
+    .caster-slot {
+      border: 2px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.3);
+    }
+    .caster-label {
+      text-align: center; margin-top: 6px;
+      font-size: 14px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    /* ── Main layout ── */
+    .main-layout {
+      position: absolute; top: 120px; left: 60px; right: 60px; bottom: 160px;
+      display: flex; gap: 24px; align-items: flex-start;
+    }
+    .main-layout.centered { justify-content: center; }
+
+    /* ── Score panel ── */
+    .score-panel {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .score-panel.full-width { max-width: 1200px; }
+
+    .match-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px; letter-spacing: 3px;
+      color: rgba(255,255,255,0.4); text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .score-table {
+      background: rgba(0,0,0,0.45);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 48px 1fr repeat(var(--map-count, 5), 56px) 70px;
+      align-items: center;
+      padding: 0 16px; height: 56px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .score-row:last-child { border-bottom: none; }
+
+    .score-row.header {
+      height: 36px; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .team-logo-cell img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+    .team-name-cell { font-weight: 700; font-size: 16px; padding-left: 8px; }
+    .map-cell {
+      text-align: center; font-weight: 800; font-size: 14px;
+    }
+    .map-cell.win { color: #22c55e; }
+    .map-cell.loss { color: #ef4444; opacity: 0.6; }
+    .map-cell.pending { color: rgba(255,255,255,0.15); }
+    .map-cell.current { color: #f59e0b; }
+
+    .series-cell {
+      text-align: center; font-size: 28px; font-weight: 900;
+      letter-spacing: 2px;
+    }
+
+    .header .map-cell { font-size: 9px; }
+    .header .series-cell { font-size: 11px; }
+
+    /* ── Bottom info bar ── */
+    .bottom-bar {
+      position: absolute; bottom: 60px; left: 60px; right: 60px;
+      display: flex; justify-content: center; gap: 40px;
+      
+    }
+
+    .map-thumb {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      opacity: 0.4;
+    }
+    .map-thumb.active { opacity: 1; }
+    .map-thumb img { width: 120px; height: 70px; object-fit: cover; border-radius: 6px; }
+    .map-thumb .map-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .map-thumb.active .map-label { color: #f59e0b; }
+  </style>
+  <link rel="stylesheet" href="./animations.css">
+</head>
+<body>
+  <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
+
+  <script src="./state-sync.js"></script>
+  <script>
+    // Loaded via state-sync.js for SSE + polling fallback
+    const API = 'http://localhost:3001';
+    let mapData = [];
+
+    async function loadMaps() {
+      mapData = await fetch('https://overfast-api.tekrop.fr/maps').then(r => r.json()).catch(() => []);
+    }
+
+    function getMapScreenshot(mapName, faceitImage) {
+      if (!mapName) return faceitImage || '';
+      const normalized = mapName.toLowerCase().trim();
+      const match = mapData.find(m =>
+        m.name.toLowerCase() === normalized ||
+        m.key === normalized.replace(/[^a-z0-9]+/g, '-')
+      );
+      return match ? match.screenshot : (faceitImage || '');
+    }
+
+    let lastState = null;
+
+    function update(state) {
+      lastState = state;
+      const el = document.getElementById('root');
+      const t1 = state.teams?.team1;
+      const t2 = state.teams?.team2;
+      const maps = state.maps || [];
+      const layout = state.casterLayout ?? 2;
+
+      if (!t1?.name) {
+        el.innerHTML = `
+          <div class="branding">
+            <img class="org-logo" src="./org.png">
+            <div class="divider"></div>
+            <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
+          </div>
+          <div class="main-layout centered">
+            <div class="score-panel full-width">
+              <div style="padding:24px;text-align:center;color:rgba(255,255,255,0.2);font-size:14px">
+                Load a match to see scores
+              </div>
+            </div>
+          </div>`;
+        return;
+      }
+
+      const mapCount = Math.max(maps.length, state.bestOf || 3);
+
+      // Build header row
+      const headerCells = maps.map((m, i) =>
+        `<div class="map-cell">${m.name?.split(' ').pop() || `M${i+1}`}</div>`
+      ).join('');
+      // Pad remaining
+      const padCells = Array(Math.max(0, mapCount - maps.length)).fill(0)
+        .map((_, i) => `<div class="map-cell">M${maps.length + i + 1}</div>`).join('');
+
+      // Build team rows
+      const makeRow = (team, teamKey, color) => {
+        const mapCells = maps.map((m, i) => {
+          if (m.status === 'completed') {
+            const won = m.winner === teamKey;
+            return `<div class="map-cell ${won ? 'win' : 'loss'}">${won ? 'W' : 'L'}</div>`;
+          } else if (m.status === 'current') {
+            return `<div class="map-cell current">●</div>`;
+          } else {
+            return `<div class="map-cell pending">—</div>`;
+          }
+        }).join('');
+        const pad = Array(Math.max(0, mapCount - maps.length)).fill(0)
+          .map(() => `<div class="map-cell pending">—</div>`).join('');
+        return `<div class="score-row" style="--map-count:${mapCount}">
+          <div class="team-logo-cell">${team.logo ? `<img src="${team.logo}">` : ''}</div>
+          <div class="team-name-cell" style="color:${color}">${team.name}</div>
+          ${mapCells}${pad}
+          <div class="series-cell" style="color:${color}">${team.score || 0}</div>
+        </div>`;
+      };
+
+      // Map thumbnails at bottom with OverFast screenshots
+      const thumbs = maps.map((m, i) => {
+        const isCurrent = m.status === 'current';
+        const isLast = i === maps.length - 1 && maps.every(mm => mm.status === 'completed');
+        const mapImg = getMapScreenshot(m.name, m.image);
+        return `<div class="map-thumb ${isCurrent || isLast ? 'active' : ''}">
+          ${mapImg ? `<img src="${mapImg}">` : `<div style="width:120px;height:70px;background:rgba(255,255,255,0.05);border-radius:6px"></div>`}
+          <div class="map-label">${m.name || `Map ${i+1}`}</div>
+          ${m.roundScore ? `<div style="font-size:9px;color:rgba(255,255,255,0.5)">${m.roundScore}</div>` : ''}
+        </div>`;
+      }).join('');
+
+      // Build caster cam area based on layout
+      let casterHtml = '';
+      if (layout >= 1) {
+        const camW = layout === 1 ? 560 : 420;
+        const camH = layout === 1 ? 480 : 230;
+        const c1Name = state.casters?.[0]?.name || 'Caster 1';
+        casterHtml += `<div class="caster-area">
+          <div>
+            <div class="caster-slot" style="width:${camW}px;height:${camH}px"></div>
+            <div class="caster-label">${c1Name}</div>
+          </div>`;
+        if (layout >= 2) {
+          const c2Name = state.casters?.[1]?.name || 'Caster 2';
+          casterHtml += `<div>
+            <div class="caster-slot" style="width:${camW}px;height:${camH}px"></div>
+            <div class="caster-label">${c2Name}</div>
+          </div>`;
+        }
+        casterHtml += `</div>`;
+      }
+
+      el.innerHTML = `
+        <div class="branding">
+          <img class="org-logo" src="./org.png">
+          <div class="divider"></div>
+          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
+        </div>
+
+        <div class="main-layout ${layout === 0 ? 'centered' : ''}">
+          ${casterHtml}
+          <div class="score-panel ${layout === 0 ? 'full-width' : ''}">
+            <div class="match-title">Match Score</div>
+            <div class="score-table" style="--map-count:${mapCount}">
+              <div class="score-row header" style="--map-count:${mapCount}">
+                <div></div><div></div>
+                ${headerCells}${padCells}
+                <div class="series-cell">Series</div>
+              </div>
+              ${makeRow(t1, 'team1', t1.color || '#3b82f6')}
+              ${makeRow(t2, 'team2', t2.color || '#ef4444')}
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-bar">${thumbs}</div>
+      `;
+    }
+    stateSync(function(s) { lastState = s; update(s); });
+
+    // Load map screenshots in background — re-render when ready
+    loadMaps().then(() => { if (lastState) update(lastState); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Series Winner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent; overflow: hidden;
+      width: 1920px; height: 1080px;
+      font-family: 'Inter', sans-serif; color: white;
+    }
+
+    .container {
+      position: relative; width: 1920px; height: 1080px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+
+    /* Background */
+    .bg {
+      position: absolute; inset: 0;
+      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    }
+
+    .bg::after {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 45%, var(--glow-center, rgba(59,130,246,0.08)) 0%, transparent 50%);
+      animation: glowPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    /* ── Content ── */
+    .content {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0;
+    }
+
+    /* Winner label */
+    .winner-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px; letter-spacing: 12px; text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      animation: fadeSlideDown 0.5s ease-out both;
+      margin-bottom: 16px;
+    }
+
+    /* Team logo — clean, above the name */
+    .team-logo {
+      width: 140px; height: 140px; object-fit: contain;
+      filter: drop-shadow(0 0 30px var(--team-color-alpha, rgba(59,130,246,0.3)));
+      animation: logoAppear 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+      margin-bottom: 24px;
+    }
+
+    /* Team name — the star */
+    .team-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 100px; letter-spacing: 10px; text-transform: uppercase;
+      text-shadow: 0 0 60px var(--team-color-alpha, rgba(59,130,246,0.4)),
+                   0 4px 20px rgba(0,0,0,0.5);
+      animation: nameAppear 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+      line-height: 1;
+    }
+
+    /* Decorative line */
+    .divider-line {
+      width: 200px; height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--team-color, #3b82f6) 50%, transparent 100%);
+      margin: 20px 0;
+      animation: lineExpand 0.8s ease-out 0.5s both;
+    }
+
+    /* Series score */
+    .series-score {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 64px; letter-spacing: 8px;
+      color: rgba(255,255,255,0.7);
+      animation: fadeSlideUp 0.5s ease-out 0.6s both;
+    }
+    .series-score .winner-score {
+      color: var(--team-color, #3b82f6);
+      font-size: 72px;
+    }
+
+    /* "SERIES WINNER" badge */
+    .winner-badge {
+      margin-top: 32px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px; letter-spacing: 6px;
+      padding: 10px 40px 10px 46px; /* extra left padding to compensate for letter-spacing visual offset */
+      border: 2px solid var(--team-color, #3b82f6);
+      border-radius: 6px;
+      color: var(--team-color, #3b82f6);
+      background: linear-gradient(135deg, 
+        var(--team-color-alpha, rgba(59,130,246,0.1)) 0%, 
+        rgba(0,0,0,0.3) 100%);
+      animation: badgeAppear 0.5s ease-out 0.7s both;
+    }
+
+    /* Event at the bottom */
+    .event-bar {
+      position: absolute; bottom: 60px; left: 0; right: 0;
+      display: flex; justify-content: center;
+      animation: fadeSlideUp 0.5s ease-out 0.9s both;
+    }
+    .event-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px; letter-spacing: 4px;
+      padding: 8px 32px;
+      background: linear-gradient(135deg, rgba(249,115,22,0.75), rgba(239,68,68,0.75));
+      border-radius: 4px;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes logoAppear {
+      from { opacity: 0; transform: scale(0.5) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes nameAppear {
+      from { opacity: 0; transform: scale(0.8); letter-spacing: 30px; }
+      to { opacity: 1; transform: scale(1); letter-spacing: 10px; }
+    }
+    @keyframes lineExpand {
+      from { width: 0; opacity: 0; }
+      to { width: 200px; opacity: 1; }
+    }
+    @keyframes badgeAppear {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* Waiting state */
+    .waiting {
+      text-align: center;
+      color: rgba(255,255,255,0.2); font-size: 16px;
+    }
+    .waiting .org-logo { width: 80px; height: 80px; margin-bottom: 16px; }
+
+    /* Loser badge (small) */
+    .vs-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 18px; letter-spacing: 4px;
+      color: rgba(255,255,255,0.25);
+      margin-top: 8px;
+      animation: fadeSlideUp 0.4s ease-out 0.75s both;
+    }
+  </style>
+  <link rel="stylesheet" href="./animations.css">
+</head>
+<body>
+  <div class="container" id="root"></div>
+
+  <script src="./state-sync.js"></script>
+  <script>
+    const API = 'http://localhost:3001';
+    function update(state) {
+      const el = document.getElementById('root');
+      const t1 = state.teams?.team1;
+      const t2 = state.teams?.team2;
+
+      // Determine winner
+      let winner = null, loser = null, winKey = null;
+      if (state.seriesWinner) {
+        winKey = state.seriesWinner;
+        winner = state.seriesWinner === 'team1' ? t1 : t2;
+        loser = state.seriesWinner === 'team1' ? t2 : t1;
+      } else if (t1 && t2 && (t1.score > 0 || t2.score > 0)) {
+        const needed = Math.ceil((state.bestOf || 3) / 2);
+        if (t1.score >= needed) { winner = t1; loser = t2; winKey = 'team1'; }
+        else if (t2.score >= needed) { winner = t2; loser = t1; winKey = 'team2'; }
+      }
+
+      if (!winner) {
+        el.innerHTML = `
+          <div class="bg"></div>
+          <div class="content waiting">
+            <img class="org-logo" src="./org.png"><br>
+            Series in progress…
+          </div>`;
+        return;
+      }
+
+      const teamColor = winner.color || '#3b82f6';
+      // Create translucent version for glows
+      const alphaColor = teamColor + '40';
+      
+      el.style.setProperty('--team-color', teamColor);
+      el.style.setProperty('--team-color-alpha', teamColor + '30');
+      el.style.setProperty('--glow-center', teamColor + '15');
+      el.style.setProperty('--glow1', teamColor + '20');
+      el.style.setProperty('--glow2', teamColor + '15');
+
+      const wScore = winKey === 'team1' ? t1.score : t2.score;
+      const lScore = winKey === 'team1' ? t2.score : t1.score;
+
+      el.innerHTML = `
+        <div class="bg"></div>
+        <div class="content">
+          <div class="winner-label">Series Winner</div>
+          ${winner.logo ? `<img class="team-logo" src="${winner.logo}">` : ''}
+          <div class="team-name" style="color:${teamColor}">${winner.name}</div>
+          <div class="divider-line"></div>
+          <div class="series-score">
+            <span class="winner-score">${wScore}</span>
+            <span style="margin: 0 8px; opacity: 0.3">—</span>
+            <span>${lScore}</span>
+          </div>
+          <div class="vs-text">vs ${loser.name}</div>
+          <div class="winner-badge">🏆 Series Champion</div>
+        </div>
+        <div class="event-bar">
+          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
+        </div>
+      `;
+    }
+    stateSync(update);
+  </script>
+</body>
+</html>

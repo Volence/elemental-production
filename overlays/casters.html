@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Casters</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent; overflow: hidden;
+      width: 1920px; height: 1080px;
+      font-family: 'Inter', sans-serif; color: white;
+    }
+
+
+    .container {
+      position: relative; width: 1920px; height: 1080px;
+      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    }
+    .container.transparent-bg {
+      background: transparent !important;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ── Branding top-center ── */
+    .branding {
+      position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 20px;
+    }
+    .branding .org-logo { width: 72px; height: 72px; object-fit: contain; }
+    .branding .divider { width: 3px; height: 54px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+    .branding .event-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 38px; letter-spacing: 3px; line-height: 1.1;
+    }
+
+    /* ── Caster area ── */
+    .caster-area {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -45%);
+      display: flex; gap: 30px;
+      
+    }
+
+    .caster-col {
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+    }
+
+    .caster-slot {
+      width: 580px; height: 340px;
+      border: 2px solid rgba(255,255,255,0.06);
+      border-radius: 10px 10px 0 0;
+      background: rgba(0,0,0,0.4);
+    }
+
+    /* Team-colored accent bar under each cam */
+    .accent-bar {
+      width: 580px; height: 5px;
+      border-radius: 0 0 4px 4px;
+    }
+
+    .caster-name {
+      margin-top: 14px;
+      font-size: 18px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+  </style>
+  <link rel="stylesheet" href="./animations.css">
+</head>
+<body>
+  <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
+
+  <script src="./state-sync.js"></script>
+  <script>
+    // Loaded via state-sync.js for SSE + polling fallback
+    const API = 'http://localhost:3001';
+    function update(state) {
+      const el = document.getElementById('root');
+      // Support ?bg=transparent for flythrough scenes
+      const isTransparent = new URLSearchParams(window.location.search).get('bg') === 'transparent';
+      if (isTransparent) el.classList.add('transparent-bg');
+      const t1Color = state.teams?.team1?.color || '#3b82f6';
+      const t2Color = state.teams?.team2?.color || '#ef4444';
+      const c1Name = state.casters?.[0]?.name || 'Caster 1';
+      const c2Name = state.casters?.[1]?.name || 'Caster 2';
+      const layout = state.casterLayout ?? 2;
+
+      // Rainbow accent bars matching the original design
+      const t1Gradient = 'linear-gradient(90deg, #2563eb, #06b6d4, #22c55e)';
+      const t2Gradient = 'linear-gradient(90deg, #22c55e, #ef4444, #f97316)';
+
+      // Build caster columns based on layout count
+      let castersHTML = '';
+      if (layout >= 1) {
+        // Single caster = wider + centered, dual = normal side-by-side
+        const slotWidth = layout === 1 ? 700 : 580;
+        const slotHeight = layout === 1 ? 410 : 340;
+        castersHTML += `
+          <div class="caster-col">
+            <div class="caster-slot" style="width:${slotWidth}px;height:${slotHeight}px"></div>
+            <div class="accent-bar" style="background:${t1Gradient};width:${slotWidth}px"></div>
+            <div class="caster-name" style="color:${t1Color}">${c1Name}</div>
+          </div>`;
+      }
+      if (layout >= 2) {
+        castersHTML += `
+          <div class="caster-col">
+            <div class="caster-slot"></div>
+            <div class="accent-bar" style="background:${t2Gradient}"></div>
+            <div class="caster-name" style="color:${t2Color}">${c2Name}</div>
+          </div>`;
+      }
+
+      el.innerHTML = `
+        <div class="branding">
+          <img class="org-logo" src="./org.png">
+          <div class="divider"></div>
+          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
+        </div>
+
+        <div class="caster-area">
+          ${castersHTML}
+        </div>
+      `;
+    }
+
+    // Lighten/darken a hex color
+    function adjustColor(hex, amount) {
+      hex = hex.replace('#', '');
+      const r = Math.min(255, Math.max(0, parseInt(hex.substring(0, 2), 16) + amount));
+      const g = Math.min(255, Math.max(0, parseInt(hex.substring(2, 4), 16) + amount));
+      const b = Math.min(255, Math.max(0, parseInt(hex.substring(4, 6), 16) + amount));
+      return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+    }
+    stateSync(update);
+  </script>
+</body>
+</html>

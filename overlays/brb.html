@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BRB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent; overflow: hidden;
+      width: 1920px; height: 1080px;
+      font-family: 'Inter', sans-serif; color: white;
+    }
+
+    .container {
+      position: relative; width: 1920px; height: 1080px;
+      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes breathe { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+
+    .rainbow-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316);
+    }
+
+    .org-logo {
+      width: 100px; height: 100px; object-fit: contain;
+      margin-bottom: 40px;
+      animation: breathe 3s ease-in-out infinite;
+    }
+
+    .brb-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 120px; letter-spacing: 12px;
+      text-shadow: 0 4px 30px rgba(0,0,0,0.5);
+    }
+
+    .brb-sub {
+      font-size: 18px; font-weight: 600;
+      letter-spacing: 4px; text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-top: 8px;
+      
+    }
+
+    .brb-timer {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 56px; letter-spacing: 4px;
+      margin-top: 32px;
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      
+    }
+
+    .event-label {
+      position: absolute; bottom: 50px;
+      padding: 8px 32px; border-radius: 4px;
+      background: linear-gradient(135deg, rgba(249,115,22,0.8), rgba(239,68,68,0.8));
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px; letter-spacing: 3px;
+      
+    }
+  </style>
+  <link rel="stylesheet" href="./animations.css">
+</head>
+<body>
+  <div class="container" id="root" style="animation: fadeIn 0.8s ease-out both;"></div>
+
+  <script src="./state-sync.js"></script>
+  <script>
+    // Loaded via state-sync.js for SSE + polling fallback
+    const API = 'http://localhost:3001';
+    function formatTime(sec) {
+      if (!sec || sec <= 0) return '';
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+
+    function update(state) {
+      const el = document.getElementById('root');
+      const timer = formatTime(state.countdown?.remaining);
+
+      el.innerHTML = `
+        <div class="rainbow-bar"></div>
+        <img class="org-logo" src="./org.png">
+        <div class="brb-text">WE'LL BE RIGHT BACK</div>
+        <div class="brb-sub">Please stand by</div>
+        ${timer ? `<div class="brb-timer">${timer}</div>` : ''}
+        <div class="event-label">${state.eventName || 'FACEIT SEASON 8'}</div>
+      `;
+    }
+    stateSync(update);
+  </script>
+</body>
+</html>

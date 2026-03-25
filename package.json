@@ -1,16 +1,54 @@
 {
   "name": "elemental-production",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "main": "./out/main/index.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"node server/server.js\"",
     "dev:frontend": "vite",
     "dev:backend": "node server/server.js",
     "restart": "fuser -k 3001/tcp 5173/tcp 2>/dev/null; rm -rf node_modules/.vite ~/.config/obs-studio/plugin_config/obs-browser/Cache ~/.config/obs-studio/plugin_config/obs-browser/GPUCache; npm run dev",
     "build": "vite build",
+    "start": "node server/server.js",
+    "electron:dev": "ELECTRON_RUN_AS_NODE= electron-vite dev",
+    "electron:build": "electron-vite build",
+    "electron:preview": "ELECTRON_RUN_AS_NODE= electron-vite preview",
+    "dist": "electron-vite build && ELECTRON_RUN_AS_NODE= electron-builder",
+    "dist:win": "electron-vite build && ELECTRON_RUN_AS_NODE= electron-builder --win",
+    "dist:linux": "electron-vite build && ELECTRON_RUN_AS_NODE= electron-builder --linux",
     "lint": "eslint .",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "gg.elemental.production",
+    "productName": "Elemental Production",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "server/**/*",
+      "overlays/**/*",
+      "data/**/*",
+      "dist/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "public/elemental-logo.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "public/elemental-logo.png",
+      "category": "Utility"
+    }
   },
   "dependencies": {
     "concurrently": "^9.2.1",
@@ -26,6 +64,9 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "electron": "^41.0.3",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^5.0.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",

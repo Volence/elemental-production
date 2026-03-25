@@ -42,13 +42,19 @@ export default function MatchHub({ state, updateState, api }) {
     });
   };
 
-  // Clear a single override
+  // Clear a single override and re-fetch from FACEIT
   const releasOverride = async (path) => {
     await fetch(`${api}/api/overrides/clear`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path }),
     });
+    // Re-fetch from FACEIT to restore the API value
+    if (state.mode === 'faceit' && state.faceitMatchId) {
+      try {
+        await fetch(`${api}/api/faceit/refresh`, { method: 'POST' });
+      } catch (e) { /* silent fallback */ }
+    }
   };
 
   // Clear ALL overrides
@@ -92,19 +98,40 @@ export default function MatchHub({ state, updateState, api }) {
         playerStats: [],
         heroBans: { team1: [], team2: [] },
       });
+    } else if (mode === 'scrim') {
+      updateState({
+        teams: {
+          team1: { name: state.teams?.team1?.name || 'Team 1', logo: state.teams?.team1?.logo || '', color: '#3b82f6', score: 0 },
+          team2: { name: state.teams?.team2?.name || 'Team 2', logo: state.teams?.team2?.logo || '', color: '#ef4444', score: 0 },
+        },
+        maps: [],
+        playerStats: [],
+        heroBans: { team1: [], team2: [] },
+        bestOf: 1,
+      });
     }
   };
 
+  const swapSides = () => fetch(`${api}/api/swap`, { method: 'POST' });
+  const resetMatch = (keepTeams = true) => fetch(`${api}/api/reset`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keepTeams }),
+  });
+
   const addMap = (map) => {
     const maps = [...(state.maps || []), { ...map, image: '', status: 'upcoming', winner: null }];
-    updateState({ maps });
+    const updates = { maps };
+    if (state.mode === 'scrim') updates.bestOf = maps.length;
+    updateState(updates);
     setOverride('maps');
     setShowMapPicker(false);
   };
 
   const removeMap = (idx) => {
     const maps = state.maps.filter((_, i) => i !== idx);
-    updateState({ maps });
+    const updates = { maps };
+    if (state.mode === 'scrim') updates.bestOf = maps.length;
+    updateState(updates);
     setOverride('maps');
   };
 
@@ -136,13 +163,66 @@ export default function MatchHub({ state, updateState, api }) {
       <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h2>Match Hub</h2>
-          <p>Load FACEIT matches or set up manually</p>
+          <p>Everything about the current live match — teams, maps, bans, and stats</p>
         </div>
         <div className="mode-toggle">
           <button className={state.mode === 'faceit' ? 'active' : ''} onClick={() => toggleMode('faceit')}>FACEIT</button>
           <button className={state.mode === 'manual' ? 'active' : ''} onClick={() => toggleMode('manual')}>Manual</button>
+          <button className={state.mode === 'scrim' ? 'active' : ''} onClick={() => toggleMode('scrim')}>Scrim</button>
         </div>
       </div>
+
+      {/* Quick Action Bar */}
+      <div className="quick-action-bar">
+        <button className={`swap-btn ${state.swapSides ? 'swapped' : ''}`} onClick={swapSides}>
+          ⇄ {state.swapSides ? 'Sides Swapped' : 'Swap Sides'}
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={() => resetMatch(true)}>🔄 Reset Scores</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => {
+          if (confirm('Reset everything including team names?')) resetMatch(false);
+        }}>🗑️ New Match</button>
+        {state.swapSides && <span className="badge badge-warning">Sides are swapped</span>}
+      </div>
+
+      {/* Scrim Mode — Minimal UI */}
+      {state.mode === 'scrim' && (
+        <div className="card">
+          <div className="card-title">🎮 Quick Scrim</div>
+          <div style={{ marginTop: 12 }}>
+            <div style={{ marginBottom: 12 }}>
+              <label className="input-label">Event Name</label>
+              <input className="input" value={state.eventName || ''} placeholder="e.g. Scrim Night"
+                onChange={e => updateState({ eventName: e.target.value })} />
+            </div>
+            <div className="grid-2">
+              <div>
+                <label className="input-label" style={{ color: 'var(--team1)' }}>Team 1</label>
+                <input className="input" value={state.teams.team1.name}
+                  onChange={e => updateState({ teams: { ...state.teams, team1: { ...state.teams.team1, name: e.target.value } } })} />
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'center' }}>
+                  <button className="btn btn-sm" style={{ background: 'var(--team1)', color: 'white', fontSize: '1.2rem', width: 48, height: 48, borderRadius: 12 }}
+                    onClick={() => updateState({ teams: { ...state.teams, team1: { ...state.teams.team1, score: state.teams.team1.score + 1 } } })}>+</button>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: '3rem', lineHeight: 1, minWidth: 40, textAlign: 'center' }}>{state.teams.team1.score}</div>
+                  <button className="btn btn-ghost btn-sm" style={{ fontSize: '1.2rem', width: 48, height: 48, borderRadius: 12 }}
+                    onClick={() => updateState({ teams: { ...state.teams, team1: { ...state.teams.team1, score: Math.max(0, state.teams.team1.score - 1) } } })}>−</button>
+                </div>
+              </div>
+              <div>
+                <label className="input-label" style={{ color: 'var(--team2)' }}>Team 2</label>
+                <input className="input" value={state.teams.team2.name}
+                  onChange={e => updateState({ teams: { ...state.teams, team2: { ...state.teams.team2, name: e.target.value } } })} />
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'center' }}>
+                  <button className="btn btn-sm" style={{ background: 'var(--team2)', color: 'white', fontSize: '1.2rem', width: 48, height: 48, borderRadius: 12 }}
+                    onClick={() => updateState({ teams: { ...state.teams, team2: { ...state.teams.team2, score: state.teams.team2.score + 1 } } })}>+</button>
+                  <div style={{ fontFamily: 'Bebas Neue', fontSize: '3rem', lineHeight: 1, minWidth: 40, textAlign: 'center' }}>{state.teams.team2.score}</div>
+                  <button className="btn btn-ghost btn-sm" style={{ fontSize: '1.2rem', width: 48, height: 48, borderRadius: 12 }}
+                    onClick={() => updateState({ teams: { ...state.teams, team2: { ...state.teams.team2, score: Math.max(0, state.teams.team2.score - 1) } } })}>−</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FACEIT Loader */}
       {state.mode === 'faceit' && (
@@ -204,8 +284,8 @@ export default function MatchHub({ state, updateState, api }) {
         </div>
       )}
 
-      {/* Team Setup — shown in both modes */}
-      {(state.teams.team1.name !== 'Team 1' || state.mode === 'manual') && (
+      {/* Team Setup — always shown */}
+      {state.mode !== 'scrim' && (
         <div className="card">
           <div className="card-header">
             <span className="card-title">Team Setup</span>
@@ -266,7 +346,7 @@ export default function MatchHub({ state, updateState, api }) {
       )}
 
       {/* Team Header */}
-      {(state.teams.team1.name !== 'Team 1' || state.mode === 'manual') && (
+      {state.mode !== 'scrim' && (
         <div className="team-header">
           <div className="team-card team1">
             {state.teams.team1.logo && <img className="team-logo" src={state.teams.team1.logo} alt="" />}
@@ -274,7 +354,7 @@ export default function MatchHub({ state, updateState, api }) {
           </div>
           <div className="vs-divider">
             <div className="score">{state.teams.team1.score} – {state.teams.team2.score}</div>
-            <div className="vs">BO{state.bestOf}</div>
+            <div className="vs">BO{state.mode === 'scrim' ? (state.maps?.length || 0) : state.bestOf}</div>
           </div>
           <div className="team-card team2">
             {state.teams.team2.logo && <img className="team-logo" src={state.teams.team2.logo} alt="" />}
@@ -287,17 +367,23 @@ export default function MatchHub({ state, updateState, api }) {
       <div className="card">
         <div className="card-header">
           <span className="card-title">🗺️ Map Series</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {overrides['bestOf'] && (
-              <span onClick={() => releasOverride('bestOf')} style={{ cursor: 'pointer', fontSize: '0.7rem', color: 'var(--warning)', alignSelf: 'center' }} title="Release override">🔒</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {selectedMapIdx >= 0 && (
+              <button className="btn btn-sm" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)', fontSize: '0.7rem' }}
+                onClick={() => { setSelectedMapIdx(-1); updateState({ selectedMapIdx: -1 }); }}>📍 Go to Live Map</button>
             )}
-            <select className="input" style={{ width: 80 }} value={state.bestOf}
-              onChange={e => { updateState({ bestOf: Number(e.target.value) }); setOverride('bestOf'); }}>
-              <option value={1}>BO1</option>
-              <option value={3}>BO3</option>
-              <option value={5}>BO5</option>
-              <option value={7}>BO7</option>
-            </select>
+            {state.mode !== 'scrim' && (<>
+              {overrides['bestOf'] && (
+                <span onClick={() => releasOverride('bestOf')} style={{ cursor: 'pointer', fontSize: '0.7rem', color: 'var(--warning)', alignSelf: 'center' }} title="Release override">🔒</span>
+              )}
+              <select className="input" style={{ width: 80 }} value={state.bestOf}
+                onChange={e => { updateState({ bestOf: Number(e.target.value) }); setOverride('bestOf'); }}>
+                <option value={1}>BO1</option>
+                <option value={3}>BO3</option>
+                <option value={5}>BO5</option>
+                <option value={7}>BO7</option>
+              </select>
+            </>)}
             {overrides['maps'] && (
               <span onClick={() => releasOverride('maps')} style={{ cursor: 'pointer', fontSize: '0.7rem', color: 'var(--warning)', alignSelf: 'center' }} title="Release map override">🔒 Maps</span>
             )}
@@ -316,6 +402,7 @@ export default function MatchHub({ state, updateState, api }) {
                   className={`map-slot ${m.status} ${m.winner ? `${m.winner}-win` : ''}`}
                   onClick={() => {
                     setSelectedMapIdx(i);
+                    updateState({ selectedMapIdx: i });
                     // Update heroBans for this map from perMapBans
                     const mapBans = state.perMapBans?.[i];
                     if (mapBans) {
@@ -329,11 +416,37 @@ export default function MatchHub({ state, updateState, api }) {
                       });
                     }
                   }}
-                  style={{ cursor: 'pointer', outline: isSelected ? '2px solid var(--accent)' : 'none', outlineOffset: -2 }}
+                  style={{
+                    cursor: 'pointer',
+                    outline: isSelected ? '3px solid #22c55e' : 'none',
+                    outlineOffset: -2,
+                    boxShadow: isSelected ? '0 0 12px rgba(34,197,94,0.3), inset 0 0 12px rgba(34,197,94,0.1)' : 'none',
+                    transition: 'outline 0.2s, box-shadow 0.2s',
+                  }}
                 >
                   {m.image && <img className="map-image" src={m.image} alt={m.name} />}
                   <div className="map-name">{m.name}</div>
                   <div className="map-mode">{m.mode}</div>
+                  {/* Map picker indicator */}
+                  {(() => {
+                    const mapBans = state.perMapBans?.[i];
+                    const picker = mapBans?.picker || m.picker;
+                    if (picker) {
+                      const pickerName = picker === 'team1' ? state.teams.team1.name : state.teams.team2.name;
+                      const pickerColor = picker === 'team1' ? (state.teams.team1.color || 'var(--team1)') : (state.teams.team2.color || 'var(--team2)');
+                      return (
+                        <div style={{
+                          fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.5px',
+                          color: pickerColor, textTransform: 'uppercase', marginTop: 4,
+                          display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center',
+                        }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: pickerColor, display: 'inline-block' }} />
+                          {pickerName} Pick
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   {m.status === 'completed' && m.winner && (
                     <div className={`map-result ${m.winner === 'team1' ? 'win' : 'loss'}`}>
                       {m.winner === 'team1' ? state.teams.team1.name : state.teams.team2.name}
@@ -350,17 +463,66 @@ export default function MatchHub({ state, updateState, api }) {
                         <button className="btn btn-sm" style={{ background: 'var(--team1)', color: 'white', fontSize: '0.65rem' }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setMapStatus(i, 'completed', 'team1');
-                            updateState({ teams: { ...state.teams, team1: { ...state.teams.team1, score: state.teams.team1.score + 1 } } });
+                            const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'completed', winner: 'team1' } : mm);
+                            updateState({ maps: updatedMaps, teams: { ...state.teams, team1: { ...state.teams.team1, score: state.teams.team1.score + 1 } } });
                           }}>T1 Win</button>
                         <button className="btn btn-sm" style={{ background: 'var(--team2)', color: 'white', fontSize: '0.65rem' }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setMapStatus(i, 'completed', 'team2');
-                            updateState({ teams: { ...state.teams, team2: { ...state.teams.team2, score: state.teams.team2.score + 1 } } });
+                            const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'completed', winner: 'team2' } : mm);
+                            updateState({ maps: updatedMaps, teams: { ...state.teams, team2: { ...state.teams.team2, score: state.teams.team2.score + 1 } } });
                           }}>T2 Win</button>
                       </>
                     )}
+                    {m.status === 'completed' && m.winner && (
+                      <>
+                        <button className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', fontSize: '0.6rem' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const oldWinner = m.winner;
+                            const newWinner = oldWinner === 'team1' ? 'team2' : 'team1';
+                            const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, winner: newWinner } : mm);
+                            updateState({
+                              maps: updatedMaps,
+                              teams: {
+                                ...state.teams,
+                                team1: { ...state.teams.team1, score: state.teams.team1.score + (newWinner === 'team1' ? 1 : -1) },
+                                team2: { ...state.teams.team2, score: state.teams.team2.score + (newWinner === 'team2' ? 1 : -1) },
+                              }
+                            });
+                          }}>⇄ Swap</button>
+                        <button className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', fontSize: '0.6rem' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const oldWinner = m.winner;
+                            const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'current', winner: null } : mm);
+                            updateState({
+                              maps: updatedMaps,
+                              teams: {
+                                ...state.teams,
+                                [oldWinner]: { ...state.teams[oldWinner], score: Math.max(0, state.teams[oldWinner].score - 1) },
+                              }
+                            });
+                          }}>↩ Undo</button>
+                      </>
+                    )}
+                    {/* Map picker toggle — always available */}
+                    <select className="input" style={{ width: 80, fontSize: '0.6rem', padding: '2px 4px', height: 'auto' }}
+                      value={state.perMapBans?.[i]?.picker || m.picker || ''}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => {
+                        e.stopPropagation();
+                        const picker = e.target.value || null;
+                        const perMapBans = [...(state.perMapBans || [])];
+                        while (perMapBans.length <= i) perMapBans.push({});
+                        perMapBans[i] = { ...perMapBans[i], picker };
+                        const maps = state.maps.map((mm, ii) => ii === i ? { ...mm, picker } : mm);
+                        updateState({ perMapBans, maps });
+                      }}>
+                      <option value="">No pick</option>
+                      <option value="team1">{state.teams.team1.name} pick</option>
+                      <option value="team2">{state.teams.team2.name} pick</option>
+                    </select>
                     <button className="btn btn-ghost btn-sm" style={{ fontSize: '0.6rem' }} onClick={(e) => { e.stopPropagation(); removeMap(i); }}>✕</button>
                   </div>
                 </div>
@@ -533,6 +695,31 @@ export default function MatchHub({ state, updateState, api }) {
           </div>
         );
       })()}
+
+      {/* Match History */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">📋 Match History</span>
+          <button className="btn btn-primary btn-sm"
+            onClick={() => fetch(`${api}/api/history/save`, { method: 'POST' })}>
+            Save Current Match
+          </button>
+        </div>
+        {state.matchHistory?.length > 0 ? (
+          <div>
+            {state.matchHistory.map((m, i) => (
+              <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '0.8rem' }}>
+                <span style={{ fontWeight: 600 }}>{m.teams.team1.name}</span>
+                <span style={{ color: 'var(--text-secondary)', margin: '0 6px' }}>{m.teams.team1.score} – {m.teams.team2.score}</span>
+                <span style={{ fontWeight: 600 }}>{m.teams.team2.name}</span>
+                <span style={{ color: 'var(--text-muted)', marginLeft: 12 }}>{new Date(m.timestamp).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 8 }}>No matches saved yet</p>
+        )}
+      </div>
     </div>
   );
 }

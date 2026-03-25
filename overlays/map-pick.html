@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>Map Pick Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: transparent; overflow: hidden; width: 1920px; height: 1080px;
@@ -19,7 +21,6 @@
       display: flex; align-items: center; justify-content: center;
       height: 64px; background: rgba(10,10,20,0.92);
       border-bottom: 2px solid rgba(255,255,255,0.08);
-      animation: fadeIn 0.3s ease forwards;
     }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -47,7 +48,7 @@
       position: absolute; top: 80px; left: 40px; right: 40px;
       height: 960px; /* 1080 - 80 top - 40 bottom */
       display: flex; gap: 4px;
-      animation: slideUp 0.5s 0.2s ease forwards; opacity: 0; transform: translateY(10px);
+      
     }
     @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
 
@@ -149,18 +150,20 @@
       font-size: 12px; color: rgba(255,255,255,0.25); letter-spacing: 2px;
     }
   </style>
+  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="container" id="root"></div>
+  <div class="container" id="root" style="animation: scaleIn 0.6s ease-out both;"></div>
 
+  <script src="./state-sync.js"></script>
   <script>
+    // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
-    const es = new EventSource(`${API}/api/events`);
     let heroData = [];
     let mapData = [];
 
     async function loadHeroes() {
-      heroData = await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+      heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
     }
 
     async function loadMaps() {
@@ -308,10 +311,13 @@
       `;
     }
 
-    Promise.all([loadHeroes(), loadMaps()]).then(() => {
-      es.addEventListener('state', e => update(JSON.parse(e.data)));
-      fetch(`${API}/api/state`).then(r => r.json()).then(update);
-    });
+    let lastState = null;
+
+    // Load heroes first (local, fast), then render immediately
+    loadHeroes().then(() => stateSync(function(s) { lastState = s; update(s); }));
+
+    // Load map screenshots in background — re-render when ready
+    loadMaps().then(() => { if (lastState) update(lastState); });
   </script>
 </body>
 </html>

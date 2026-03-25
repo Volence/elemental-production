@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>Map Intro Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: transparent; overflow: hidden; width: 1920px; height: 1080px;
@@ -19,8 +21,7 @@
 
     .intro-card {
       display: flex; align-items: center; gap: 0;
-      animation: slideUp 0.5s ease forwards;
-      opacity: 0; transform: translateY(30px);
+      
     }
     @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
 
@@ -65,7 +66,7 @@
 
     /* Center score block */
     .score-block {
-      width: 220px; height: 300px;
+      width: 260px; height: 300px;
       background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
       display: flex; flex-direction: column; align-items: center;
       justify-content: center; position: relative; z-index: 2;
@@ -86,21 +87,42 @@
       transform: rotate(45deg);
     }
     .score-block .map-label {
-      font-size: 18px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 3px; margin-top: 8px; opacity: 0.9;
+      font-size: 16px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 2px; margin-top: 8px; opacity: 0.9;
+      text-align: center; max-width: 240px; word-wrap: break-word;
+    }
+    .score-block .map-pick-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 2px; margin-top: 6px;
+      padding: 3px 12px; border-radius: 3px;
+      background: rgba(0,0,0,0.25);
+      animation: fadeIn 0.5s ease-out 0.8s both;
+    }
+
+    /* Dark overlay for readability over flythrough video */
+    .bg-overlay {
+      position: fixed; top: 0; left: 0; width: 1920px; height: 1080px;
+      background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.1) 100%);
+      z-index: 1;
     }
   </style>
+  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="overlay" id="root"></div>
+  <!-- Dark gradient for text readability -->
+  <div class="bg-overlay"></div>
 
+  <!-- Overlay content -->
+  <div class="overlay" id="root" style="z-index:2; animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;"></div>
+
+  <script src="./state-sync.js"></script>
   <script>
+    // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
-    const es = new EventSource(`${API}/api/events`);
     let heroData = [];
 
     async function loadHeroes() {
-      heroData = await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+      heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
     }
 
     function getHeroPortrait(key) {
@@ -138,21 +160,18 @@
               <span class="score">${t2.score || 0}</span>
             </div>
             <div class="map-label">${mapName ? mapName : 'MAP ' + mapNum}</div>
+            ${mapPicker ? `<div class="map-pick-label">${mapPicker === 'team1' ? (t1.name || 'T1') : (t2.name || 'T2')} PICK</div>` : ''}
           </div>
 
           <div class="team-panel right">
             ${t2.logo ? `<img class="team-logo" src="${t2.logo}">` : `<div style="font-size:32px;font-weight:800;color:#333">${t2.name || 'TEAM 2'}</div>`}
             ${t2bans.length > 0 ? `<div class="ban-area">${t2bans.map(k => `<div class="ban-chip"><img src="${getHeroPortrait(k)}"></div>`).join('')}</div>` : ''}
-            ${mapPicker ? `<div class="map-pick-label">${mapPicker === 'team2' ? (t2.name || 'TEAM 2') + ' PICK' : 'MAP PICK'}</div>` : ''}
           </div>
         </div>
       `;
     }
 
-    loadHeroes().then(() => {
-      es.addEventListener('state', e => update(JSON.parse(e.data)));
-      fetch(`${API}/api/state`).then(r => r.json()).then(update);
-    });
+    loadHeroes().then(() => stateSync(update));
   </script>
 </body>
 </html>

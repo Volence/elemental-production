@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Casters Flythrough HUD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent; overflow: hidden;
+      width: 1920px; height: 1080px;
+      font-family: 'Inter', sans-serif; color: white;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ── Caster frame ── */
+    .caster-frame {
+      position: absolute;
+      animation: fadeIn 0.6s ease-out both;
+    }
+
+    .frame-border {
+      border: 2.5px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle inner shadow for depth */
+    .frame-border::after {
+      content: '';
+      position: absolute; inset: 0;
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.3);
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
+    /* Rainbow accent bar under the frame */
+    .accent-bar {
+      height: 3px;
+      border-radius: 0 0 4px 4px;
+      margin-top: -1px;
+    }
+
+    /* Caster name label — readable over moving backgrounds */
+    .caster-name {
+      text-align: center;
+      margin-top: 8px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px;
+      letter-spacing: 4px;
+      color: white;
+      background: rgba(0,0,0,0.55);
+      padding: 4px 20px;
+      border-radius: 6px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    }
+
+    /* ── Branding top-center ── */
+    .branding {
+      position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 18px;
+      background: rgba(0,0,0,0.45);
+      padding: 8px 24px;
+      border-radius: 8px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      animation: fadeIn 0.6s ease-out 0.3s both;
+    }
+    .branding .org-logo { width: 56px; height: 56px; object-fit: contain; }
+    .branding .divider { width: 3px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+    .branding .event-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px; letter-spacing: 3px; line-height: 1.1;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    }
+  </style>
+  <link rel="stylesheet" href="./animations.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="./state-sync.js"></script>
+  <script>
+    const API = 'http://localhost:3001';
+
+    function update(state) {
+      const el = document.getElementById('root');
+      const layout = state.casterLayout ?? 2;
+      const c1Name = state.casters?.[0]?.name || 'Caster 1';
+      const c2Name = state.casters?.[1]?.name || 'Caster 2';
+
+      // Gradient accent bars
+      const t1Gradient = 'linear-gradient(90deg, #2563eb, #06b6d4, #22c55e)';
+      const t2Gradient = 'linear-gradient(90deg, #22c55e, #ef4444, #f97316)';
+
+      // Frame dimensions from OBS transform measurements:
+      // Caster 1: x=353, y=270, w=501 (1920-353-1066), h=282 (1080-270-528)
+      // Caster 2: x=1074, y=270, w=501 (1920-1074-345), h=282 (1080-270-528)
+      const c1X = 353, c1Y = 270, c1W = 501;
+      const c2X = 1074, c2Y = 270, c2W = 501;
+      const frameH = 282;
+
+      let html = '';
+
+      // Branding
+      html += `
+        <div class="branding">
+          <img class="org-logo" src="./org.png">
+          <div class="divider"></div>
+          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
+        </div>`;
+
+      if (layout >= 1) {
+        // Caster 1 — upper-left area
+        html += `
+          <div class="caster-frame" style="left: ${c1X}px; top: ${c1Y}px;">
+            <div class="frame-border" style="width: ${c1W}px; height: ${frameH}px;"></div>
+            <div class="accent-bar" style="background: ${t1Gradient}; width: ${c1W}px;"></div>
+            <div class="caster-name">${c1Name}</div>
+          </div>`;
+      }
+
+      if (layout >= 2) {
+        // Caster 2 — upper-right area
+        html += `
+          <div class="caster-frame" style="left: ${c2X}px; top: ${c2Y}px;">
+            <div class="frame-border" style="width: ${c2W}px; height: ${frameH}px;"></div>
+            <div class="accent-bar" style="background: ${t2Gradient}; width: ${c2W}px;"></div>
+            <div class="caster-name">${c2Name}</div>
+          </div>`;
+      }
+
+      el.innerHTML = html;
+    }
+
+    stateSync(update);
+  </script>
+</body>
+</html>

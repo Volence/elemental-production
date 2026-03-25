@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Casters Lobby</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent; overflow: hidden;
+      width: 1920px; height: 1080px;
+      font-family: 'Inter', 'Oswald', sans-serif; color: white;
+    }
+
+
+    .container {
+      position: relative; width: 1920px; height: 1080px;
+      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Branding top-left ── */
+    .branding {
+      position: absolute; top: 28px; left: 36px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .branding .org-logo { width: 56px; height: 56px; object-fit: contain; }
+    .branding .divider { width: 2px; height: 42px; background: rgba(255,255,255,0.2); }
+    .branding .event-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px; letter-spacing: 2px; line-height: 1.1;
+    }
+
+    /* ── Main content — single centered column for everything ── */
+    .main-content {
+      position: absolute; top: 100px;
+      left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center;
+      gap: 12px;
+    }
+
+    /* ── Caster cam area ── */
+    .caster-area {
+      display: flex; gap: 24px;
+    }
+    .caster-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .caster-slot {
+      width: 420px; height: 240px;
+      border: 2px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      background: transparent;
+    }
+    .caster-label {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .caster-label .team-badge { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+    .caster-label .team-name {
+      font-size: 15px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    /* ── Data panel ── */
+    .center-panel {
+      width: 1100px;
+      background: rgba(8,8,18,0.85);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 22px 28px;
+      animation: slideUp 0.5s 0.2s ease forwards;
+
+    }
+
+    /* ── Match header ── */
+    .match-header {
+      display: flex; align-items: center; justify-content: center; gap: 24px;
+      margin-bottom: 14px; padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .match-team { display: flex; align-items: center; gap: 10px; }
+    .match-team .logo { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+    .match-team .name { font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+    .match-team .score { font-size: 28px; font-weight: 800; font-family: 'Bebas Neue', sans-serif; }
+    .match-vs {
+      font-family: 'Bebas Neue', sans-serif; font-size: 22px;
+      color: rgba(255,255,255,0.2); letter-spacing: 2px;
+    }
+    .match-meta {
+      font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.3);
+      text-transform: uppercase; letter-spacing: 2px;
+      text-align: center; margin-bottom: 16px;
+    }
+
+    /* ── Map series row ── */
+    .section-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 2px; color: rgba(255,255,255,0.35);
+      margin-bottom: 8px;
+    }
+    .maps-row { display: flex; gap: 6px; margin-bottom: 18px; }
+    .map-card {
+      flex: 1; border-radius: 6px; overflow: hidden;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+    }
+    .map-card .map-img { width: 100%; height: 90px; object-fit: cover; display: block; }
+    .map-card.completed .map-img { filter: brightness(0.5) saturate(0.5); }
+    .map-card.current .map-img { filter: brightness(0.8); }
+    .map-card .map-overlay {
+      position: absolute; top: 0; left: 0; right: 0; height: 90px;
+      pointer-events: none;
+    }
+    .map-card .map-info { padding: 6px 8px; background: rgba(0,0,0,0.5); }
+    .map-card .map-name {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .map-card .map-mode {
+      font-size: 8px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px;
+    }
+    .map-card .map-picker {
+      font-size: 7px; font-weight: 600; color: rgba(255,255,255,0.35);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;
+    }
+    .map-card .map-winner-logo {
+      position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
+      width: 38px; height: 38px; border-radius: 8px; object-fit: cover;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 3;
+    }
+    .map-card .map-bans-row {
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      padding: 4px; background: rgba(0,0,0,0.4);
+    }
+    .map-card .mini-ban {
+      width: 22px; height: 22px; border-radius: 4px; overflow: hidden; position: relative;
+    }
+    .map-card .mini-ban img { width: 100%; height: 100%; object-fit: cover; }
+    .map-card .mini-ban .ban-x {
+      position: absolute; inset: 0; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 8px; font-weight: 900; color: white;
+    }
+    .map-card .ban-sep {
+      width: 1px; height: 16px; background: rgba(255,255,255,0.15); margin: 0 2px;
+    }
+    .map-card.current { border-color: #f97316; }
+    .map-card.upcoming .map-img { opacity: 0.3; }
+
+    /* ── Rosters ── */
+    .rosters { display: flex; gap: 24px; }
+    .roster-col { flex: 1; }
+    .roster-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px; padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .roster-header .team-logo { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }
+    .roster-header .team-name {
+      font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .roster-player {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .roster-player .avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      object-fit: cover; background: rgba(255,255,255,0.08); flex-shrink: 0;
+    }
+    .roster-player .player-info { flex: 1; min-width: 0; }
+    .roster-player .ign { font-size: 13px; font-weight: 700; }
+    .roster-player .faceit-name { font-size: 9px; color: rgba(255,255,255,0.4); }
+    .roster-player .skill-badge {
+      width: 20px; height: 20px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; flex-shrink: 0;
+    }
+    /* FACEIT skill level colors */
+    .skill-1,.skill-2,.skill-3 { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+    .skill-4,.skill-5,.skill-6 { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .skill-7,.skill-8 { background: rgba(168,85,247,0.2); color: #a855f7; }
+    .skill-9,.skill-10 { background: rgba(239,68,68,0.2); color: #ef4444; }
+  </style>
+  <link rel="stylesheet" href="./animations.css">
+</head>
+<body>
+  <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
+
+  <script src="./state-sync.js"></script>
+  <script>
+    // Loaded via state-sync.js for SSE + polling fallback
+    const API = 'http://localhost:3001';
+    let heroData = [];
+    let mapData = [];
+
+    async function loadHeroes() {
+      heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+    }
+    async function loadMaps() {
+      mapData = await fetch('https://overfast-api.tekrop.fr/maps').then(r => r.json()).catch(() => []);
+    }
+
+    function getMapScreenshot(mapName, faceitImage) {
+      if (!mapName) return faceitImage || '';
+      const normalized = mapName.toLowerCase().trim();
+      const match = mapData.find(m =>
+        m.name.toLowerCase() === normalized ||
+        m.key === normalized.replace(/[^a-z0-9]+/g, '-')
+      );
+      return match ? match.screenshot : (faceitImage || '');
+    }
+
+    function getHeroPortrait(key) {
+      const hero = heroData.find(h => h.key === key);
+      return hero ? hero.portrait : '';
+    }
+
+    const nameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
+    function heroNameToKey(name) {
+      if (!name) return '';
+      if (nameOverrides[name]) return nameOverrides[name];
+      return name.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+    }
+
+    const defaultAvatar = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect fill="%23222" width="40" height="40" rx="20"/><text x="20" y="26" text-anchor="middle" fill="%23555" font-size="18">?</text></svg>');
+
+    function update(state) {
+      const el = document.getElementById('root');
+      if (!state.teams?.team1?.name) { el.innerHTML = ''; return; }
+
+      const t1 = state.teams.team1;
+      const t2 = state.teams.team2;
+      const t1Color = t1.color || '#3b82f6';
+      const t2Color = t2.color || '#ef4444';
+      const maps = state.maps || [];
+      const bestOf = state.bestOf || 5;
+      const perMapBans = state.perMapBans || [];
+      const players1 = state.players?.team1 || [];
+      const players2 = state.players?.team2 || [];
+
+      // Map cards
+      const slots = [];
+      for (let i = 0; i < bestOf; i++) {
+        slots.push(maps[i] || { name: null, mode: null, status: 'upcoming', image: null, winner: null });
+      }
+
+      const mapsHtml = slots.map((m, i) => {
+        const status = m.status || 'upcoming';
+        const mapImg = getMapScreenshot(m.name, m.image);
+        const mapBans = perMapBans[i];
+        const winnerColor = m.winner === 'team1' ? t1Color : m.winner === 'team2' ? t2Color : null;
+
+        let imgHtml = mapImg
+          ? `<img class="map-img" src="${mapImg}">`
+          : `<div class="map-img" style="background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,0.2)">—</div>`;
+
+        let overlayHtml = '';
+        if (m.winner && winnerColor) {
+          overlayHtml = `<div class="map-overlay" style="background:linear-gradient(135deg,${winnerColor}35 0%,${winnerColor}10 100%)"></div>`;
+        }
+
+        let winnerLogo = '';
+        if (m.winner) {
+          const wt = m.winner === 'team1' ? t1 : t2;
+          if (wt.logo) winnerLogo = `<img class="map-winner-logo" src="${wt.logo}">`;
+        }
+
+        let pickerHtml = '';
+        if (mapBans?.picker) {
+          const pName = mapBans.picker === 'team1' ? t1.name : t2.name;
+          pickerHtml = `<div class="map-picker">${pName} pick</div>`;
+        }
+
+        let bansHtml = '';
+        if (mapBans && (mapBans.team1Ban || mapBans.team2Ban)) {
+          const b1Key = mapBans.team1Ban ? heroNameToKey(mapBans.team1Ban.name) : '';
+          const b2Key = mapBans.team2Ban ? heroNameToKey(mapBans.team2Ban.name) : '';
+          const b1p = b1Key ? getHeroPortrait(b1Key) : '';
+          const b2p = b2Key ? getHeroPortrait(b2Key) : '';
+          const b1 = b1p ? `<div class="mini-ban" style="border:1.5px solid ${t1Color}88"><img src="${b1p}"><div class="ban-x" style="background:${t1Color}55">✕</div></div>` : '';
+          const b2 = b2p ? `<div class="mini-ban" style="border:1.5px solid ${t2Color}88"><img src="${b2p}"><div class="ban-x" style="background:${t2Color}55">✕</div></div>` : '';
+          bansHtml = `<div class="map-bans-row">${b1}<div class="ban-sep"></div>${b2}</div>`;
+        }
+
+        let scoreHtml = m.roundScore ? `<span style="float:right;font-size:10px;color:rgba(255,255,255,0.5)">${m.roundScore}</span>` : '';
+
+        return `<div class="map-card ${status}">
+          ${imgHtml}${overlayHtml}${winnerLogo}
+          <div class="map-info">
+            <div class="map-name">${m.name || `MAP ${i+1}`}${scoreHtml}</div>
+            <div class="map-mode">${m.mode || ''}</div>
+            ${pickerHtml}
+          </div>
+          ${bansHtml}
+        </div>`;
+      }).join('');
+
+      // Roster columns
+      const renderRoster = (players) => {
+        if (players.length === 0) return '<div style="font-size:11px;color:rgba(255,255,255,0.3);padding:8px 0">Awaiting roster...</div>';
+        return players.map(p => {
+          const avatar = p.avatar || defaultAvatar;
+          const ign = p.gamePlayerName || p.nickname;
+          const faceitName = p.gamePlayerName && p.gamePlayerName !== p.nickname ? p.nickname : '';
+          const lvl = p.skillLevel || 0;
+          return `<div class="roster-player">
+            <img class="avatar" src="${avatar}" onerror="this.src='${defaultAvatar}'">
+            <div class="player-info">
+              <div class="ign">${ign}</div>
+              ${faceitName ? `<div class="faceit-name">${faceitName}</div>` : ''}
+            </div>
+            ${lvl ? `<div class="skill-badge skill-${lvl}">${lvl}</div>` : ''}
+          </div>`;
+        }).join('');
+      };
+
+      el.innerHTML = `
+        <div class="branding">
+          <img class="org-logo" src="./org.png">
+          <div class="divider"></div>
+          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
+        </div>
+
+        <div class="main-content">
+          <div class="caster-area">
+            ${(state.casterLayout ?? 2) >= 1 ? `<div class="caster-col">
+              <div class="caster-slot" style="${(state.casterLayout ?? 2) === 1 ? 'width:600px;height:360px' : ''}"></div>
+              <div class="caster-label">
+                <span class="team-name">${state.casters?.[0]?.name || 'Caster 1'}</span>
+              </div>
+            </div>` : ''}
+            ${(state.casterLayout ?? 2) >= 2 ? `<div class="caster-col">
+              <div class="caster-slot"></div>
+              <div class="caster-label">
+                <span class="team-name">${state.casters?.[1]?.name || 'Caster 2'}</span>
+              </div>
+            </div>` : ''}
+          </div>
+
+          <div class="center-panel">
+            <div class="match-header">
+              <div class="match-team">
+                ${t1.logo ? `<img class="logo" src="${t1.logo}">` : ''}
+                <span class="name" style="color:${t1Color}">${t1.name}</span>
+                <span class="score" style="color:${t1Color}">${t1.score || 0}</span>
+              </div>
+              <div class="match-vs">VS</div>
+              <div class="match-team">
+                <span class="score" style="color:${t2Color}">${t2.score || 0}</span>
+                <span class="name" style="color:${t2Color}">${t2.name}</span>
+                ${t2.logo ? `<img class="logo" src="${t2.logo}">` : ''}
+              </div>
+            </div>
+            <div class="match-meta">BEST OF ${bestOf}</div>
+
+            <div class="section-label">Map Series</div>
+            <div class="maps-row">${mapsHtml}</div>
+
+            <div class="section-label">Rosters</div>
+            <div class="rosters">
+              <div class="roster-col">
+                <div class="roster-header">
+                  ${t1.logo ? `<img class="team-logo" src="${t1.logo}">` : ''}
+                  <span class="team-name" style="color:${t1Color}">${t1.name}</span>
+                </div>
+                ${renderRoster(players1)}
+              </div>
+              <div class="roster-col">
+                <div class="roster-header">
+                  ${t2.logo ? `<img class="team-logo" src="${t2.logo}">` : ''}
+                  <span class="team-name" style="color:${t2Color}">${t2.name}</span>
+                </div>
+                ${renderRoster(players2)}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    let lastState = null;
+
+    loadHeroes().then(() => stateSync(function(s) { lastState = s; update(s); }));
+
+    loadMaps().then(() => { if (lastState) update(lastState); });
+  </script>
+</body>
+</html>

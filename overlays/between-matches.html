@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Between Matches</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent; overflow: hidden;
+      width: 1920px; height: 1080px;
+      font-family: 'Inter', sans-serif; color: white;
+    }
+
+    .container {
+      position: relative; width: 1920px; height: 1080px;
+      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Rainbow bar */
+    .rainbow-bar {
+      position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316);
+    }
+
+    /* Branding top-left */
+    .branding {
+      position: absolute; top: 28px; left: 40px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .branding .org-logo { width: 72px; height: 72px; object-fit: contain; }
+    .branding .event-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 14px; letter-spacing: 2px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* Webcam area (large center) */
+    .cam-area {
+      position: absolute;
+      left: 200px; top: 30px; right: 30px; bottom: 120px;
+      border: 2px solid rgba(255,255,255,0.04);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.3);
+    }
+
+    /* Countdown (bottom-left) */
+    .countdown-box {
+      position: absolute; bottom: 12px; left: 40px;
+      
+    }
+    .countdown-time {
+      font-family: 'Oswald', sans-serif;
+      font-size: 52px; font-weight: 700; letter-spacing: 2px;
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    /* Bottom schedule bar */
+    .schedule-bar {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 100px;
+      display: flex; align-items: stretch;
+      background: rgba(10,10,20,0.9);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      
+    }
+
+    .sched-item {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      gap: 10px; padding: 0 12px;
+      border-right: 1px solid rgba(255,255,255,0.04);
+      position: relative;
+    }
+    .sched-item:last-child { border-right: none; }
+
+    .sched-item.up-next { background: rgba(249,115,22,0.12); }
+    .sched-item.up-next::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 3px; background: linear-gradient(90deg, #f97316, #ef4444);
+    }
+
+    .sched-label {
+      position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+      font-size: 8px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; padding: 2px 8px; border-radius: 2px;
+      white-space: nowrap;
+    }
+    .sched-item.up-next .sched-label {
+      background: linear-gradient(135deg, #f97316, #ef4444); color: white;
+    }
+    .sched-item:not(.up-next) .sched-label {
+      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4);
+    }
+
+    .sched-team-logo { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+    .sched-team-logo.placeholder { background: rgba(255,255,255,0.08); }
+    .sched-team-name { font-size: 13px; font-weight: 700; white-space: nowrap; }
+    .sched-score { font-size: 18px; font-weight: 800; color: rgba(255,255,255,0.6); }
+    .sched-time { font-size: 16px; font-weight: 700; }
+  </style>
+  <link rel="stylesheet" href="./animations.css">
+</head>
+<body>
+  <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
+
+  <script src="./state-sync.js"></script>
+  <script>
+    // Loaded via state-sync.js for SSE + polling fallback
+    const API = 'http://localhost:3001';
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+
+    function update(state) {
+      const el = document.getElementById('root');
+      const schedule = state.schedule || [];
+
+      // Build schedule items
+      const schedHtml = schedule.map((match, i) => {
+        const isNext = match.upNext || i === schedule.findIndex(m => !m.completed);
+        const completed = match.completed;
+        return `<div class="sched-item ${isNext ? 'up-next' : ''}">
+          <div class="sched-label">${match.label || `Match ${i+1}`}</div>
+          ${match.team1Logo ? `<img class="sched-team-logo" src="${match.team1Logo}">` : '<div class="sched-team-logo placeholder"></div>'}
+          <span class="sched-team-name">${match.team1 || 'TBD'}</span>
+          ${completed
+            ? `<span class="sched-score">${match.score1 ?? ''}-${match.score2 ?? ''}</span>`
+            : `<span class="sched-time">${match.time || ''}</span>`
+          }
+          <span class="sched-team-name" style="text-align:right">${match.team2 || 'TBD'}</span>
+          ${match.team2Logo ? `<img class="sched-team-logo" src="${match.team2Logo}">` : '<div class="sched-team-logo placeholder"></div>'}
+        </div>`;
+      }).join('');
+
+      const fallbackSched = !schedule.length ? `
+        <div class="sched-item up-next">
+          <div class="sched-label">UP NEXT</div>
+          ${state.teams?.team1?.logo ? `<img class="sched-team-logo" src="${state.teams.team1.logo}">` : '<div class="sched-team-logo placeholder"></div>'}
+          <span class="sched-team-name">${state.teams?.team1?.name || 'TBD'}</span>
+          <span class="sched-score">vs</span>
+          <span class="sched-team-name">${state.teams?.team2?.name || 'TBD'}</span>
+          ${state.teams?.team2?.logo ? `<img class="sched-team-logo" src="${state.teams.team2.logo}">` : '<div class="sched-team-logo placeholder"></div>'}
+        </div>` : '';
+
+      el.innerHTML = `
+        <div class="rainbow-bar"></div>
+        <div class="branding">
+          <img class="org-logo" src="./org.png">
+          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
+        </div>
+        <div class="cam-area"></div>
+        <div class="countdown-box">
+          <div class="countdown-time">${formatTime(state.countdown?.remaining || 0)}</div>
+        </div>
+        <div class="schedule-bar">
+          ${schedHtml || fallbackSched}
+        </div>
+      `;
+    }
+    stateSync(update);
+  </script>
+</body>
+</html>

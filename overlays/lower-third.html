@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Lower Third Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: transparent; overflow: hidden; width: 1920px; height: 1080px; }
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap');
 
     .lower-third {
       position: absolute;
@@ -53,6 +55,7 @@
       margin-top: 2px;
     }
   </style>
+  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
   <div id="lt" class="lower-third">
@@ -63,10 +66,10 @@
     </div>
   </div>
 
+  <script src="./state-sync.js"></script>
   <script>
+    // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
-    const es = new EventSource(`${API}/api/events`);
-
     function update(state) {
       const lt = document.getElementById('lt');
       const data = state.lowerThird || {};
@@ -79,9 +82,7 @@
         lt.classList.remove('visible');
       }
     }
-
-    es.addEventListener('state', e => update(JSON.parse(e.data)));
-    fetch(`${API}/api/state`).then(r => r.json()).then(update);
+    stateSync(update);
   </script>
 </body>
 </html>
