@@ -28,9 +28,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Ensure fonts directory exists
-const FONTS_DIR = path.join(__dirname, '..', 'data', 'fonts');
+// Writable data directory: userData in Electron (AppImage is read-only), data/ in dev
+const DATA_DIR = process.env.ELEMENTAL_USER_DATA
+  ? process.env.ELEMENTAL_USER_DATA
+  : path.join(__dirname, '..', 'data');
+
+// Ensure writable subdirectories exist
+const FONTS_DIR = path.join(DATA_DIR, 'fonts');
+const CACHE_DIR = path.join(DATA_DIR, 'cache');
 if (!fs.existsSync(FONTS_DIR)) fs.mkdirSync(FONTS_DIR, { recursive: true });
+if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
@@ -165,9 +172,8 @@ async function downloadToLocal(url, filename) {
     const res = await fetch(url);
     if (!res.ok) return null;
     const buffer = Buffer.from(await res.arrayBuffer());
-    const dir = path.join(__dirname, '..', 'data', 'cache');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const filePath = path.join(dir, filename);
+    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    const filePath = path.join(CACHE_DIR, filename);
     fs.writeFileSync(filePath, buffer);
     return filePath;
   } catch (e) {
@@ -438,7 +444,7 @@ app.get('/api/obs/screenshot', async (req, res) => {
 
   // Save to disk and return path
   const filename = `obs_screenshot_${Date.now()}.png`;
-  const filePath = path.join(__dirname, '..', 'data', 'cache', filename);
+  const filePath = path.join(CACHE_DIR, filename);
   const base64 = imageData.replace(/^data:image\/\w+;base64,/, '');
   fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
 
