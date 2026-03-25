@@ -23,6 +23,7 @@
   "build": {
     "appId": "gg.elemental.production",
     "productName": "Elemental Production",
+    "asar": false,
     "directories": {
       "output": "release"
     },
@@ -33,7 +34,8 @@
       "data/**/*",
       "dist/**/*",
       "public/**/*",
-      "package.json"
+      "package.json",
+      ".env.example"
     ],
     "win": {
       "target": ["nsis"],

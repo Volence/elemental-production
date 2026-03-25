@@ -16,10 +16,17 @@ const SERVER_PORT = 3001;
 let mainWindow;
 let serverProcess;
 
+/** Resolve a path relative to the app root (works in dev + packaged) */
+function appPath(relativePath) {
+  // In packaged app: __dirname = <install>/resources/app/out/main
+  // In dev: __dirname = <project>/out/main
+  // Both cases: ../../ gets us to the app root
+  return join(__dirname, '..', '..', relativePath);
+}
+
 function initUserData() {
   const userDataPath = app.getPath('userData');
 
-  // Ensure directory exists
   if (!existsSync(userDataPath)) {
     mkdirSync(userDataPath, { recursive: true });
   }
@@ -27,7 +34,7 @@ function initUserData() {
   // Copy .env.example → userData/.env on first launch
   const userEnv = join(userDataPath, '.env');
   if (!existsSync(userEnv)) {
-    const exampleEnv = join(__dirname, '../../.env.example');
+    const exampleEnv = appPath('.env.example');
     if (existsSync(exampleEnv)) {
       copyFileSync(exampleEnv, userEnv);
       console.log('[Electron] Created default .env in', userDataPath);
@@ -38,16 +45,22 @@ function initUserData() {
 }
 
 function startServer(userDataPath) {
-  const serverPath = join(__dirname, '../../server/server.js');
+  const serverPath = appPath('server/server.js');
+  console.log('[Electron] Server path:', serverPath, 'exists:', existsSync(serverPath));
+
   serverProcess = fork(serverPath, [], {
     stdio: 'inherit',
     env: {
       ...process.env,
       PORT: String(SERVER_PORT),
       ELEMENTAL_USER_DATA: userDataPath,
+      // The forked process must run as Node.js, not as Electron
+      ELECTRON_RUN_AS_NODE: '1',
     },
   });
+
   serverProcess.on('error', (e) => console.error('[Electron] Server error:', e));
+  serverProcess.on('exit', (code) => console.log('[Electron] Server exited with code', code));
   console.log('[Electron] Server forked on port', SERVER_PORT);
   console.log('[Electron] User data:', userDataPath);
 }
@@ -59,7 +72,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'Elemental Production',
-    icon: join(__dirname, '../../public/elemental-logo.png'),
+    icon: appPath('public/elemental-logo.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -83,7 +96,8 @@ function createWindow() {
 app.whenReady().then(async () => {
   const userDataPath = initUserData();
   startServer(userDataPath);
-  await new Promise((r) => setTimeout(r, 2000));
+  // Wait for server to bind
+  await new Promise((r) => setTimeout(r, 3000));
   createWindow();
 });
 
