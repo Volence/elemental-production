@@ -19,6 +19,9 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Inject FACEIT API key
+        run: sed -i 's/^FACEIT_API_KEY=$/FACEIT_API_KEY=${{ secrets.FACEIT_API_KEY }}/' .env.example
+
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
@@ -46,6 +49,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
+
+      - name: Inject FACEIT API key
+        run: (Get-Content .env.example) -replace '^FACEIT_API_KEY=$','FACEIT_API_KEY=${{ secrets.FACEIT_API_KEY }}' | Set-Content .env.example
+        shell: pwsh
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
