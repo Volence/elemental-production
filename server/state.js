@@ -47,6 +47,7 @@ const defaultState = {
   replayClips: [], // array of saved replay clip paths for current match
   replayIndex: 0, // current replay index for cycling
   overrides: {}, // e.g. { 'teams.team1.name': true, 'maps': true }
+  faceitAutoSync: false, // whether to auto-poll FACEIT for match updates
   graphicsPresets: {
     default: { name: 'Default', graphics: {} }
   },

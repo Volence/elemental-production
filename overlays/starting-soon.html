@@ -150,6 +150,21 @@
     const API = 'http://localhost:3001';
     let lastBuiltKey = '';
 
+    // Client-side countdown: tick locally every 1s, re-sync from server on poll
+    let localRemaining = 0;
+    let countdownRunning = false;
+    let tickInterval = null;
+
+    function startLocalTick() {
+      if (tickInterval) return;
+      tickInterval = setInterval(function() {
+        if (!countdownRunning || localRemaining <= 0) return;
+        localRemaining = Math.max(0, localRemaining - 1);
+        var t = document.getElementById('countdown-timer');
+        if (t) t.textContent = formatTime(localRemaining);
+      }, 1000);
+    }
+
     function formatTime(sec) {
       const m = Math.floor(sec / 60);
       const s = sec % 60;
@@ -167,14 +182,19 @@
 
     function update(state) {
       const el = document.getElementById('root');
-      const remaining = state.countdown?.remaining || 0;
+      const serverRemaining = state.countdown?.remaining || 0;
+
+      // Sync from server — authoritative value, corrects any drift
+      localRemaining = serverRemaining;
+      countdownRunning = !!(state.countdown?.running);
+      startLocalTick();
 
       // If the countdown element already exists, just update the text
       const timerEl = document.getElementById('countdown-timer');
       const currentKey = buildKey(state);
 
       if (timerEl && currentKey === lastBuiltKey) {
-        timerEl.textContent = formatTime(remaining);
+        timerEl.textContent = formatTime(localRemaining);
         return;
       }
 
@@ -227,7 +247,7 @@
           <img class="org-logo-hero" src="./org.png">
           <div class="hero-title"><span>STARTING SOON</span></div>
           <div class="countdown-center">
-            <div class="countdown-time" id="countdown-timer">${formatTime(remaining)}</div>
+            <div class="countdown-time" id="countdown-timer">${formatTime(localRemaining)}</div>
           </div>
           ${eventTitle ? `<div class="event-bar">${eventTitle}</div>` : ''}
         </div>

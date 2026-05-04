@@ -1,14 +1,16 @@
 const DATA_API_BASE = 'https://open.faceit.com/data/v4';
 const TEAM_LEAGUES_BASE = 'https://www.faceit.com/api/team-leagues/v2';
 
-let apiKey = process.env.FACEIT_API_KEY || '';
+let apiKey = '';
 
 export function setApiKey(key) {
   apiKey = key;
 }
 
 function authHeaders() {
-  return apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {};
+  // Read lazily — dotenv may not have loaded yet at import time (ESM hoisting)
+  const key = apiKey || process.env.FACEIT_API_KEY || '';
+  return key ? { 'Authorization': `Bearer ${key}` } : {};
 }
 
 /**
@@ -120,6 +122,9 @@ export async function getMatchStats(matchId) {
     const res = await fetch(`${DATA_API_BASE}/matches/${matchId}/stats`, {
       headers: authHeaders(),
     });
+    // 404 = stats not available yet (match not started, round in progress, etc.)
+    // This is expected and happens constantly during polling — don't log it
+    if (res.status === 404) return [];
     if (!res.ok) throw new Error(`FACEIT Stats API ${res.status}`);
     const data = await res.json();
 

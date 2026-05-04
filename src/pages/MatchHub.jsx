@@ -227,7 +227,33 @@ export default function MatchHub({ state, updateState, api }) {
       {/* FACEIT Loader */}
       {state.mode === 'faceit' && (
         <div className="card">
-          <div className="card-title">Load FACEIT Match</div>
+          <div className="card-header">
+            <span className="card-title">Load FACEIT Match</span>
+            {state.faceitMatchId && (
+              <button
+                className={`btn btn-sm ${state.faceitAutoSync ? '' : 'btn-ghost'}`}
+                onClick={() => {
+                  fetch(`${api}/api/faceit/auto-sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: !state.faceitAutoSync }),
+                  });
+                }}
+                style={state.faceitAutoSync ? {
+                  background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)',
+                  color: '#22c55e', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 6,
+                } : { fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <span style={{
+                  width: 8, height: 8, borderRadius: '50%', display: 'inline-block',
+                  background: state.faceitAutoSync ? '#22c55e' : 'rgba(255,255,255,0.2)',
+                  boxShadow: state.faceitAutoSync ? '0 0 6px rgba(34,197,94,0.6)' : 'none',
+                  animation: state.faceitAutoSync ? 'pulse 2s infinite' : 'none',
+                }} />
+                {state.faceitAutoSync ? 'Auto Sync ON' : 'Auto Sync'}
+              </button>
+            )}
+          </div>
           <div className="input-group" style={{ marginTop: 12 }}>
             <input
               className="input"
@@ -241,6 +267,11 @@ export default function MatchHub({ state, updateState, api }) {
             </button>
           </div>
           {error && <p style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 4 }}>{error}</p>}
+          {state.faceitAutoSync && (
+            <p style={{ color: '#22c55e', fontSize: '0.7rem', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              ↻ Live syncing every 15s — auto-stops when match finishes
+            </p>
+          )}
         </div>
       )}
 

@@ -26,3 +26,4 @@ release
 *.sw?
 .env
 data/cache/
+data/state.json

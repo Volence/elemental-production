@@ -1,11 +1,14 @@
 {
   "name": "elemental-production",
+  "description": "Elemental Overwatch broadcast production companion — OBS overlay controller, FACEIT integration, and scene management.",
+  "author": "Elemental Gaming <contact@elemental.gg>",
   "private": true,
   "version": "1.0.2",
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"node server/server.js\"",
+    "dev": "fuser -k 5173/tcp 3001/tcp 2>/dev/null; electron-vite build && concurrently --kill-others \"vite\" \"node server/server.js\" \"sleep 3 && ELECTRON_IS_DEV=1 VITE_DEV_SERVER_URL=http://localhost:5173 ELECTRON_RUN_AS_NODE= electron .\"",
+    "dev:web": "concurrently \"vite\" \"node server/server.js\"",
     "dev:frontend": "vite",
     "dev:backend": "node server/server.js",
     "restart": "fuser -k 3001/tcp 5173/tcp 2>/dev/null; rm -rf node_modules/.vite ~/.config/obs-studio/plugin_config/obs-browser/Cache ~/.config/obs-studio/plugin_config/obs-browser/GPUCache; npm run dev",
@@ -14,9 +17,9 @@
     "electron:dev": "ELECTRON_RUN_AS_NODE= electron-vite dev",
     "electron:build": "electron-vite build",
     "electron:preview": "ELECTRON_RUN_AS_NODE= electron-vite preview",
-    "dist": "electron-vite build && ELECTRON_RUN_AS_NODE= electron-builder",
-    "dist:win": "electron-vite build && ELECTRON_RUN_AS_NODE= electron-builder --win",
-    "dist:linux": "electron-vite build && ELECTRON_RUN_AS_NODE= electron-builder --linux",
+    "dist": "vite build && electron-vite build && ELECTRON_RUN_AS_NODE= electron-builder",
+    "dist:win": "vite build && electron-vite build && ELECTRON_RUN_AS_NODE= electron-builder --win",
+    "dist:linux": "vite build && electron-vite build && ELECTRON_RUN_AS_NODE= electron-builder --linux",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -31,7 +34,8 @@
       "out/**/*",
       "server/**/*",
       "overlays/**/*",
-      "data/**/*",
+      "data/Elemental_Production.json",
+      "data/obs-scene-collection.json",
       "dist/**/*",
       "public/**/*",
       "package.json",
@@ -53,19 +57,17 @@
     }
   },
   "dependencies": {
-    "concurrently": "^9.2.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "obs-websocket-js": "^5.0.8",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "obs-websocket-js": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
     "electron": "^41.0.3",
     "electron-builder": "^26.0.12",
     "electron-vite": "^5.0.0",
@@ -73,6 +75,8 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "vite": "^8.0.1"
   }
 }

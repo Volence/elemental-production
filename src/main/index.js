@@ -6,6 +6,10 @@
  *
  * On first launch, copies .env.example to userData if no .env exists there.
  * Passes ELEMENTAL_USER_DATA to the server so config persists across updates.
+ *
+ * Dev mode (ELECTRON_IS_DEV=1):
+ *   - Server is already running via concurrently, so we skip forking it.
+ *   - Window loads the Vite dev server URL for HMR.
  */
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
@@ -13,6 +17,8 @@ import { fork } from 'child_process';
 import { existsSync, copyFileSync, mkdirSync } from 'fs';
 
 const SERVER_PORT = 3001;
+const IS_DEV = process.env.ELECTRON_IS_DEV === '1';
+const VITE_DEV_URL = process.env.VITE_DEV_SERVER_URL;
 let mainWindow;
 let serverProcess;
 
@@ -81,7 +87,10 @@ function createWindow() {
     autoHideMenuBar: true,
   });
 
-  mainWindow.loadURL(`http://localhost:${SERVER_PORT}`);
+  // Dev: load Vite dev server for HMR. Prod: load Express server.
+  const url = VITE_DEV_URL || `http://localhost:${SERVER_PORT}`;
+  mainWindow.loadURL(url);
+  console.log('[Electron] Loading', url);
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -95,9 +104,16 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   const userDataPath = initUserData();
-  startServer(userDataPath);
-  // Wait for server to bind
-  await new Promise((r) => setTimeout(r, 3000));
+
+  if (!IS_DEV) {
+    // Production: fork the Express server as a child process
+    startServer(userDataPath);
+    // Wait for server to bind
+    await new Promise((r) => setTimeout(r, 3000));
+  } else {
+    console.log('[Electron] Dev mode — server managed externally');
+  }
+
   createWindow();
 });
 

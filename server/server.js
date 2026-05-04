@@ -547,7 +547,7 @@ app.post('/api/faceit/match', async (req, res) => {
     // Determine map picker for each map:
     // - Map 1: higher seed (faction1) picks
     // - Subsequent maps: loser of previous map picks
-    // Picker bans first (ban1), other team bans second (ban2)
+    // FACEIT convention: non-picker bans first (ban1), picker bans second (ban2)
     const perMapBans = (details.perMapBans || []).map((bans, i) => {
       let picker = 'team1'; // Default: faction1 (higher seed) picks map 1
       if (i > 0) {
@@ -560,7 +560,7 @@ app.post('/api/faceit/match', async (req, res) => {
       return {
         ...bans,
         picker,
-        // Attribute: ban1 belongs to picker, ban2 belongs to other team
+        // ban1 = picker's ban, ban2 = non-picker's ban (per faceit.js entity order)
         team1Ban: picker === 'team1' ? bans.ban1 : bans.ban2,
         team2Ban: picker === 'team2' ? bans.ban1 : bans.ban2,
       };
@@ -709,6 +709,149 @@ app.get('/api/faceit/match/:matchId/stats', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ============ FACEIT AUTO-POLL ============
+
+let faceitPollInterval = null;
+const FACEIT_POLL_INTERVAL = 15000; // 15 seconds
+
+async function faceitPollTick() {
+  const currentState = getState();
+  const matchId = currentState.faceitMatchId;
+  if (!matchId) {
+    stopFaceitPoll('no match loaded');
+    return;
+  }
+
+  try {
+    const [details, stats] = await Promise.all([
+      faceit.getMatchDetails(matchId),
+      faceit.getMatchStats(matchId).catch(() => []),
+    ]);
+
+    // Auto-stop if match is finished
+    if (details.status === 'FINISHED' || details.status === 'CANCELLED') {
+      console.log(`[FACEIT Poll] Match ${details.status} — stopping auto-sync`);
+      stopFaceitPoll(details.status.toLowerCase());
+      // Do one final update with the finished data before stopping
+    }
+
+    const faction1 = details.teams.faction1;
+    const faction2 = details.teams.faction2;
+
+    const maps = details.pickedMaps.map((m, i) => {
+      const roundStats = stats[i];
+      let winner = null;
+      if (roundStats?.winner) {
+        winner = roundStats.winner === faction1.id ? 'team1' : 'team2';
+      }
+      return {
+        name: m.name, mode: m.mode,
+        image: m.imageSm || m.imageLg,
+        status: roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming',
+        winner,
+        roundScore: roundStats?.scoreSummary || null,
+      };
+    });
+
+    // Parse per-map bans (same logic as /api/faceit/match)
+    // FACEIT convention: non-picker bans first (ban1), picker bans second (ban2)
+    const perMapBans = (details.perMapBans || []).map((bans, i) => {
+      let picker = 'team1';
+      if (i > 0) {
+        const prevWinner = maps[i - 1]?.winner;
+        if (prevWinner) picker = prevWinner === 'team1' ? 'team2' : 'team1';
+      }
+      return { ...bans, picker,
+        team1Ban: picker === 'team1' ? bans.ban1 : bans.ban2,
+        team2Ban: picker === 'team2' ? bans.ban1 : bans.ban2,
+      };
+    });
+
+    const faceitNameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
+    const heroNameToKey = (name) => {
+      if (!name) return '';
+      if (faceitNameOverrides[name]) return faceitNameOverrides[name];
+      return name.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+    };
+
+    const currentMapIdx = maps.findIndex(m => m.status === 'current');
+    const activeIdx = currentMapIdx >= 0 ? currentMapIdx : maps.length - 1;
+    const activeBans = perMapBans[activeIdx];
+    const heroBans = {
+      team1: activeBans?.team1Ban ? [heroNameToKey(activeBans.team1Ban.name)] : [],
+      team2: activeBans?.team2Ban ? [heroNameToKey(activeBans.team2Ban.name)] : [],
+    };
+
+    // Build update, respecting all overrides
+    const update = {};
+    if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
+    if (!isOverridden('maps')) {
+      update.maps = maps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null }));
+    }
+    if (!isOverridden('players')) {
+      update.players = { team1: faction1.roster, team2: faction2.roster };
+    }
+    update.playerStats = stats;
+    update.perMapBans = perMapBans;
+    if (!isOverridden('heroBans')) update.heroBans = heroBans;
+
+    const t1 = { color: '#3b82f6', faceitId: faction1.id };
+    if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
+    if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
+    if (!isOverridden('teams.team1.score')) t1.score = details.results?.score?.faction1 || 0;
+    const t2 = { color: '#ef4444', faceitId: faction2.id };
+    if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
+    if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
+    if (!isOverridden('teams.team2.score')) t2.score = details.results?.score?.faction2 || 0;
+    update.teams = { team1: t1, team2: t2 };
+
+    const updated = setState(update);
+    broadcast('state', updated);
+    syncToOBS(updated);
+  } catch (e) {
+    console.warn(`[FACEIT Poll] Error: ${e.message}`);
+    // Don't stop polling on transient errors — just skip this tick
+  }
+}
+
+function startFaceitPoll() {
+  if (faceitPollInterval) return; // already running
+  const state = getState();
+  if (!state.faceitMatchId) return;
+  faceitPollInterval = setInterval(faceitPollTick, FACEIT_POLL_INTERVAL);
+  setState({ faceitAutoSync: true });
+  console.log(`[FACEIT Poll] Started — polling every ${FACEIT_POLL_INTERVAL / 1000}s`);
+  // Immediately do one tick
+  faceitPollTick();
+}
+
+function stopFaceitPoll(reason = 'manual') {
+  if (faceitPollInterval) {
+    clearInterval(faceitPollInterval);
+    faceitPollInterval = null;
+  }
+  setState({ faceitAutoSync: false });
+  console.log(`[FACEIT Poll] Stopped (${reason})`);
+}
+
+/** Toggle FACEIT auto-sync on/off */
+app.post('/api/faceit/auto-sync', (req, res) => {
+  const { enabled } = req.body;
+  if (enabled) {
+    startFaceitPoll();
+  } else {
+    stopFaceitPoll('manual');
+  }
+  broadcast('state', getState());
+  res.json({ success: true, faceitAutoSync: !!faceitPollInterval });
+});
+
+/** Get auto-sync status */
+app.get('/api/faceit/auto-sync', (req, res) => {
+  res.json({ enabled: !!faceitPollInterval });
+});
+
 // ============ OVERRIDES API ============
 
 /** Set manual overrides for specific fields */
