@@ -3,7 +3,7 @@
   "description": "Elemental Overwatch broadcast production companion — OBS overlay controller, FACEIT integration, and scene management.",
   "author": "Elemental Gaming <contact@elemental.gg>",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.1.0",
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
@@ -42,7 +42,9 @@
       ".env.example"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "public/elemental-logo.png"
     },
     "nsis": {
@@ -51,7 +53,9 @@
       "createStartMenuShortcut": true
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "icon": "public/elemental-logo.png",
       "category": "Utility"
     }
