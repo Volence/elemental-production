@@ -1090,4 +1090,29 @@ input[type="checkbox"]:checked::after {
 
 .content-body {
   padding: 24px 32px;
+  padding-bottom: 40px;
+}
+
+/* Status Bar */
+.status-bar {
+  position: fixed;
+  bottom: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  height: 32px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 20px;
+  z-index: 100;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.status-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import MatchHub from './pages/MatchHub'
 import ProductionControls from './pages/ProductionControls'
 import Settings from './pages/Settings'
+import StatusBar from './components/StatusBar'
 
 const API = 'http://localhost:3001';
 
@@ -166,6 +167,7 @@ export default function App() {
           {page === 'settings' && <Settings state={state} updateState={updateState} api={API} obsConnected={obsConnected} setObsConnected={setObsConnected} customFonts={customFonts} setCustomFonts={setCustomFonts} onDirtyChange={setSettingsDirty} />}
         </div>
       </main>
+      <StatusBar />
     </>
   );
 }
