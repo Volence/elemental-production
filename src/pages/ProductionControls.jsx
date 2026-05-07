@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import html2canvas from 'html2canvas'
+import { useState, useEffect, useRef } from 'react'
 
 // Audio mixer groups — only actual audio sources (no browser sources)
 const AUDIO_GROUPS = {
@@ -27,26 +26,13 @@ export default function ProductionControls({ state, updateState, api }) {
   const [currentScene, setCurrentScene] = useState('');
   const [expandedGroups, setExpandedGroups] = useState(['🎵 Music', '🎙️ Casters', '🔊 App Audio']);
   const [hoveredScene, setHoveredScene] = useState(null);
-  const [capturedThumbs, setCapturedThumbs] = useState({});
+  const [capturedThumbs, setCapturedThumbs] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('elemental-scene-thumbs') || '{}');
+    } catch { return {}; }
+  });
   const hoverTimeoutRef = useRef(null);
-  const iframeRef = useRef(null);
 
-  const captureAndClear = useCallback(async (sceneName) => {
-    const iframe = iframeRef.current;
-    if (iframe) {
-      try {
-        const doc = iframe.contentDocument;
-        if (doc && doc.body) {
-          const canvas = await html2canvas(doc.body, {
-            width: 1920, height: 1080, scale: 0.25,
-            useCORS: true, logging: false,
-          });
-          setCapturedThumbs(prev => ({ ...prev, [sceneName]: canvas.toDataURL('image/jpeg', 0.85) }));
-        }
-      } catch (e) { console.warn('[Preview] Capture failed:', e.message); }
-    }
-    setHoveredScene(null);
-  }, []);
   // Schedule editor
   const [scheduleTeam1, setScheduleTeam1] = useState('');
   const [scheduleTeam2, setScheduleTeam2] = useState('');
@@ -472,13 +458,6 @@ export default function ProductionControls({ state, updateState, api }) {
               'Series Winner': 'series-winner', 'Ending': 'ending',
             }[name];
             const thumbSrc = thumbFile ? `/scene-thumbs/${thumbFile}.png` : null;
-            const overlayFile = {
-              'Starting': 'starting-soon', 'Map Pick': 'map-pick', 'Map Intro': 'map-intro',
-              'Gameplay': 'gameplay-hud', 'Casters': 'casters', 'Casters Lobby': 'casters-lobby',
-              'Casters Scoreboard': 'casters-scoreboard', 'Map Score': 'casters-map-score',
-              'Between Matches': 'between-matches', 'BRB': 'brb', 'Interview': 'interview',
-              'Series Winner': 'series-winner', 'Ending': 'end-of-stream',
-            }[name];
             // Per-scene focus: [focusX, focusY, zoom]
             // focusX/focusY = 0-1, where the interesting content is in the source image
             // The image is positioned so this focal point appears at the CENTER of the thumbnail
@@ -509,17 +488,25 @@ export default function ProductionControls({ state, updateState, api }) {
                 className={`scene-preview-card ${currentScene === name ? 'active' : ''}`}
                 onClick={() => switchScene(name)}
                 onMouseEnter={() => {
-                  if (overlayFile) {
-                    hoverTimeoutRef.current = setTimeout(() => setHoveredScene(name), 300);
-                  }
+                  hoverTimeoutRef.current = setTimeout(async () => {
+                    setHoveredScene(name);
+                    try {
+                      const res = await fetch(`${api}/api/obs/preview?scene=${encodeURIComponent(name)}`);
+                      const data = await res.json();
+                      if (data.imageData) {
+                        setCapturedThumbs(prev => {
+                          const updated = { ...prev, [name]: data.imageData };
+                          try { localStorage.setItem('elemental-scene-thumbs', JSON.stringify(updated)); } catch {}
+                          return updated;
+                        });
+                      }
+                    } catch {}
+                    setHoveredScene(null);
+                  }, 300);
                 }}
                 onMouseLeave={() => {
                   clearTimeout(hoverTimeoutRef.current);
-                  if (hoveredScene === name && overlayFile) {
-                    captureAndClear(name);
-                  } else {
-                    setHoveredScene(null);
-                  }
+                  setHoveredScene(null);
                 }}
               >
                 <div style={{
@@ -527,20 +514,7 @@ export default function ProductionControls({ state, updateState, api }) {
                   borderRadius: '6px 6px 0 0', background: '#0a0f1e',
                   position: 'relative',
                 }}>
-                    {hoveredScene === name && overlayFile ? (
-                      <iframe
-                        ref={iframeRef}
-                        src={`/overlays/${overlayFile}.html`}
-                        style={{
-                          width: '1920px', height: '1080px',
-                          transform: 'scale(0.115)',
-                          transformOrigin: '0 0',
-                          border: 'none', pointerEvents: 'none',
-                          position: 'absolute', top: 0, left: 0,
-                        }}
-                        title={`${name} preview`}
-                      />
-                    ) : (capturedThumbs[name] || thumbSrc) ? (
+                    {(capturedThumbs[name] || thumbSrc) ? (
                       <img
                         src={capturedThumbs[name] || thumbSrc}
                         alt={name}
