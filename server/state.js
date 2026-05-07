@@ -29,7 +29,7 @@ const defaultState = {
     { name: 'Caster 2', camUrl: '', visible: true },
   ],
   interviewee: { name: '', camUrl: '', visible: false },
-  countdown: { duration: 300, remaining: 0, running: false, label: 'Starting Soon', visible: true },
+  countdown: { duration: 300, remaining: 0, running: false, label: 'Starting Soon', visible: true, startedAt: null },
   font: { family: 'Bebas Neue', url: 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap' },
   lowerThird: { title: '', subtitle: '', visible: false },
   currentScene: 'Starting',

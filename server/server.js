@@ -286,27 +286,27 @@ async function syncToOBS(state) {
 let countdownInterval = null;
 
 function startCountdown() {
-  stopCountdown();
-  const state = getState();
-  setState({ countdown: { ...state.countdown, running: true } });
+  stopCountdownInterval();
   countdownInterval = setInterval(() => {
-    const s = getState();
-    if (s.countdown.remaining <= 0) {
-      stopCountdown();
-      return;
-    }
-    setState({ countdown: { ...s.countdown, remaining: s.countdown.remaining - 1 } });
+    const cur = getState();
+    if (!cur.countdown.running || !cur.countdown.startedAt) return;
+    const elapsed = (Date.now() - cur.countdown.startedAt) / 1000;
+    const newRemaining = Math.max(0, Math.round(cur.countdown.duration - elapsed));
+    setState({ countdown: { ...cur.countdown, remaining: newRemaining } });
     const updated = getState();
     broadcast('state', updated);
     syncToOBS(updated);
+    if (newRemaining <= 0) {
+      stopCountdownInterval();
+      setState({ countdown: { ...getState().countdown, running: false, startedAt: null } });
+      broadcast('state', getState());
+    }
   }, 1000);
 }
 
-function stopCountdown() {
+function stopCountdownInterval() {
   if (countdownInterval) clearInterval(countdownInterval);
   countdownInterval = null;
-  const s = getState();
-  setState({ countdown: { ...s.countdown, running: false } });
 }
 
 // ============ STATE API ============
@@ -1323,33 +1323,53 @@ app.get('/api/heroes/grouped', async (req, res) => {
 app.post('/api/timer/start', (req, res) => {
   const { duration, label } = req.body;
   const d = duration || getState().countdown.duration;
-  setState({ countdown: { duration: d, remaining: d, running: true, label: label || 'Starting Soon' } });
+  setState({
+    countdown: {
+      ...getState().countdown,
+      duration: d,
+      remaining: d,
+      running: true,
+      startedAt: Date.now(),
+      label: label || 'Starting Soon',
+    },
+  });
   startCountdown();
   broadcast('state', getState());
   res.json({ success: true });
 });
 
 app.post('/api/timer/stop', (req, res) => {
-  stopCountdown();
-  // Stop = pause + reset to full duration
+  stopCountdownInterval();
   const s = getState();
-  setState({ countdown: { ...s.countdown, remaining: s.countdown.duration, running: false } });
+  setState({
+    countdown: { ...s.countdown, remaining: s.countdown.duration, running: false, startedAt: null },
+  });
   broadcast('state', getState());
   res.json({ success: true });
 });
 
 app.post('/api/timer/pause', (req, res) => {
-  // Pause = stop interval but keep remaining time
-  stopCountdown();
+  stopCountdownInterval();
+  const s = getState();
+  const elapsed = s.countdown.startedAt ? (Date.now() - s.countdown.startedAt) / 1000 : 0;
+  const remaining = Math.max(0, Math.round(s.countdown.duration - elapsed));
+  setState({
+    countdown: { ...s.countdown, remaining, running: false, startedAt: null },
+  });
   broadcast('state', getState());
   res.json({ success: true });
 });
 
 app.post('/api/timer/resume', (req, res) => {
-  // Resume = restart interval from current remaining
   const s = getState();
   if (s.countdown.remaining > 0) {
-    setState({ countdown: { ...s.countdown, running: true } });
+    setState({
+      countdown: {
+        ...s.countdown,
+        running: true,
+        startedAt: Date.now() - (s.countdown.duration - s.countdown.remaining) * 1000,
+      },
+    });
     startCountdown();
     broadcast('state', getState());
   }
@@ -1357,9 +1377,11 @@ app.post('/api/timer/resume', (req, res) => {
 });
 
 app.post('/api/timer/reset', (req, res) => {
-  stopCountdown();
+  stopCountdownInterval();
   const s = getState();
-  setState({ countdown: { ...s.countdown, remaining: s.countdown.duration, running: false } });
+  setState({
+    countdown: { ...s.countdown, remaining: s.countdown.duration, running: false, startedAt: null },
+  });
   broadcast('state', getState());
   res.json({ success: true });
 });

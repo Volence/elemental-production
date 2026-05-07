@@ -150,19 +150,26 @@
     const API = 'http://localhost:3001';
     let lastBuiltKey = '';
 
-    // Client-side countdown: tick locally every 1s, re-sync from server on poll
-    let localRemaining = 0;
+    // Client-side countdown: compute remaining from startedAt for jitter-free display
+    let countdownDuration = 0;
+    let countdownStartedAt = null;
     let countdownRunning = false;
     let tickInterval = null;
+
+    function getRemaining() {
+      if (!countdownRunning || !countdownStartedAt) return countdownDuration;
+      var elapsed = (Date.now() - countdownStartedAt) / 1000;
+      return Math.max(0, Math.round(countdownDuration - elapsed));
+    }
 
     function startLocalTick() {
       if (tickInterval) return;
       tickInterval = setInterval(function() {
-        if (!countdownRunning || localRemaining <= 0) return;
-        localRemaining = Math.max(0, localRemaining - 1);
+        if (!countdownRunning) return;
+        var remaining = getRemaining();
         var t = document.getElementById('countdown-timer');
-        if (t) t.textContent = formatTime(localRemaining);
-      }, 1000);
+        if (t) t.textContent = formatTime(remaining);
+      }, 200);
     }
 
     function formatTime(sec) {
@@ -182,19 +189,21 @@
 
     function update(state) {
       const el = document.getElementById('root');
-      const serverRemaining = state.countdown?.remaining || 0;
 
-      // Sync from server — authoritative value, corrects any drift
-      localRemaining = serverRemaining;
+      countdownDuration = state.countdown?.duration || 0;
+      countdownStartedAt = state.countdown?.startedAt || null;
       countdownRunning = !!(state.countdown?.running);
+      if (!countdownRunning) {
+        countdownDuration = state.countdown?.remaining || 0;
+        countdownStartedAt = null;
+      }
       startLocalTick();
 
-      // If the countdown element already exists, just update the text
       const timerEl = document.getElementById('countdown-timer');
       const currentKey = buildKey(state);
 
       if (timerEl && currentKey === lastBuiltKey) {
-        timerEl.textContent = formatTime(localRemaining);
+        timerEl.textContent = formatTime(getRemaining());
         var timerSection = document.getElementById('countdown-section');
         if (timerSection) {
           timerSection.style.display = (state.countdown.visible === false) ? 'none' : '';
@@ -251,7 +260,7 @@
           <img class="org-logo-hero" src="./org.png">
           <div class="hero-title"><span>STARTING SOON</span></div>
           <div class="countdown-center" id="countdown-section">
-            <div class="countdown-time" id="countdown-timer">${formatTime(localRemaining)}</div>
+            <div class="countdown-time" id="countdown-timer">${formatTime(getRemaining())}</div>
           </div>
           ${eventTitle ? `<div class="event-bar">${eventTitle}</div>` : ''}
         </div>
