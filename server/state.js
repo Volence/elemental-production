@@ -39,6 +39,7 @@ const defaultState = {
   graphicsPreset: 'default',
   swapSides: false, // swap team1/team2 positions in OBS
   flythroughsDir: '', // path to folder containing map flythrough videos
+  flythroughFallback: '',
   mapMusicDir: '', // path to folder containing map music audio files
   bgMusicDir: '', // path to folder containing royalty-free background music
   bgMusicFile: '', // selected file for "Background Music" OBS source

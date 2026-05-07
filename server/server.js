@@ -223,11 +223,16 @@ async function syncToOBS(state) {
     const flyUrl = flythroughs.getFlythroughUrl(currentMapName);
     if (flyUrl) {
       const dir = state.flythroughsDir || '';
-      // getFlythroughUrl returns URL path, extract filename and build absolute path
       const filename = decodeURIComponent(flyUrl.split('/').pop());
       const absPath = path.join(dir, filename);
       updates.push(obs.setMediaSource('Map Flythrough', absPath));
       console.log(`[OBS Sync] Flythrough → ${currentMapName} (${filename})`);
+    } else {
+      const fallback = state.flythroughFallback || path.join(__dirname, '..', 'overlays', 'ELMT_BG_1920x1080.png');
+      if (fs.existsSync(fallback)) {
+        updates.push(obs.setMediaSource('Map Flythrough', fallback, false));
+        console.log(`[OBS Sync] Flythrough fallback → ${path.basename(fallback)}`);
+      }
     }
     lastSyncedState.currentMapFlythrough = currentMapName;
   }
