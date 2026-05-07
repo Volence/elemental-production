@@ -25,6 +25,7 @@ export default function ProductionControls({ state, updateState, api }) {
   const [scenes, setScenes] = useState([]);
   const [currentScene, setCurrentScene] = useState('');
   const [expandedGroups, setExpandedGroups] = useState(['🎵 Music', '🎙️ Casters', '🔊 App Audio']);
+  const [hoveredScene, setHoveredScene] = useState(null);
   const [capturedThumbs, setCapturedThumbs] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('elemental-scene-thumbs') || '{}');
@@ -473,6 +474,13 @@ export default function ProductionControls({ state, updateState, api }) {
               'Series Winner': 'series-winner', 'Ending': 'ending',
             }[name];
             const thumbSrc = thumbFile ? `/scene-thumbs/${thumbFile}.png` : null;
+            const overlayFile = {
+              'Starting': 'starting-soon', 'Map Pick': 'map-pick', 'Map Intro': 'map-intro',
+              'Gameplay': 'gameplay-hud', 'Casters': 'casters', 'Casters Lobby': 'casters-lobby',
+              'Casters Scoreboard': 'casters-scoreboard', 'Map Score': 'casters-map-score',
+              'Between Matches': 'between-matches', 'BRB': 'brb', 'Interview': 'interview',
+              'Series Winner': 'series-winner', 'Ending': 'end-of-stream',
+            }[name];
             // Per-scene focus: [focusX, focusY, zoom]
             // focusX/focusY = 0-1, where the interesting content is in the source image
             // The image is positioned so this focal point appears at the CENTER of the thumbnail
@@ -503,12 +511,13 @@ export default function ProductionControls({ state, updateState, api }) {
                 className={`scene-preview-card ${currentScene === name ? 'active' : ''}`}
                 onClick={() => switchScene(name)}
                 onMouseEnter={() => {
-                  if (currentScene === name) {
-                    hoverTimeoutRef.current = setTimeout(() => captureCurrentScene(name), 300);
+                  if (overlayFile) {
+                    hoverTimeoutRef.current = setTimeout(() => setHoveredScene(name), 300);
                   }
                 }}
                 onMouseLeave={() => {
                   clearTimeout(hoverTimeoutRef.current);
+                  setHoveredScene(null);
                 }}
               >
                 <div style={{
@@ -516,7 +525,19 @@ export default function ProductionControls({ state, updateState, api }) {
                   borderRadius: '6px 6px 0 0', background: '#0a0f1e',
                   position: 'relative',
                 }}>
-                    {(capturedThumbs[name] || thumbSrc) ? (
+                    {hoveredScene === name && overlayFile ? (
+                      <iframe
+                        src={`/overlays/${overlayFile}.html`}
+                        style={{
+                          width: '1920px', height: '1080px',
+                          transform: 'scale(0.115)',
+                          transformOrigin: '0 0',
+                          border: 'none', pointerEvents: 'none',
+                          position: 'absolute', top: 0, left: 0,
+                        }}
+                        title={`${name} preview`}
+                      />
+                    ) : (capturedThumbs[name] || thumbSrc) ? (
                       <img
                         src={capturedThumbs[name] || thumbSrc}
                         alt={name}
