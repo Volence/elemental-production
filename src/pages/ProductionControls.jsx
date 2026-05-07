@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 // Audio mixer groups — only actual audio sources (no browser sources)
 const AUDIO_GROUPS = {
@@ -25,6 +25,8 @@ export default function ProductionControls({ state, updateState, api }) {
   const [scenes, setScenes] = useState([]);
   const [currentScene, setCurrentScene] = useState('');
   const [expandedGroups, setExpandedGroups] = useState(['🎵 Music', '🎙️ Casters', '🔊 App Audio']);
+  const [hoveredScene, setHoveredScene] = useState(null);
+  const hoverTimeoutRef = useRef(null);
   // Schedule editor
   const [scheduleTeam1, setScheduleTeam1] = useState('');
   const [scheduleTeam2, setScheduleTeam2] = useState('');
@@ -450,6 +452,13 @@ export default function ProductionControls({ state, updateState, api }) {
               'Series Winner': 'series-winner', 'Ending': 'ending',
             }[name];
             const thumbSrc = thumbFile ? `/scene-thumbs/${thumbFile}.png` : null;
+            const overlayFile = {
+              'Starting': 'starting-soon', 'Map Pick': 'map-pick', 'Map Intro': 'map-intro',
+              'Gameplay': 'gameplay-hud', 'Casters': 'casters', 'Casters Lobby': 'casters-lobby',
+              'Casters Scoreboard': 'casters-scoreboard', 'Map Score': 'casters-map-score',
+              'Between Matches': 'between-matches', 'BRB': 'brb', 'Interview': 'interview',
+              'Series Winner': 'series-winner', 'Ending': 'end-of-stream',
+            }[name];
             // Per-scene focus: [focusX, focusY, zoom]
             // focusX/focusY = 0-1, where the interesting content is in the source image
             // The image is positioned so this focal point appears at the CENTER of the thumbnail
@@ -479,36 +488,57 @@ export default function ProductionControls({ state, updateState, api }) {
                 key={name}
                 className={`scene-preview-card ${currentScene === name ? 'active' : ''}`}
                 onClick={() => switchScene(name)}
+                onMouseEnter={() => {
+                  if (overlayFile) {
+                    hoverTimeoutRef.current = setTimeout(() => setHoveredScene(name), 300);
+                  }
+                }}
+                onMouseLeave={() => {
+                  clearTimeout(hoverTimeoutRef.current);
+                  setHoveredScene(null);
+                }}
               >
                 <div style={{
                   width: '100%', aspectRatio: '16/9', overflow: 'hidden',
                   borderRadius: '6px 6px 0 0', background: '#0a0f1e',
                   position: 'relative',
                 }}>
-                  {thumbSrc ? (
-                    <img
-                      src={thumbSrc}
-                      alt={name}
-                      style={{
-                        position: 'absolute',
-                        width: `${zoom * 100}%`,
-                        height: `${zoom * 100}%`,
-                        left: `${imgLeft}%`,
-                        top: `${imgTop}%`,
-                        display: 'block',
-                        opacity: currentScene === name ? 1 : 0.65,
-                        transition: 'opacity 0.2s ease',
-                      }}
-                    />
-                  ) : (
-                    <div style={{
-                      width: '100%', height: '100%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.7rem', color: 'var(--text-muted)',
-                    }}>
-                      {name}
-                    </div>
-                  )}
+                    {hoveredScene === name && overlayFile ? (
+                      <iframe
+                        src={`http://localhost:3001/overlays/${overlayFile}.html`}
+                        style={{
+                          width: '1920px', height: '1080px',
+                          transform: 'scale(0.115)',
+                          transformOrigin: '0 0',
+                          border: 'none', pointerEvents: 'none',
+                          position: 'absolute', top: 0, left: 0,
+                        }}
+                        title={`${name} preview`}
+                      />
+                    ) : thumbSrc ? (
+                      <img
+                        src={thumbSrc}
+                        alt={name}
+                        style={{
+                          position: 'absolute',
+                          width: `${zoom * 100}%`,
+                          height: `${zoom * 100}%`,
+                          left: `${imgLeft}%`,
+                          top: `${imgTop}%`,
+                          display: 'block',
+                          opacity: currentScene === name ? 1 : 0.65,
+                          transition: 'opacity 0.2s ease',
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '100%', height: '100%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.7rem', color: 'var(--text-muted)',
+                      }}>
+                        {name}
+                      </div>
+                    )}
                 </div>
                 <div className="preview-label">{name}</div>
               </div>
