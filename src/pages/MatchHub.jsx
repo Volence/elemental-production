@@ -428,6 +428,7 @@ export default function MatchHub({ state, updateState, api }) {
               const isSelected = selectedMapIdx === i || (selectedMapIdx === -1 && (
                 m.status === 'current' || (i === state.maps.length - 1 && state.maps.every(mm => mm.status === 'completed'))
               ));
+              const isTiebreaker = state.mode !== 'scrim' && i >= state.bestOf;
               return (
                 <div key={i}
                   className={`map-slot ${m.status} ${m.winner ? `${m.winner}-win` : ''}`}
@@ -453,11 +454,18 @@ export default function MatchHub({ state, updateState, api }) {
                     outlineOffset: -2,
                     boxShadow: isSelected ? '0 0 12px rgba(34,197,94,0.3), inset 0 0 12px rgba(34,197,94,0.1)' : 'none',
                     transition: 'outline 0.2s, box-shadow 0.2s',
+                    ...(isTiebreaker ? { border: '2px dashed #b8860b' } : {}),
                   }}
                 >
                   {m.image && <img className="map-image" src={m.image} alt={m.name} />}
                   <div className="map-name">{m.name}</div>
                   <div className="map-mode">{m.mode}</div>
+                  {isTiebreaker && (
+                    <div style={{
+                      fontSize: '0.55rem', fontWeight: 700, letterSpacing: '1px',
+                      color: '#b8860b', textTransform: 'uppercase', marginTop: 2,
+                    }}>TIEBREAKER</div>
+                  )}
                   {/* Map picker indicator */}
                   {(() => {
                     const mapBans = state.perMapBans?.[i];
