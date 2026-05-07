@@ -21,6 +21,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
   const [flythroughMaps, setFlythroughMaps] = useState({});
   const [flythroughSaving, setFlythroughSaving] = useState(false);
   const [flythroughError, setFlythroughError] = useState('');
+  const [flythroughFallback, setFlythroughFallback] = useState(state.flythroughFallback || '');
   const [mapMusicDir, setMapMusicDir] = useState(state.mapMusicDir || '');
   const [mapMusicMaps, setMapMusicMaps] = useState({});
   const [mapMusicSaving, setMapMusicSaving] = useState(false);
@@ -363,6 +364,55 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             </div>
           </div>
         )}
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+            Fallback Image (shown when no map flythrough found)
+          </label>
+          <div className="input-row">
+            <input
+              type="text"
+              value={flythroughFallback}
+              onChange={e => { setFlythroughFallback(e.target.value); markDirty('flythroughs'); }}
+              placeholder="Leave empty for default org background"
+              style={{ flex: 1 }}
+            />
+            <button className="btn btn-ghost btn-sm" onClick={() => setBrowseTarget('flythroughFallback')}>
+              Browse
+            </button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={async () => {
+                await updateState({ flythroughFallback });
+                clearDirty('flythroughs');
+              }}
+            >
+              Save
+            </button>
+            {flythroughFallback && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={async () => {
+                  setFlythroughFallback('');
+                  await updateState({ flythroughFallback: '' });
+                  clearDirty('flythroughs');
+                }}
+                title="Reset to default"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+          {flythroughFallback && (
+            <div style={{ marginTop: 8 }}>
+              <img
+                src={`file://${flythroughFallback}`}
+                alt="Fallback preview"
+                style={{ maxWidth: 200, maxHeight: 112, borderRadius: 4, border: '1px solid var(--border)' }}
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Map Music */}
@@ -596,11 +646,13 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
           api={api}
           currentPath={
             browseTarget === 'flythroughs' ? flythroughDir :
+            browseTarget === 'flythroughFallback' ? (flythroughFallback || flythroughDir) :
             browseTarget === 'mapMusic' ? mapMusicDir :
             bgMusicDir
           }
           onSelect={(selectedPath) => {
             if (browseTarget === 'flythroughs') setFlythroughDir(selectedPath);
+            else if (browseTarget === 'flythroughFallback') setFlythroughFallback(selectedPath);
             else if (browseTarget === 'mapMusic') setMapMusicDir(selectedPath);
             else if (browseTarget === 'bgMusic') setBgMusicDir(selectedPath);
           }}
