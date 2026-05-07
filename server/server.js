@@ -340,6 +340,27 @@ app.get('/api/obs/status', (req, res) => {
   res.json({ connected: obs.isConnected() });
 });
 
+app.get('/api/status', async (req, res) => {
+  let faceitOk = false;
+  try {
+    const key = process.env.FACEIT_API_KEY || '';
+    if (key) {
+      const r = await fetch('https://open.faceit.com/data/v4/games?offset=0&limit=1', {
+        headers: { 'Authorization': `Bearer ${key}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      faceitOk = r.ok;
+    }
+  } catch (e) {
+    faceitOk = false;
+  }
+  res.json({
+    obs: obs.isConnected(),
+    faceit: faceitOk,
+    overlayCount: sseClients.size,
+  });
+});
+
 app.post('/api/obs/connect', async (req, res) => {
   const { host, port, password } = req.body;
   const result = await obs.connect(
