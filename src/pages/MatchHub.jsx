@@ -147,6 +147,8 @@ export default function MatchHub({ state, updateState, api }) {
     if (idx >= 0) {
       teamBans.splice(idx, 1);
     } else {
+      const otherTeam = banTeam === 'team1' ? 'team2' : 'team1';
+      if ((bans[otherTeam] || []).includes(heroKey)) return;
       teamBans.push(heroKey);
     }
     bans[banTeam] = teamBans;
