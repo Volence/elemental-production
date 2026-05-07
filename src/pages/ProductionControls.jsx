@@ -43,7 +43,7 @@ export default function ProductionControls({ state, updateState, api }) {
           });
           setCapturedThumbs(prev => ({ ...prev, [sceneName]: canvas.toDataURL('image/jpeg', 0.85) }));
         }
-      } catch (e) { /* cross-origin in dev — fall back to static */ }
+      } catch (e) { console.warn('[Preview] Capture failed:', e.message); }
     }
     setHoveredScene(null);
   }, []);
@@ -530,7 +530,7 @@ export default function ProductionControls({ state, updateState, api }) {
                     {hoveredScene === name && overlayFile ? (
                       <iframe
                         ref={iframeRef}
-                        src={`http://localhost:3001/overlays/${overlayFile}.html`}
+                        src={`/overlays/${overlayFile}.html`}
                         style={{
                           width: '1920px', height: '1080px',
                           transform: 'scale(0.115)',

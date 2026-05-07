@@ -1,9 +1,56 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import MatchHub from './pages/MatchHub'
 import ProductionControls from './pages/ProductionControls'
 import Theming from './pages/Theming'
 import Settings from './pages/Settings'
 import StatusBar from './components/StatusBar'
+
+function extractColorFromLogo(logoUrl, proxyBase) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const size = 64;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+        const data = ctx.getImageData(0, 0, size, size).data;
+        const buckets = {};
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+          if (a < 128) continue;
+          const max = Math.max(r, g, b), min = Math.min(r, g, b);
+          const l = (max + min) / 2 / 255;
+          if (l > 0.85 || l < 0.15) continue;
+          const s = max === min ? 0 : (max - min) / (1 - Math.abs(2 * l - 1)) / 255;
+          const key = `${Math.round(r / 16) * 16},${Math.round(g / 16) * 16},${Math.round(b / 16) * 16}`;
+          if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, count: 0, satScore: 0 };
+          buckets[key].r += r; buckets[key].g += g; buckets[key].b += b;
+          buckets[key].count++; buckets[key].satScore += s;
+        }
+        let best = null, bestScore = 0;
+        for (const b of Object.values(buckets)) {
+          const score = b.satScore * Math.sqrt(b.count);
+          if (score > bestScore) { bestScore = score; best = b; }
+        }
+        if (best && best.count > 0) {
+          const r = Math.round(best.r / best.count);
+          const g = Math.round(best.g / best.count);
+          const b = Math.round(best.b / best.count);
+          resolve('#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join(''));
+        } else {
+          resolve('#6b7280');
+        }
+      } catch { resolve('#6b7280'); }
+    };
+    img.onerror = () => resolve('#6b7280');
+    const needsProxy = logoUrl.startsWith('http') && !logoUrl.startsWith(proxyBase);
+    img.src = needsProxy ? `${proxyBase}/api/proxy-image?url=${encodeURIComponent(logoUrl)}` : logoUrl;
+  });
+}
 
 const API = 'http://localhost:3001';
 
@@ -91,6 +138,33 @@ export default function App() {
   useEffect(() => {
     if (state?.currentScene) setCurrentScene(state.currentScene);
   }, [state?.currentScene]);
+
+  // Auto-extract team colors from logos
+  const extractedLogosRef = useRef({});
+  useEffect(() => {
+    if (!state?.theme) return;
+    const t1Logo = state.teams?.team1?.logo;
+    const t2Logo = state.teams?.team2?.logo;
+    const doExtract = async () => {
+      const updates = {};
+      if (t1Logo && state.theme.team1ColorAuto !== false && extractedLogosRef.current.t1 !== t1Logo) {
+        extractedLogosRef.current.t1 = t1Logo;
+        const color = await extractColorFromLogo(t1Logo, API);
+        updates.theme = { ...state.theme, team1Color: color };
+        updates.teams = { ...state.teams, team1: { ...state.teams?.team1, color } };
+      }
+      if (t2Logo && state.theme.team2ColorAuto !== false && extractedLogosRef.current.t2 !== t2Logo) {
+        extractedLogosRef.current.t2 = t2Logo;
+        const color = await extractColorFromLogo(t2Logo, API);
+        updates.theme = { ...(updates.theme || state.theme), team2Color: color };
+        updates.teams = { ...(updates.teams || state.teams), team2: { ...state.teams?.team2, color } };
+      }
+      if (Object.keys(updates).length > 0) {
+        updateState(updates);
+      }
+    };
+    doExtract();
+  }, [state?.teams?.team1?.logo, state?.teams?.team2?.logo]);
 
   const switchScene = async (name) => {
     await fetch(`${API}/api/obs/scene`, {

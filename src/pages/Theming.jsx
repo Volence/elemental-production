@@ -126,7 +126,7 @@ export default function Theming({ state, updateState, api, customFonts }) {
           margin: '8px auto 0',
         }}>
           <iframe
-            src={`${api}/overlays/starting-soon.html`}
+            src="/overlays/starting-soon.html"
             style={{
               width: '1920px', height: '1080px',
               transform: 'scale(0.333)',
