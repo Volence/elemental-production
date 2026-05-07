@@ -1306,6 +1306,57 @@ app.post('/api/bg-music/assign', async (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/bg-music/playlist', async (req, res) => {
+  const { source, files, shuffle } = req.body;
+  if (!source || !files) return res.status(400).json({ error: 'source and files required' });
+  const dir = getState().bgMusicDir;
+  if (!dir) return res.status(400).json({ error: 'No music directory configured' });
+
+  if (source === 'background') {
+    setState({ bgMusicPlaylist: files, bgMusicShuffle: !!shuffle, bgMusicPlaylistIndex: 0 });
+    if (files.length > 0) {
+      const first = shuffle ? files[Math.floor(Math.random() * files.length)] : files[0];
+      setState({ bgMusicFile: first, bgMusicPlaylistIndex: files.indexOf(first) });
+      await obs.setMediaSource('Background Music', path.join(dir, first), false);
+      console.log(`[BGMusic] Playlist started: ${first} (${files.length} tracks, shuffle=${!!shuffle})`);
+    }
+  } else if (source === 'casters') {
+    setState({ castersBgMusicPlaylist: files, castersBgMusicShuffle: !!shuffle, castersBgMusicPlaylistIndex: 0 });
+    if (files.length > 0) {
+      const first = shuffle ? files[Math.floor(Math.random() * files.length)] : files[0];
+      setState({ castersBgMusicFile: first, castersBgMusicPlaylistIndex: files.indexOf(first) });
+      await obs.setMediaSource('Casters Background Music', path.join(dir, first), false);
+      console.log(`[BGMusic] Casters playlist started: ${first} (${files.length} tracks, shuffle=${!!shuffle})`);
+    }
+  } else {
+    return res.status(400).json({ error: 'source must be "background" or "casters"' });
+  }
+
+  broadcast('state', getState());
+  res.json({ success: true });
+});
+
+async function advancePlaylist(sourceName, stateKeyPrefix) {
+  const s = getState();
+  const playlist = s[`${stateKeyPrefix}Playlist`] || [];
+  if (playlist.length <= 1) return;
+  const shuffle = s[`${stateKeyPrefix}Shuffle`];
+  const currentIndex = s[`${stateKeyPrefix}PlaylistIndex`] || 0;
+  let nextIndex;
+  if (shuffle) {
+    do { nextIndex = Math.floor(Math.random() * playlist.length); } while (nextIndex === currentIndex && playlist.length > 1);
+  } else {
+    nextIndex = (currentIndex + 1) % playlist.length;
+  }
+  const nextFile = playlist[nextIndex];
+  const dir = s.bgMusicDir;
+  if (!dir || !nextFile) return;
+  setState({ [`${stateKeyPrefix}File`]: nextFile, [`${stateKeyPrefix}PlaylistIndex`]: nextIndex });
+  await obs.setMediaSource(sourceName, path.join(dir, nextFile), false);
+  broadcast('state', getState());
+  console.log(`[BGMusic] Auto-advance ${sourceName} → ${nextFile} (${nextIndex + 1}/${playlist.length})`);
+}
+
 // ============ HEROES API ============
 
 app.get('/api/heroes', async (req, res) => {
@@ -1818,15 +1869,19 @@ if (process.env.OBS_WS_HOST) {
 
     // Auto-cycle replay clips when one finishes playing
     obs.onEvent('onMediaEnd', async (data) => {
-      if (data.inputName !== 'Replay') return;
-      const state = getState();
-      const clips = state.replayClips || [];
-      if (clips.length === 0) return;
-
-      const nextIdx = ((state.replayIndex || 0) + 1) % clips.length;
-      setState({ replayIndex: nextIdx });
-      await obs.setMediaSource('Replay', clips[nextIdx], false);
-      console.log(`[Replay] Auto-cycling to clip ${nextIdx + 1}/${clips.length}`);
+      if (data.inputName === 'Replay') {
+        const state = getState();
+        const clips = state.replayClips || [];
+        if (clips.length === 0) return;
+        const nextIdx = ((state.replayIndex || 0) + 1) % clips.length;
+        setState({ replayIndex: nextIdx });
+        await obs.setMediaSource('Replay', clips[nextIdx], false);
+        console.log(`[Replay] Auto-cycling to clip ${nextIdx + 1}/${clips.length}`);
+      } else if (data.inputName === 'Background Music') {
+        advancePlaylist('Background Music', 'bgMusic');
+      } else if (data.inputName === 'Casters Background Music') {
+        advancePlaylist('Casters Background Music', 'castersBgMusic');
+      }
     });
   }).catch(() => {});
 }

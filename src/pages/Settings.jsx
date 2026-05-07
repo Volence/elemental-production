@@ -428,30 +428,66 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         )}
         {bgMusicFiles.length > 0 && (
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)', marginBottom: 4 }}>Background Music (production screens)</div>
-              <select
-                className="input"
-                style={{ width: '100%' }}
-                value={bgMusicSelected}
-                onChange={e => assignBgMusic('background', e.target.value)}
-              >
-                <option value="">— None —</option>
-                {bgMusicFiles.map(f => <option key={f} value={f}>{f.replace(/\.[^.]+$/, '')}</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)', marginBottom: 4 }}>Casters Background Music (caster screens)</div>
-              <select
-                className="input"
-                style={{ width: '100%' }}
-                value={castersBgMusicSelected}
-                onChange={e => assignBgMusic('casters', e.target.value)}
-              >
-                <option value="">— None —</option>
-                {bgMusicFiles.map(f => <option key={f} value={f}>{f.replace(/\.[^.]+$/, '')}</option>)}
-              </select>
-            </div>
+            {['background', 'casters'].map(source => {
+              const label = source === 'background' ? 'Background Music (production screens)' : 'Casters Background Music (caster screens)';
+              const currentFile = source === 'background' ? bgMusicSelected : castersBgMusicSelected;
+              const playlist = source === 'background' ? (state.bgMusicPlaylist || []) : (state.castersBgMusicPlaylist || []);
+              const shuffle = source === 'background' ? state.bgMusicShuffle : state.castersBgMusicShuffle;
+
+              return (
+                <div key={source}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
+                  <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6, padding: 4 }}>
+                    {bgMusicFiles.map(f => {
+                      const inPlaylist = playlist.includes(f);
+                      const isCurrent = f === currentFile;
+                      return (
+                        <label key={f} style={{
+                          display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', cursor: 'pointer',
+                          borderRadius: 4, fontSize: '0.8rem',
+                          background: isCurrent ? 'rgba(34,197,94,0.1)' : 'transparent',
+                        }}>
+                          <input type="checkbox" checked={inPlaylist}
+                            onChange={() => {
+                              const newList = inPlaylist ? playlist.filter(x => x !== f) : [...playlist, f];
+                              fetch(`${api}/api/bg-music/playlist`, {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ source, files: newList, shuffle }),
+                              });
+                            }} />
+                          <span style={{ flex: 1 }}>{f.replace(/\.[^.]+$/, '')}</span>
+                          {isCurrent && <span className="badge badge-success" style={{ fontSize: '0.6rem' }}>Playing</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={!!shuffle}
+                        onChange={() => {
+                          fetch(`${api}/api/bg-music/playlist`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ source, files: playlist, shuffle: !shuffle }),
+                          });
+                        }} />
+                      Shuffle
+                    </label>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {playlist.length} track{playlist.length !== 1 ? 's' : ''} selected
+                    </span>
+                    {playlist.length > 0 && (
+                      <button className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto', fontSize: '0.65rem' }}
+                        onClick={() => {
+                          fetch(`${api}/api/bg-music/playlist`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ source, files: [], shuffle: false }),
+                          });
+                        }}>Clear</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

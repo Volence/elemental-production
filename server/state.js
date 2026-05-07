@@ -43,6 +43,12 @@ const defaultState = {
   bgMusicDir: '', // path to folder containing royalty-free background music
   bgMusicFile: '', // selected file for "Background Music" OBS source
   castersBgMusicFile: '', // selected file for "Casters Background Music" OBS source
+  bgMusicPlaylist: [],
+  bgMusicShuffle: false,
+  bgMusicPlaylistIndex: 0,
+  castersBgMusicPlaylist: [],
+  castersBgMusicShuffle: false,
+  castersBgMusicPlaylistIndex: 0,
   lastReplayPath: '', // path to the last saved replay clip
   replayClips: [], // array of saved replay clip paths for current match
   replayIndex: 0, // current replay index for cycling
