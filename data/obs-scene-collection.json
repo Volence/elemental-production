@@ -2,26 +2,66 @@
   "current_scene": "Starting",
   "current_program_scene": "Starting",
   "scene_order": [
-    {"name": "Starting"},
-    {"name": "Map Pick"},
-    {"name": "Map Intro"},
-    {"name": "Casters Flythrough"},
-    {"name": "Gameplay"},
-    {"name": "Casters"},
-    {"name": "Casters Lobby"},
-    {"name": "Casters Scoreboard"},
-    {"name": "Map Score"},
-    {"name": "Between Matches"},
-    {"name": "BRB"},
-    {"name": "Interview"},
-    {"name": "Series Winner"},
-    {"name": "Ending"}
+    {
+      "name": "Starting"
+    },
+    {
+      "name": "Map Pick"
+    },
+    {
+      "name": "Map Intro"
+    },
+    {
+      "name": "Casters Flythrough"
+    },
+    {
+      "name": "Gameplay"
+    },
+    {
+      "name": "Casters"
+    },
+    {
+      "name": "Casters Lobby"
+    },
+    {
+      "name": "Casters Scoreboard"
+    },
+    {
+      "name": "Map Score"
+    },
+    {
+      "name": "Between Matches"
+    },
+    {
+      "name": "BRB"
+    },
+    {
+      "name": "Interview"
+    },
+    {
+      "name": "Series Winner"
+    },
+    {
+      "name": "Ending"
+    }
   ],
   "name": "Elemental Production",
   "groups": [],
   "quick_transitions": [
-    {"name": "Cut", "duration": 300, "hotkeys": [], "id": 1, "fade_to_black": false},
-    {"name": "Fade", "duration": 300, "hotkeys": [], "id": 2, "fade_to_black": false}
+    {
+      "name": "Cut",
+      "duration": 300,
+      "hotkeys": [],
+      "id": 1,
+      "fade_to_black": false
+    },
+    {
+      "name": "Fade",
+      "duration": 300,
+      "hotkeys": [],
+      "id": 2,
+      "fade_to_black": false
+    }
   ],
   "transitions": [],
   "saved_projectors": [],
@@ -33,8 +73,14 @@
   "scaling_level": 0,
   "scaling_off_x": 0,
   "scaling_off_y": 0,
-  "virtual-camera": {"type2": 0, "internal-type": 0},
-  "modules": {"scripts-tool": [], "output": {}},
+  "virtual-camera": {
+    "type2": 0,
+    "internal-type": 0
+  },
+  "modules": {
+    "scripts-tool": [],
+    "output": {}
+  },
   "version": 2,
   "sources": [
     {
@@ -45,10 +91,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/starting-soon.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -58,10 +113,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/map-pick.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -71,10 +135,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/map-intro.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -84,10 +157,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/casters-flythrough-hud.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -97,10 +179,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/gameplay-hud.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -110,10 +201,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/casters.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -123,10 +223,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/casters-lobby.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -136,10 +245,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/casters-scoreboard.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -149,10 +267,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/casters-map-score.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -162,10 +289,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/between-matches.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -175,10 +311,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/brb.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -188,10 +333,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/interview.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -201,10 +355,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/series-winner.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -214,10 +377,19 @@
       "id": "browser_source",
       "settings": {
         "url": "http://localhost:3001/overlays/end-of-stream.html",
-        "width": 1920, "height": 1080, "css": "", "reroute_audio": false
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -225,9 +397,19 @@
       "uuid": "b0000002-0001-4000-8000-000000000001",
       "versioned_id": "ffmpeg_source",
       "id": "ffmpeg_source",
-      "settings": {"local_file": "", "looping": true, "restart_on_activate": false},
-      "mixers": 255, "sync": 0, "flags": 0, "volume": 0.25,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "settings": {
+        "local_file": "",
+        "looping": true,
+        "restart_on_activate": false
+      },
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 0.25,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -235,9 +417,19 @@
       "uuid": "b0000002-0002-4000-8000-000000000002",
       "versioned_id": "ffmpeg_source",
       "id": "ffmpeg_source",
-      "settings": {"local_file": "", "looping": true, "restart_on_activate": false},
-      "mixers": 255, "sync": 0, "flags": 0, "volume": 0.1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "settings": {
+        "local_file": "",
+        "looping": true,
+        "restart_on_activate": false
+      },
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 0.1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -245,9 +437,20 @@
       "uuid": "b0000002-0003-4000-8000-000000000003",
       "versioned_id": "ffmpeg_source",
       "id": "ffmpeg_source",
-      "settings": {"local_file": "", "looping": true, "restart_on_activate": false},
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0, "muted": true,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "settings": {
+        "local_file": "",
+        "looping": true,
+        "restart_on_activate": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": true,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -255,9 +458,19 @@
       "uuid": "b0000002-0004-4000-8000-000000000004",
       "versioned_id": "ffmpeg_source",
       "id": "ffmpeg_source",
-      "settings": {"local_file": "", "looping": true, "restart_on_activate": false},
-      "mixers": 255, "sync": 0, "flags": 0, "volume": 0.5,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "settings": {
+        "local_file": "",
+        "looping": true,
+        "restart_on_activate": false
+      },
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 0.5,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -265,9 +478,21 @@
       "uuid": "b0000002-0005-4000-8000-000000000005",
       "versioned_id": "ffmpeg_source",
       "id": "ffmpeg_source",
-      "settings": {"local_file": "", "looping": false, "restart_on_activate": true, "close_when_inactive": false},
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0, "muted": true,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "settings": {
+        "local_file": "",
+        "looping": false,
+        "restart_on_activate": true,
+        "close_when_inactive": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": true,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -275,9 +500,20 @@
       "uuid": "c0000003-0001-4000-8000-000000000001",
       "versioned_id": "browser_source",
       "id": "browser_source",
-      "settings": {"url": "", "width": 1920, "height": 1080, "css": ""},
-      "mixers": 255, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 2, "private_settings": {}
+      "settings": {
+        "url": "",
+        "width": 1920,
+        "height": 1080,
+        "css": ""
+      },
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 2,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -285,9 +521,20 @@
       "uuid": "c0000003-0002-4000-8000-000000000002",
       "versioned_id": "browser_source",
       "id": "browser_source",
-      "settings": {"url": "", "width": 1920, "height": 1080, "css": ""},
-      "mixers": 255, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 2, "private_settings": {}
+      "settings": {
+        "url": "",
+        "width": 1920,
+        "height": 1080,
+        "css": ""
+      },
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 2,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -295,9 +542,20 @@
       "uuid": "c0000003-0003-4000-8000-000000000003",
       "versioned_id": "browser_source",
       "id": "browser_source",
-      "settings": {"url": "", "width": 1920, "height": 1080, "css": ""},
-      "mixers": 255, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 2, "private_settings": {}
+      "settings": {
+        "url": "",
+        "width": 1920,
+        "height": 1080,
+        "css": ""
+      },
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 2,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -306,8 +564,15 @@
       "versioned_id": "pipewire-screen-capture-source",
       "id": "pipewire-screen-capture-source",
       "settings": {},
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1.0, "muted": true,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": true,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -316,8 +581,14 @@
       "versioned_id": "pipewire_audio_application_capture",
       "id": "pipewire_audio_application_capture",
       "settings": {},
-      "mixers": 255, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -326,10 +597,15 @@
       "versioned_id": "pipewire_audio_application_capture",
       "id": "pipewire_audio_application_capture",
       "settings": {},
-      "mixers": 255, "sync": 0, "flags": 0, "volume": 1.0,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 255,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
-
     {
       "prev_ver": 29,
       "name": "Starting",
@@ -341,26 +617,75 @@
           {
             "name": "Starting Soon BS",
             "source_uuid": "a0000001-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Background Music",
             "source_uuid": "b0000002-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 2
+        "custom_size": false,
+        "id_counter": 2
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -373,44 +698,135 @@
           {
             "name": "Map Pick BS",
             "source_uuid": "a0000001-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Background Music",
             "source_uuid": "b0000002-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 4
+        "custom_size": false,
+        "id_counter": 4
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -423,53 +839,165 @@
           {
             "name": "Map Flythrough",
             "source_uuid": "b0000002-0003-4000-8000-000000000003",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Map Intro BS",
             "source_uuid": "a0000001-0003-4000-8000-000000000003",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Map Music",
             "source_uuid": "b0000002-0004-4000-8000-000000000004",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 5, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 5,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 5
+        "custom_size": false,
+        "id_counter": 5
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -482,53 +1010,165 @@
           {
             "name": "Map Flythrough",
             "source_uuid": "b0000002-0003-4000-8000-000000000003",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Flythrough Hud",
             "source_uuid": "a0000001-0004-4000-8000-000000000004",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Map Music",
             "source_uuid": "b0000002-0004-4000-8000-000000000004",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 5, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 5,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 5
+        "custom_size": false,
+        "id_counter": 5
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -541,62 +1181,195 @@
           {
             "name": "Overwatch",
             "source_uuid": "d0000004-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Gameplay HUD",
             "source_uuid": "a0000001-0005-4000-8000-000000000005",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Overwatch Audio Only",
             "source_uuid": "d0000004-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Discord Audio",
             "source_uuid": "d0000004-0003-4000-8000-000000000003",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 5, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 5,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 6, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 6,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 6
+        "custom_size": false,
+        "id_counter": 6
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -609,44 +1382,135 @@
           {
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters BS",
             "source_uuid": "a0000001-0006-4000-8000-000000000006",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Background Music",
             "source_uuid": "b0000002-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 4
+        "custom_size": false,
+        "id_counter": 4
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -659,44 +1523,135 @@
           {
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Lobby BS",
             "source_uuid": "a0000001-0007-4000-8000-000000000007",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Background Music",
             "source_uuid": "b0000002-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 4
+        "custom_size": false,
+        "id_counter": 4
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -709,44 +1664,135 @@
           {
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Scoreboard BS",
             "source_uuid": "a0000001-0008-4000-8000-000000000008",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Background Music",
             "source_uuid": "b0000002-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 4
+        "custom_size": false,
+        "id_counter": 4
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -759,44 +1805,135 @@
           {
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Map Score BS",
             "source_uuid": "a0000001-0009-4000-8000-000000000009",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Background Music",
             "source_uuid": "b0000002-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 4
+        "custom_size": false,
+        "id_counter": 4
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -809,35 +1946,105 @@
           {
             "name": "Between Matches BS",
             "source_uuid": "a0000001-000a-4000-8000-00000000000a",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Replay",
             "source_uuid": "b0000002-0005-4000-8000-000000000005",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Background Music",
             "source_uuid": "b0000002-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 3
+        "custom_size": false,
+        "id_counter": 3
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -850,26 +2057,75 @@
           {
             "name": "BRB BS",
             "source_uuid": "a0000001-000b-4000-8000-00000000000b",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Background Music",
             "source_uuid": "b0000002-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 2
+        "custom_size": false,
+        "id_counter": 2
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -882,44 +2138,135 @@
           {
             "name": "Interviewee",
             "source_uuid": "c0000003-0003-4000-8000-000000000003",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Interview BS",
             "source_uuid": "a0000001-000c-4000-8000-00000000000c",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Discord Audio",
             "source_uuid": "d0000004-0003-4000-8000-000000000003",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Background Music",
             "source_uuid": "b0000002-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 4
+        "custom_size": false,
+        "id_counter": 4
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -932,44 +2279,135 @@
           {
             "name": "Series Winner BS",
             "source_uuid": "a0000001-000d-4000-8000-00000000000d",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Casters Background Music",
             "source_uuid": "b0000002-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 3, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 3,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 4, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 4,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 4
+        "custom_size": false,
+        "id_counter": 4
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     },
     {
       "prev_ver": 29,
@@ -982,26 +2420,75 @@
           {
             "name": "End Stream BS",
             "source_uuid": "a0000001-000e-4000-8000-00000000000e",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 2, "bounds_alignment": 0, "bounds": {"x": 1920, "y": 1080},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 1, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           },
           {
             "name": "Background Music",
             "source_uuid": "b0000002-0001-4000-8000-000000000001",
-            "pos": {"x": 0, "y": 0}, "scale": {"x": 1, "y": 1}, "rot": 0,
-            "alignment": 5, "bounds_type": 0, "bounds_alignment": 0, "bounds": {"x": 0, "y": 0},
-            "crop_left": 0, "crop_top": 0, "crop_right": 0, "crop_bottom": 0,
-            "id": 2, "group_item_backup": false, "scale_filter": "disable", "blend_type": "normal",
-            "visible": true, "locked": false
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 0,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 0,
+              "y": 0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 2,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
           }
         ],
-        "custom_size": false, "id_counter": 2
+        "custom_size": false,
+        "id_counter": 2
       },
-      "mixers": 0, "sync": 0, "flags": 0, "volume": 1,
-      "deinterlace_mode": 0, "deinterlace_field_order": 0, "monitoring_type": 0, "private_settings": {}
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
     }
   ]
 }
