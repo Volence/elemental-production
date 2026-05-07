@@ -32,17 +32,26 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
   const [bgMusicSaving, setBgMusicSaving] = useState(false);
   const [bgMusicError, setBgMusicError] = useState('');
   const [browseTarget, setBrowseTarget] = useState(null); // 'flythroughs' | 'mapMusic' | 'bgMusic' | null
-  const [dirty, setDirty] = useState(false);
-  const markDirty = () => {
-    if (!dirty) {
-      setDirty(true);
-      onDirtyChange?.(true);
-    }
+  const [dirtyFields, setDirtyFields] = useState(new Set());
+  const markDirty = (field) => {
+    setDirtyFields(prev => {
+      const next = new Set(prev);
+      next.add(field);
+      onDirtyChange?.(next.size > 0);
+      return next;
+    });
   };
-  const clearDirty = () => {
-    setDirty(false);
-    onDirtyChange?.(false);
+  const clearDirty = (field) => {
+    setDirtyFields(prev => {
+      const next = new Set(prev);
+      if (field) next.delete(field); else next.clear();
+      onDirtyChange?.(next.size > 0);
+      return next;
+    });
   };
+  const unsavedBadge = (field) => dirtyFields.has(field) ? (
+    <span style={{ fontSize: '0.6rem', color: '#f59e0b', fontWeight: 700, marginLeft: 6 }}>UNSAVED</span>
+  ) : null;
 
   // Load initial flythroughs state
   useState(() => {
@@ -76,7 +85,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         setFlythroughError(data.error);
       } else {
         setFlythroughMaps(data.maps || {});
-        clearDirty();
+        clearDirty('flythroughs');
       }
     } catch (e) {
       setFlythroughError(e.message);
@@ -98,7 +107,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         setMapMusicError(data.error);
       } else {
         setMapMusicMaps(data.maps || {});
-        clearDirty();
+        clearDirty('mapMusic');
       }
     } catch (e) {
       setMapMusicError(e.message);
@@ -120,7 +129,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         setBgMusicError(data.error);
       } else {
         setBgMusicFiles(data.files || []);
-        clearDirty();
+        clearDirty('bgMusic');
       }
     } catch (e) {
       setBgMusicError(e.message);
@@ -317,7 +326,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
       {/* Map Flythroughs */}
       <div className="card">
         <div className="card-header">
-          <span className="card-title">🎥 Map Flythroughs</span>
+          <span className="card-title">🎥 Map Flythroughs{unsavedBadge('flythroughs')}</span>
           {Object.keys(flythroughMaps).length > 0 && (
             <span className="badge badge-success">{Object.keys(flythroughMaps).length} maps</span>
           )}
@@ -330,7 +339,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             className="input"
             style={{ flex: 1 }}
             value={flythroughDir}
-            onChange={e => { setFlythroughDir(e.target.value); markDirty(); }}
+            onChange={e => { setFlythroughDir(e.target.value); markDirty('flythroughs'); }}
             placeholder="/home/volence/Videos/OW Flythroughs"
           />
           <button className="btn btn-ghost btn-sm" onClick={() => setBrowseTarget('flythroughs')}
@@ -359,7 +368,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
       {/* Map Music */}
       <div className="card">
         <div className="card-header">
-          <span className="card-title">🎵 Map Music</span>
+          <span className="card-title">🎵 Map Music{unsavedBadge('mapMusic')}</span>
           {Object.keys(mapMusicMaps).length > 0 && (
             <span className="badge badge-success">{Object.keys(mapMusicMaps).length} maps</span>
           )}
@@ -372,7 +381,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             className="input"
             style={{ flex: 1 }}
             value={mapMusicDir}
-            onChange={e => { setMapMusicDir(e.target.value); markDirty(); }}
+            onChange={e => { setMapMusicDir(e.target.value); markDirty('mapMusic'); }}
             placeholder="/home/volence/Music/OW Map Music"
           />
           <button className="btn btn-ghost btn-sm" onClick={() => setBrowseTarget('mapMusic')}
@@ -401,7 +410,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
       {/* Background Music */}
       <div className="card">
         <div className="card-header">
-          <span className="card-title">🎧 Background Music</span>
+          <span className="card-title">🎧 Background Music{unsavedBadge('bgMusic')}</span>
           {bgMusicFiles.length > 0 && (
             <span className="badge badge-success">{bgMusicFiles.length} files</span>
           )}
@@ -414,7 +423,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             className="input"
             style={{ flex: 1 }}
             value={bgMusicDir}
-            onChange={e => { setBgMusicDir(e.target.value); markDirty(); }}
+            onChange={e => { setBgMusicDir(e.target.value); markDirty('bgMusic'); }}
             placeholder="/home/volence/Music/Royalty Free"
           />
           <button className="btn btn-ghost btn-sm" onClick={() => setBrowseTarget('bgMusic')}
@@ -447,7 +456,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
                           borderRadius: 4, fontSize: '0.8rem',
                           background: isCurrent ? 'rgba(34,197,94,0.1)' : 'transparent',
                         }}>
-                          <input type="checkbox" checked={inPlaylist}
+                          <input type="checkbox" checked={inPlaylist} style={{ accentColor: '#22c55e' }}
                             onChange={() => {
                               const newList = inPlaylist ? playlist.filter(x => x !== f) : [...playlist, f];
                               fetch(`${api}/api/bg-music/playlist`, {
@@ -463,7 +472,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
                   </div>
                   <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={!!shuffle}
+                      <input type="checkbox" checked={!!shuffle} style={{ accentColor: '#22c55e' }}
                         onChange={() => {
                           fetch(`${api}/api/bg-music/playlist`, {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },

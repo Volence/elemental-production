@@ -74,8 +74,17 @@
 
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
+    let countdownDuration = 0;
+    let countdownStartedAt = null;
+    let countdownRunning = false;
+
+    function getRemaining() {
+      if (!countdownRunning || !countdownStartedAt) return countdownDuration;
+      var elapsed = (Date.now() - countdownStartedAt) / 1000;
+      return Math.max(0, Math.ceil(countdownDuration - elapsed));
+    }
+
     function formatTime(sec) {
       if (!sec || sec <= 0) return '';
       const m = Math.floor(sec / 60);
@@ -85,7 +94,17 @@
 
     function update(state) {
       const el = document.getElementById('root');
-      const timer = formatTime(state.countdown?.remaining);
+
+      countdownDuration = state.countdown?.duration || 0;
+      countdownStartedAt = state.countdown?.startedAt || null;
+      countdownRunning = !!(state.countdown?.running);
+      if (!countdownRunning) {
+        countdownDuration = state.countdown?.remaining || 0;
+        countdownStartedAt = null;
+      }
+
+      const timerVisible = state.countdown?.visible !== false;
+      const timer = timerVisible ? formatTime(getRemaining()) : '';
 
       el.innerHTML = `
         <div class="rainbow-bar"></div>

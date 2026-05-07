@@ -159,7 +159,7 @@
     function getRemaining() {
       if (!countdownRunning || !countdownStartedAt) return countdownDuration;
       var elapsed = (Date.now() - countdownStartedAt) / 1000;
-      return Math.max(0, Math.round(countdownDuration - elapsed));
+      return Math.max(0, Math.ceil(countdownDuration - elapsed));
     }
 
     function startLocalTick() {

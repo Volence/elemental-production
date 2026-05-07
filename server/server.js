@@ -291,7 +291,7 @@ function startCountdown() {
     const cur = getState();
     if (!cur.countdown.running || !cur.countdown.startedAt) return;
     const elapsed = (Date.now() - cur.countdown.startedAt) / 1000;
-    const newRemaining = Math.max(0, Math.round(cur.countdown.duration - elapsed));
+    const newRemaining = Math.max(0, Math.ceil(cur.countdown.duration - elapsed));
     setState({ countdown: { ...cur.countdown, remaining: newRemaining } });
     const updated = getState();
     broadcast('state', updated);
@@ -1403,7 +1403,7 @@ app.post('/api/timer/pause', (req, res) => {
   stopCountdownInterval();
   const s = getState();
   const elapsed = s.countdown.startedAt ? (Date.now() - s.countdown.startedAt) / 1000 : 0;
-  const remaining = Math.max(0, Math.round(s.countdown.duration - elapsed));
+  const remaining = Math.max(0, Math.ceil(s.countdown.duration - elapsed));
   setState({
     countdown: { ...s.countdown, remaining, running: false, startedAt: null },
   });

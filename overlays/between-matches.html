@@ -111,8 +111,17 @@
 
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
+    let countdownDuration = 0;
+    let countdownStartedAt = null;
+    let countdownRunning = false;
+
+    function getRemaining() {
+      if (!countdownRunning || !countdownStartedAt) return countdownDuration;
+      var elapsed = (Date.now() - countdownStartedAt) / 1000;
+      return Math.max(0, Math.ceil(countdownDuration - elapsed));
+    }
+
     function formatTime(sec) {
       const m = Math.floor(sec / 60);
       const s = sec % 60;
@@ -121,6 +130,15 @@
 
     function update(state) {
       const el = document.getElementById('root');
+
+      countdownDuration = state.countdown?.duration || 0;
+      countdownStartedAt = state.countdown?.startedAt || null;
+      countdownRunning = !!(state.countdown?.running);
+      if (!countdownRunning) {
+        countdownDuration = state.countdown?.remaining || 0;
+        countdownStartedAt = null;
+      }
+
       const schedule = state.schedule || [];
 
       // Build schedule items
@@ -157,9 +175,9 @@
           <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
         </div>
         <div class="cam-area"></div>
-        <div class="countdown-box">
-          <div class="countdown-time">${formatTime(state.countdown?.remaining || 0)}</div>
-        </div>
+        ${state.countdown?.visible !== false ? `<div class="countdown-box">
+          <div class="countdown-time">${formatTime(getRemaining())}</div>
+        </div>` : ''}
         <div class="schedule-bar">
           ${schedHtml || fallbackSched}
         </div>
