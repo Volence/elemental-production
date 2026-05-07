@@ -41,8 +41,8 @@
       border-radius: 4px;
     }
 
-    .team1-label { color: #3b82f6; background: rgba(59, 130, 246, 0.15); }
-    .team2-label { color: #ef4444; background: rgba(239, 68, 68, 0.15); }
+    .team1-label { color: var(--team1-color, #3b82f6); background: var(--ban-team1-bg, rgba(59, 130, 246, 0.15)); }
+    .team2-label { color: var(--team2-color, #ef4444); background: var(--ban-team2-bg, rgba(239, 68, 68, 0.15)); }
 
     .ban-icons {
       display: flex;
@@ -86,6 +86,7 @@
 <body>
   <div id="bans" class="bans-container hidden"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     // Loaded via state-sync.js for SSE + polling fallback
@@ -102,6 +103,7 @@
     }
 
     function update(state) {
+      applyTheme(state);
       const container = document.getElementById('bans');
       const t1bans = state.heroBans?.team1 || [];
       const t2bans = state.heroBans?.team2 || [];

@@ -95,7 +95,7 @@
       position: absolute;
       bottom: 0; left: 0; right: 0;
       height: 2px;
-      background: linear-gradient(90deg, #f97316, #ef4444);
+      background: var(--accent-gradient, linear-gradient(90deg, #f97316, #ef4444));
     }
 
     /* Won maps */
@@ -104,18 +104,18 @@
       position: absolute;
       bottom: 0; left: 0; right: 0;
       height: 2px;
-      background: #3b82f6;
+      background: var(--team1-color, #3b82f6);
     }
-    .strip-map.won-t1 .sm-score { color: #3b82f6; }
+    .strip-map.won-t1 .sm-score { color: var(--team1-color, #3b82f6); }
 
     .strip-map.won-t2::after {
       content: '';
       position: absolute;
       bottom: 0; left: 0; right: 0;
       height: 2px;
-      background: #ef4444;
+      background: var(--team2-color, #ef4444);
     }
-    .strip-map.won-t2 .sm-score { color: #ef4444; }
+    .strip-map.won-t2 .sm-score { color: var(--team2-color, #ef4444); }
 
     /* Best-of section */
     .strip-bo {
@@ -150,7 +150,7 @@
       display: flex;
       align-items: center;
       overflow: hidden;
-      background-color: rgba(12,15,18,0.92);
+      background-color: var(--score-bg, rgba(12,15,18,0.92));
       border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 2px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
     }
@@ -261,7 +261,7 @@
       right: -1px;
       width: 8px;
       height: 8px;
-      background: #ef4444;
+      background: var(--accent, #ef4444);
       clip-path: polygon(100% 0, 0 0, 100% 100%);
     }
 
@@ -278,6 +278,7 @@
 <body>
   <div class="hud" id="root" style="animation: fadeIn 0.4s ease-out both;"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     // Loaded via state-sync.js for SSE + polling fallback
@@ -296,6 +297,7 @@
     }
 
     function update(state) {
+      applyTheme(state);
       const el = document.getElementById('root');
       const swap = !!state.swapSides;
       const left = swap ? (state.teams?.team2 || {}) : (state.teams?.team1 || {});
