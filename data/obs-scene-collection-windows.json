@@ -728,8 +728,8 @@
             "locked": true
           },
           {
-            "name": "Casters Background Music",
-            "source_uuid": "b0000002-0002-4000-8000-000000000002",
+            "name": "Caster 1",
+            "source_uuid": "c0000003-0001-4000-8000-000000000001",
             "pos": {
               "x": 0,
               "y": 0
@@ -758,8 +758,8 @@
             "locked": true
           },
           {
-            "name": "Caster 1",
-            "source_uuid": "c0000003-0001-4000-8000-000000000001",
+            "name": "Caster 2",
+            "source_uuid": "c0000003-0002-4000-8000-000000000002",
             "pos": {
               "x": 0,
               "y": 0
@@ -788,8 +788,8 @@
             "locked": true
           },
           {
-            "name": "Caster 2",
-            "source_uuid": "c0000003-0002-4000-8000-000000000002",
+            "name": "Casters Background Music",
+            "source_uuid": "b0000002-0002-4000-8000-000000000002",
             "pos": {
               "x": 0,
               "y": 0
@@ -899,8 +899,8 @@
             "locked": true
           },
           {
-            "name": "Map Music",
-            "source_uuid": "b0000002-0004-4000-8000-000000000004",
+            "name": "Caster 1",
+            "source_uuid": "c0000003-0001-4000-8000-000000000001",
             "pos": {
               "x": 0,
               "y": 0
@@ -929,8 +929,8 @@
             "locked": true
           },
           {
-            "name": "Caster 1",
-            "source_uuid": "c0000003-0001-4000-8000-000000000001",
+            "name": "Caster 2",
+            "source_uuid": "c0000003-0002-4000-8000-000000000002",
             "pos": {
               "x": 0,
               "y": 0
@@ -959,8 +959,8 @@
             "locked": true
           },
           {
-            "name": "Caster 2",
-            "source_uuid": "c0000003-0002-4000-8000-000000000002",
+            "name": "Map Music",
+            "source_uuid": "b0000002-0004-4000-8000-000000000004",
             "pos": {
               "x": 0,
               "y": 0
@@ -2309,8 +2309,8 @@
             "locked": true
           },
           {
-            "name": "Casters Background Music",
-            "source_uuid": "b0000002-0002-4000-8000-000000000002",
+            "name": "Caster 1",
+            "source_uuid": "c0000003-0001-4000-8000-000000000001",
             "pos": {
               "x": 0,
               "y": 0
@@ -2339,8 +2339,8 @@
             "locked": true
           },
           {
-            "name": "Caster 1",
-            "source_uuid": "c0000003-0001-4000-8000-000000000001",
+            "name": "Caster 2",
+            "source_uuid": "c0000003-0002-4000-8000-000000000002",
             "pos": {
               "x": 0,
               "y": 0
@@ -2369,8 +2369,8 @@
             "locked": true
           },
           {
-            "name": "Caster 2",
-            "source_uuid": "c0000003-0002-4000-8000-000000000002",
+            "name": "Casters Background Music",
+            "source_uuid": "b0000002-0002-4000-8000-000000000002",
             "pos": {
               "x": 0,
               "y": 0
