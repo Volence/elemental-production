@@ -12,7 +12,7 @@
     body {
       background: transparent; overflow: hidden;
       width: 1920px; height: 1080px;
-      font-family: 'Inter', sans-serif; color: white;
+      font-family: var(--font-body, 'Inter', sans-serif); color: white;
     }
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -50,7 +50,7 @@
     .caster-name {
       text-align: center;
       margin-top: 8px;
-      font-family: 'Bebas Neue', sans-serif;
+      font-family: var(--font-title, 'Bebas Neue', sans-serif);
       font-size: 32px;
       letter-spacing: 4px;
       color: white;
@@ -76,7 +76,7 @@
     .branding .org-logo { width: 56px; height: 56px; object-fit: contain; }
     .branding .divider { width: 3px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 2px; }
     .branding .event-name {
-      font-family: 'Bebas Neue', sans-serif;
+      font-family: var(--font-title, 'Bebas Neue', sans-serif);
       font-size: 32px; letter-spacing: 3px; line-height: 1.1;
       text-shadow: 0 1px 4px rgba(0,0,0,0.9);
     }
@@ -86,11 +86,13 @@
 <body>
   <div id="root"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     const API = 'http://localhost:3001';
 
     function update(state) {
+      applyTheme(state);
       const el = document.getElementById('root');
       const layout = state.casterLayout ?? 2;
       const c1Name = state.casters?.[0]?.name || 'Caster 1';

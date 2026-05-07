@@ -10,7 +10,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: transparent; overflow: hidden; width: 1920px; height: 1080px;
-      font-family: 'Oswald', 'Bebas Neue', sans-serif; color: white;
+      font-family: var(--font-body, 'Oswald', sans-serif); color: white;
     }
 
     .overlay {
@@ -67,7 +67,7 @@
     /* Center score block */
     .score-block {
       width: 260px; height: 300px;
-      background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+      background: var(--accent-gradient, linear-gradient(135deg, #f97316, #ef4444));
       display: flex; flex-direction: column; align-items: center;
       justify-content: center; position: relative; z-index: 2;
     }
@@ -115,6 +115,7 @@
   <!-- Overlay content -->
   <div class="overlay" id="root" style="z-index:2; animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     // Loaded via state-sync.js for SSE + polling fallback
@@ -131,6 +132,7 @@
     }
 
     function update(state) {
+      applyTheme(state);
       const el = document.getElementById('root');
       const t1 = state.teams?.team1 || {};
       const t2 = state.teams?.team2 || {};

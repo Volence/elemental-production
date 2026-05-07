@@ -168,10 +168,12 @@
 <body>
   <div class="container" id="root"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     const API = 'http://localhost:3001';
     function update(state) {
+      applyTheme(state);
       const el = document.getElementById('root');
       const t1 = state.teams?.team1;
       const t2 = state.teams?.team2;

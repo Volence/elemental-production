@@ -12,7 +12,7 @@
     body {
       background: transparent; overflow: hidden;
       width: 1920px; height: 1080px;
-      font-family: 'Inter', sans-serif; color: white;
+      font-family: var(--font-body, 'Inter', sans-serif); color: white;
     }
 
     .container {
@@ -26,7 +26,7 @@
     /* Rainbow bar top */
     .rainbow-bar {
       position: absolute; top: 0; left: 0; right: 0; height: 4px;
-      background: linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316);
+      background: var(--rainbow-gradient, linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316));
     }
 
     .org-logo {
@@ -36,7 +36,7 @@
 
     /* Main text */
     .end-text {
-      font-family: 'Bebas Neue', sans-serif;
+      font-family: var(--font-title, 'Bebas Neue', sans-serif);
       font-size: 140px; line-height: 1; letter-spacing: 6px;
       text-align: center;
       text-shadow: 0 6px 40px rgba(0,0,0,0.5);
@@ -45,8 +45,8 @@
     .event-badge {
       margin-top: 24px;
       padding: 10px 40px; border-radius: 4px;
-      background: linear-gradient(135deg, #f97316, #ef4444);
-      font-family: 'Bebas Neue', sans-serif;
+      background: var(--accent-gradient, linear-gradient(135deg, #f97316, #ef4444));
+      font-family: var(--font-title, 'Bebas Neue', sans-serif);
       font-size: 24px; letter-spacing: 4px;
     }
 
@@ -71,11 +71,13 @@
 <body>
   <div class="container" id="root" style="animation: fadeIn 0.8s ease-out both;"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
     function update(state) {
+      applyTheme(state);
       const el = document.getElementById('root');
 
       el.innerHTML = `

@@ -10,7 +10,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: transparent; overflow: hidden; width: 1920px; height: 1080px;
-      font-family: 'Oswald', 'Bebas Neue', sans-serif; color: white;
+      font-family: var(--font-body, 'Oswald', sans-serif); color: white;
     }
 
     .container { position: relative; width: 1920px; height: 1080px; }
@@ -72,7 +72,7 @@
     .map-header .picker-label { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.4); letter-spacing: 1px; }
     .map-header .round-score {
       font-size: 18px; font-weight: 700; color: rgba(255,255,255,0.6);
-      font-family: 'Oswald', sans-serif;
+      font-family: var(--font-body, 'Oswald', sans-serif);
     }
 
     /* Map image fills available space */
@@ -155,6 +155,7 @@
 <body>
   <div class="container" id="root" style="animation: scaleIn 0.6s ease-out both;"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     // Loaded via state-sync.js for SSE + polling fallback
@@ -193,6 +194,7 @@
     }
 
     function update(state) {
+      applyTheme(state);
       const el = document.getElementById('root');
       const t1 = state.teams?.team1 || {};
       const t2 = state.teams?.team2 || {};
