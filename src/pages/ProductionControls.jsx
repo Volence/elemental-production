@@ -478,6 +478,7 @@ export default function ProductionControls({ state, updateState, api }) {
               'Starting': 'starting-soon', 'Map Pick': 'map-pick', 'Map Intro': 'map-intro',
               'Gameplay': 'gameplay-hud', 'Casters': 'casters', 'Casters Lobby': 'casters-lobby',
               'Casters Scoreboard': 'casters-scoreboard', 'Map Score': 'casters-map-score',
+              'Casters Flythrough': 'casters-flythrough-hud',
               'Between Matches': 'between-matches', 'BRB': 'brb', 'Interview': 'interview',
               'Series Winner': 'series-winner', 'Ending': 'end-of-stream',
             }[name];
