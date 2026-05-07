@@ -115,6 +115,9 @@
     let countdownDuration = 0;
     let countdownStartedAt = null;
     let countdownRunning = false;
+    let countdownVisible = true;
+    let tickInterval = null;
+    let lastBuiltKey = '';
 
     function getRemaining() {
       if (!countdownRunning || !countdownStartedAt) return countdownDuration;
@@ -128,6 +131,23 @@
       return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
     }
 
+    function startLocalTick() {
+      if (tickInterval) return;
+      tickInterval = setInterval(function() {
+        if (!countdownRunning || !countdownVisible) return;
+        var t = document.getElementById('bm-timer-text');
+        if (t) t.textContent = formatTime(getRemaining());
+      }, 200);
+    }
+
+    function buildKey(state) {
+      var schedule = state.schedule || [];
+      var vis = state.countdown?.visible !== false ? '1' : '0';
+      return schedule.map(function(m) { return (m.team1||'') + (m.team2||'') + (m.completed||'') + (m.score1||'') + (m.score2||''); }).join(',')
+        + '|' + (state.teams?.team1?.name||'') + '|' + (state.teams?.team2?.name||'')
+        + '|' + (state.eventName||'') + '|' + vis;
+    }
+
     function update(state) {
       const el = document.getElementById('root');
 
@@ -138,10 +158,19 @@
         countdownDuration = state.countdown?.remaining || 0;
         countdownStartedAt = null;
       }
+      countdownVisible = state.countdown?.visible !== false;
+      startLocalTick();
+
+      var currentKey = buildKey(state);
+      if (currentKey === lastBuiltKey) {
+        var timerEl = document.getElementById('bm-timer-text');
+        if (timerEl) timerEl.textContent = formatTime(getRemaining());
+        return;
+      }
+      lastBuiltKey = currentKey;
 
       const schedule = state.schedule || [];
 
-      // Build schedule items
       const schedHtml = schedule.map((match, i) => {
         const isNext = match.upNext || i === schedule.findIndex(m => !m.completed);
         const completed = match.completed;
@@ -175,8 +204,8 @@
           <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
         </div>
         <div class="cam-area"></div>
-        ${state.countdown?.visible !== false ? `<div class="countdown-box">
-          <div class="countdown-time">${formatTime(getRemaining())}</div>
+        ${countdownVisible ? `<div class="countdown-box">
+          <div class="countdown-time" id="bm-timer-text">${formatTime(getRemaining())}</div>
         </div>` : ''}
         <div class="schedule-bar">
           ${schedHtml || fallbackSched}

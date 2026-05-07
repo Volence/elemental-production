@@ -179,12 +179,12 @@
     }
 
     function buildKey(state) {
-      // Only rebuild DOM when non-countdown data changes
       const schedule = state.schedule || [];
       const t1 = state.teams?.team1?.name || '';
       const t2 = state.teams?.team2?.name || '';
       const event = state.eventTitle || state.matchTitle || '';
-      return `${t1}|${t2}|${event}|${schedule.length}|${schedule.map(m => m.team1 + m.team2).join(',')}`;
+      const vis = state.countdown?.visible !== false ? '1' : '0';
+      return `${t1}|${t2}|${event}|${schedule.length}|${schedule.map(m => m.team1 + m.team2).join(',')}|${vis}`;
     }
 
     function update(state) {
@@ -199,15 +199,11 @@
       }
       startLocalTick();
 
-      const timerEl = document.getElementById('countdown-timer');
       const currentKey = buildKey(state);
 
-      if (timerEl && currentKey === lastBuiltKey) {
-        timerEl.textContent = formatTime(getRemaining());
-        var timerSection = document.getElementById('countdown-section');
-        if (timerSection) {
-          timerSection.style.display = (state.countdown.visible === false) ? 'none' : '';
-        }
+      if (currentKey === lastBuiltKey) {
+        var timerEl = document.getElementById('countdown-timer');
+        if (timerEl) timerEl.textContent = formatTime(getRemaining());
         return;
       }
 
@@ -259,9 +255,10 @@
         <div class="hero-center">
           <img class="org-logo-hero" src="./org.png">
           <div class="hero-title"><span>STARTING SOON</span></div>
+          ${state.countdown?.visible !== false ? `
           <div class="countdown-center" id="countdown-section">
             <div class="countdown-time" id="countdown-timer">${formatTime(getRemaining())}</div>
-          </div>
+          </div>` : ''}
           ${eventTitle ? `<div class="event-bar">${eventTitle}</div>` : ''}
         </div>
 
@@ -285,10 +282,6 @@
           </div>
         </div>
       `;
-      var timerSection2 = document.getElementById('countdown-section');
-      if (timerSection2) {
-        timerSection2.style.display = (state.countdown.visible === false) ? 'none' : '';
-      }
     }
     stateSync(update);
   </script>

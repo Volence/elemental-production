@@ -78,6 +78,9 @@
     let countdownDuration = 0;
     let countdownStartedAt = null;
     let countdownRunning = false;
+    let countdownVisible = true;
+    let tickInterval = null;
+    let lastEventName = '';
 
     function getRemaining() {
       if (!countdownRunning || !countdownStartedAt) return countdownDuration;
@@ -92,6 +95,15 @@
       return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
     }
 
+    function startLocalTick() {
+      if (tickInterval) return;
+      tickInterval = setInterval(function() {
+        if (!countdownRunning || !countdownVisible) return;
+        var t = document.getElementById('brb-timer-text');
+        if (t) t.textContent = formatTime(getRemaining());
+      }, 200);
+    }
+
     function update(state) {
       const el = document.getElementById('root');
 
@@ -102,17 +114,34 @@
         countdownDuration = state.countdown?.remaining || 0;
         countdownStartedAt = null;
       }
+      countdownVisible = state.countdown?.visible !== false;
+      startLocalTick();
 
-      const timerVisible = state.countdown?.visible !== false;
-      const timer = timerVisible ? formatTime(getRemaining()) : '';
+      var timerEl = document.getElementById('brb-timer-text');
+      var eventName = state.eventName || 'FACEIT SEASON 8';
+      if (timerEl && eventName === lastEventName) {
+        var timerDiv = document.getElementById('brb-timer-wrap');
+        if (countdownVisible && countdownRunning) {
+          timerEl.textContent = formatTime(getRemaining());
+          if (timerDiv) timerDiv.style.display = '';
+        } else {
+          if (timerDiv) timerDiv.style.display = 'none';
+        }
+        return;
+      }
+      lastEventName = eventName;
+
+      var timer = countdownVisible ? formatTime(getRemaining()) : '';
 
       el.innerHTML = `
         <div class="rainbow-bar"></div>
         <img class="org-logo" src="./org.png">
         <div class="brb-text">WE'LL BE RIGHT BACK</div>
         <div class="brb-sub">Please stand by</div>
-        ${timer ? `<div class="brb-timer">${timer}</div>` : ''}
-        <div class="event-label">${state.eventName || 'FACEIT SEASON 8'}</div>
+        <div class="brb-timer" id="brb-timer-wrap" style="${timer ? '' : 'display:none'}">
+          <span id="brb-timer-text">${timer}</span>
+        </div>
+        <div class="event-label">${eventName}</div>
       `;
     }
     stateSync(update);
