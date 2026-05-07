@@ -189,6 +189,7 @@ export default function Theming({ state, updateState, api, customFonts }) {
             color={local.team1Color || '#3b82f6'}
             auto={local.team1ColorAuto !== false}
             logoUrl={state.teams?.team1?.logo}
+            api={api}
             onColorChange={v => update('team1Color', v)}
             onAutoChange={v => update('team1ColorAuto', v)}
           />
@@ -197,6 +198,7 @@ export default function Theming({ state, updateState, api, customFonts }) {
             color={local.team2Color || '#ef4444'}
             auto={local.team2ColorAuto !== false}
             logoUrl={state.teams?.team2?.logo}
+            api={api}
             onColorChange={v => update('team2Color', v)}
             onAutoChange={v => update('team2ColorAuto', v)}
           />
@@ -338,7 +340,7 @@ function GradientField({ label, value, onChange }) {
   );
 }
 
-function TeamColorSection({ label, color, auto, logoUrl, onColorChange, onAutoChange }) {
+function TeamColorSection({ label, color, auto, logoUrl, api, onColorChange, onAutoChange }) {
   const [extractedColor, setExtractedColor] = useState(null);
 
   useEffect(() => {
@@ -347,6 +349,7 @@ function TeamColorSection({ label, color, auto, logoUrl, onColorChange, onAutoCh
       return;
     }
     const img = new Image();
+    const needsProxy = logoUrl.startsWith('http') && !logoUrl.startsWith(api);
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       const canvas = document.createElement('canvas');
@@ -396,7 +399,7 @@ function TeamColorSection({ label, color, auto, logoUrl, onColorChange, onAutoCh
       setExtractedColor('#6b7280');
       onColorChange('#6b7280');
     };
-    img.src = logoUrl;
+    img.src = needsProxy ? `${api}/api/proxy-image?url=${encodeURIComponent(logoUrl)}` : logoUrl;
   }, [auto, logoUrl]);
 
   return (

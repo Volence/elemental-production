@@ -230,20 +230,24 @@ async function syncToOBS(state) {
     } else {
       const fallback = state.flythroughFallback || path.join(__dirname, '..', 'overlays', 'ELMT_BG_1920x1080.png');
       if (fs.existsSync(fallback)) {
-        updates.push(obs.setMediaSource('Map Flythrough', fallback, false));
+        updates.push(obs.setImageSource('Map Flythrough', fallback));
         console.log(`[OBS Sync] Flythrough fallback → ${path.basename(fallback)}`);
       }
     }
     lastSyncedState.currentMapFlythrough = currentMapName;
   }
 
-  // Map music sync — update OBS media source when current map changes
+  // Map music sync — only play map-specific music if a flythrough video exists
   if (currentMapName && currentMapName !== lastSyncedState.currentMapMusic) {
+    const hasFlythrough = !!flythroughs.getFlythroughUrl(currentMapName);
     const musicPath = mapMusic.getMusicPath(currentMapName);
-    if (musicPath) {
+    if (hasFlythrough && musicPath) {
       updates.push(obs.setMediaSource('Map Music', musicPath));
       const filename = path.basename(musicPath);
       console.log(`[OBS Sync] Map Music → ${currentMapName} (${filename})`);
+    } else if (!hasFlythrough) {
+      updates.push(obs.stopMediaSource('Map Music'));
+      console.log(`[OBS Sync] Map Music stopped (no flythrough for ${currentMapName})`);
     }
     lastSyncedState.currentMapMusic = currentMapName;
   }
@@ -332,6 +336,23 @@ app.post('/api/state/reset', (req, res) => {
   broadcast('state', updated);
   syncToOBS(updated);
   res.json(updated);
+});
+
+// ============ IMAGE PROXY (for CORS-restricted logos) ============
+
+app.get('/api/proxy-image', async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).json({ error: 'Missing url' });
+  try {
+    const response = await fetch(url);
+    const contentType = response.headers.get('content-type') || 'image/png';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.send(buffer);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch image' });
+  }
 });
 
 // ============ HOTKEYS API ============

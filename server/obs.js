@@ -171,6 +171,20 @@ export async function setMediaSource(sourceName, filePath, loop = true) {
   }
 }
 
+export async function stopMediaSource(sourceName) {
+  if (!connected) return false;
+  try {
+    await obs.call('TriggerMediaInputAction', {
+      inputName: sourceName,
+      mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP',
+    });
+    return true;
+  } catch (e) {
+    console.error('[OBS] StopMediaSource error:', e.message);
+    return false;
+  }
+}
+
 export async function setBrowserSource(sourceName, url) {
   if (!connected) return false;
   try {

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import html2canvas from 'html2canvas'
 
 // Audio mixer groups — only actual audio sources (no browser sources)
 const AUDIO_GROUPS = {
@@ -26,7 +27,26 @@ export default function ProductionControls({ state, updateState, api }) {
   const [currentScene, setCurrentScene] = useState('');
   const [expandedGroups, setExpandedGroups] = useState(['🎵 Music', '🎙️ Casters', '🔊 App Audio']);
   const [hoveredScene, setHoveredScene] = useState(null);
+  const [capturedThumbs, setCapturedThumbs] = useState({});
   const hoverTimeoutRef = useRef(null);
+  const iframeRef = useRef(null);
+
+  const captureAndClear = useCallback(async (sceneName) => {
+    const iframe = iframeRef.current;
+    if (iframe) {
+      try {
+        const doc = iframe.contentDocument;
+        if (doc && doc.body) {
+          const canvas = await html2canvas(doc.body, {
+            width: 1920, height: 1080, scale: 0.25,
+            useCORS: true, logging: false,
+          });
+          setCapturedThumbs(prev => ({ ...prev, [sceneName]: canvas.toDataURL('image/jpeg', 0.85) }));
+        }
+      } catch (e) { /* cross-origin in dev — fall back to static */ }
+    }
+    setHoveredScene(null);
+  }, []);
   // Schedule editor
   const [scheduleTeam1, setScheduleTeam1] = useState('');
   const [scheduleTeam2, setScheduleTeam2] = useState('');
@@ -495,7 +515,11 @@ export default function ProductionControls({ state, updateState, api }) {
                 }}
                 onMouseLeave={() => {
                   clearTimeout(hoverTimeoutRef.current);
-                  setHoveredScene(null);
+                  if (hoveredScene === name && overlayFile) {
+                    captureAndClear(name);
+                  } else {
+                    setHoveredScene(null);
+                  }
                 }}
               >
                 <div style={{
@@ -505,6 +529,7 @@ export default function ProductionControls({ state, updateState, api }) {
                 }}>
                     {hoveredScene === name && overlayFile ? (
                       <iframe
+                        ref={iframeRef}
                         src={`http://localhost:3001/overlays/${overlayFile}.html`}
                         style={{
                           width: '1920px', height: '1080px',
@@ -515,11 +540,18 @@ export default function ProductionControls({ state, updateState, api }) {
                         }}
                         title={`${name} preview`}
                       />
-                    ) : thumbSrc ? (
+                    ) : (capturedThumbs[name] || thumbSrc) ? (
                       <img
-                        src={thumbSrc}
+                        src={capturedThumbs[name] || thumbSrc}
                         alt={name}
-                        style={{
+                        style={capturedThumbs[name] ? {
+                          position: 'absolute',
+                          width: '100%', height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                          opacity: currentScene === name ? 1 : 0.65,
+                          transition: 'opacity 0.2s ease',
+                        } : {
                           position: 'absolute',
                           width: `${zoom * 100}%`,
                           height: `${zoom * 100}%`,
