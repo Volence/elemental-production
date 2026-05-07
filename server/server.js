@@ -1238,11 +1238,14 @@ app.get('/api/browse', (req, res) => {
 
 // ============ OBS SCENE COLLECTION ============
 
-/** Download the OBS scene collection template */
+/** Download the OBS scene collection template (?platform=windows for Windows version) */
 app.get('/api/obs/scene-collection', (req, res) => {
-  const filePath = path.join(__dirname, '..', 'data', 'obs-scene-collection.json');
+  const isWindows = req.query.platform === 'windows';
+  const fileName = isWindows ? 'obs-scene-collection-windows.json' : 'obs-scene-collection.json';
+  const filePath = path.join(__dirname, '..', 'data', fileName);
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Scene collection file not found' });
-  res.setHeader('Content-Disposition', 'attachment; filename="elemental-obs-scenes.json"');
+  const downloadName = isWindows ? 'elemental-obs-scenes-windows.json' : 'elemental-obs-scenes.json';
+  res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
   res.setHeader('Content-Type', 'application/json');
   res.sendFile(filePath);
 });

@@ -192,17 +192,25 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '8px 0' }}>
           Download the scene collection template and follow the setup guide below.
         </p>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <a
             href={`${api}/api/obs/scene-collection`}
             download="elemental-obs-scenes.json"
             className="btn btn-primary"
             style={{ textDecoration: 'none' }}
           >
-            ⬇ Download Scene Collection JSON
+            ⬇ Linux Scene Collection
+          </a>
+          <a
+            href={`${api}/api/obs/scene-collection?platform=windows`}
+            download="elemental-obs-scenes-windows.json"
+            className="btn btn-primary"
+            style={{ textDecoration: 'none' }}
+          >
+            ⬇ Windows Scene Collection
           </a>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-            Reference for building your OBS scene collection
+            Import into OBS → Scene Collection → Import
           </span>
         </div>
 

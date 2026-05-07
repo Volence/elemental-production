@@ -14,7 +14,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { fork } from 'child_process';
-import { existsSync, copyFileSync, mkdirSync } from 'fs';
+import { existsSync, copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 
 const SERVER_PORT = 3001;
 const IS_DEV = process.env.ELECTRON_IS_DEV === '1';
@@ -37,13 +37,36 @@ function initUserData() {
     mkdirSync(userDataPath, { recursive: true });
   }
 
-  // Copy .env.example → userData/.env on first launch
+  // Copy .env.example → userData/.env on first launch, or merge new keys on update
   const userEnv = join(userDataPath, '.env');
+  const exampleEnv = appPath('.env.example');
   if (!existsSync(userEnv)) {
-    const exampleEnv = appPath('.env.example');
     if (existsSync(exampleEnv)) {
       copyFileSync(exampleEnv, userEnv);
       console.log('[Electron] Created default .env in', userDataPath);
+    }
+  } else if (existsSync(exampleEnv)) {
+    // Fill in keys that have values in .env.example but are empty/missing in user .env
+    // This lets CI-injected keys (e.g. FACEIT_API_KEY) reach existing installs
+    const exampleContent = readFileSync(exampleEnv, 'utf8');
+    let userContent = readFileSync(userEnv, 'utf8');
+    let updated = false;
+    for (const match of exampleContent.matchAll(/^([A-Z_][A-Z0-9_]*)=(.+)$/gm)) {
+      const [, key, val] = match;
+      const userHasValue = new RegExp(`^${key}=.+$`, 'm').test(userContent);
+      if (!userHasValue) {
+        const userHasEmpty = new RegExp(`^${key}=$`, 'm').test(userContent);
+        if (userHasEmpty) {
+          userContent = userContent.replace(new RegExp(`^${key}=$`, 'm'), `${key}=${val}`);
+        } else {
+          userContent += `\n${key}=${val}`;
+        }
+        updated = true;
+      }
+    }
+    if (updated) {
+      writeFileSync(userEnv, userContent);
+      console.log('[Electron] Merged new config keys into .env');
     }
   }
 
