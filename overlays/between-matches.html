@@ -12,7 +12,7 @@
     body {
       background: transparent; overflow: hidden;
       width: 1920px; height: 1080px;
-      font-family: 'Inter', sans-serif; color: white;
+      font-family: var(--font-body, 'Inter', sans-serif); color: white;
     }
 
     .container {
@@ -26,7 +26,7 @@
     /* Rainbow bar */
     .rainbow-bar {
       position: absolute; top: 0; left: 0; right: 0; height: 4px;
-      background: linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316);
+      background: var(--rainbow-gradient, linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316));
     }
 
     /* Branding top-left */
@@ -36,7 +36,7 @@
     }
     .branding .org-logo { width: 72px; height: 72px; object-fit: contain; }
     .branding .event-name {
-      font-family: 'Bebas Neue', sans-serif;
+      font-family: var(--font-title, 'Bebas Neue', sans-serif);
       font-size: 14px; letter-spacing: 2px;
       color: rgba(255,255,255,0.5);
     }
@@ -56,9 +56,9 @@
       
     }
     .countdown-time {
-      font-family: 'Oswald', sans-serif;
+      font-family: var(--font-body, 'Oswald', sans-serif);
       font-size: 52px; font-weight: 700; letter-spacing: 2px;
-      background: linear-gradient(135deg, #f97316, #ef4444);
+      background: var(--accent-gradient, linear-gradient(135deg, #f97316, #ef4444));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
 
@@ -66,7 +66,7 @@
     .schedule-bar {
       position: absolute; bottom: 0; left: 0; right: 0; height: 100px;
       display: flex; align-items: stretch;
-      background: rgba(10,10,20,0.9);
+      background: var(--bg-overlay, rgba(10,10,20,0.9));
       border-top: 1px solid rgba(255,255,255,0.06);
       
     }
@@ -82,7 +82,7 @@
     .sched-item.up-next { background: rgba(249,115,22,0.12); }
     .sched-item.up-next::before {
       content: ''; position: absolute; top: 0; left: 0; right: 0;
-      height: 3px; background: linear-gradient(90deg, #f97316, #ef4444);
+      height: 3px; background: var(--accent-gradient, linear-gradient(90deg, #f97316, #ef4444));
     }
 
     .sched-label {
@@ -92,7 +92,7 @@
       white-space: nowrap;
     }
     .sched-item.up-next .sched-label {
-      background: linear-gradient(135deg, #f97316, #ef4444); color: white;
+      background: var(--accent-gradient, linear-gradient(135deg, #f97316, #ef4444)); color: white;
     }
     .sched-item:not(.up-next) .sched-label {
       background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4);
@@ -109,6 +109,7 @@
 <body>
   <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     const API = 'http://localhost:3001';
@@ -156,6 +157,7 @@
     }
 
     function update(state) {
+      applyTheme(state);
       const el = document.getElementById('root');
 
       countdownDuration = state.countdown?.duration || 0;

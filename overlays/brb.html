@@ -12,7 +12,7 @@
     body {
       background: transparent; overflow: hidden;
       width: 1920px; height: 1080px;
-      font-family: 'Inter', sans-serif; color: white;
+      font-family: var(--font-body, 'Inter', sans-serif); color: white;
     }
 
     .container {
@@ -26,7 +26,7 @@
 
     .rainbow-bar {
       position: absolute; top: 0; left: 0; right: 0; height: 4px;
-      background: linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316);
+      background: var(--rainbow-gradient, linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316));
     }
 
     .org-logo {
@@ -36,7 +36,7 @@
     }
 
     .brb-text {
-      font-family: 'Bebas Neue', sans-serif;
+      font-family: var(--font-title, 'Bebas Neue', sans-serif);
       font-size: 120px; letter-spacing: 12px;
       text-shadow: 0 4px 30px rgba(0,0,0,0.5);
     }
@@ -53,7 +53,7 @@
       font-family: 'Bebas Neue', sans-serif;
       font-size: 56px; letter-spacing: 4px;
       margin-top: 32px;
-      background: linear-gradient(135deg, #f97316, #ef4444);
+      background: var(--accent-gradient, linear-gradient(135deg, #f97316, #ef4444));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       
     }
@@ -61,8 +61,8 @@
     .event-label {
       position: absolute; bottom: 50px;
       padding: 8px 32px; border-radius: 4px;
-      background: linear-gradient(135deg, rgba(249,115,22,0.8), rgba(239,68,68,0.8));
-      font-family: 'Bebas Neue', sans-serif;
+      background: var(--accent-gradient, linear-gradient(135deg, rgba(249,115,22,0.8), rgba(239,68,68,0.8)));
+      font-family: var(--font-title, 'Bebas Neue', sans-serif);
       font-size: 20px; letter-spacing: 3px;
       
     }
@@ -72,6 +72,7 @@
 <body>
   <div class="container" id="root" style="animation: fadeIn 0.8s ease-out both;"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     const API = 'http://localhost:3001';
@@ -117,6 +118,7 @@
     }
 
     function update(state) {
+      applyTheme(state);
       const el = document.getElementById('root');
 
       countdownDuration = state.countdown?.duration || 0;

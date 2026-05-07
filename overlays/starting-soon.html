@@ -10,7 +10,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: transparent; overflow: hidden; width: 1920px; height: 1080px;
-      font-family: 'Oswald', 'Bebas Neue', sans-serif; color: white;
+      font-family: var(--font-body, 'Oswald', sans-serif); color: white;
     }
     .container {
       position: relative; width: 1920px; height: 1080px;
@@ -20,7 +20,7 @@
     /* Rainbow bar */
     .rainbow-bar {
       position: absolute; top: 0; left: 0; right: 0; height: 4px;
-      background: linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316);
+      background: var(--rainbow-gradient, linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316));
     }
 
     /* Center hero section */
@@ -39,7 +39,7 @@
       50% { transform: translateY(-8px); }
     }
     .hero-title {
-      font-family: 'Bebas Neue', 'Oswald', sans-serif;
+      font-family: var(--font-title, 'Bebas Neue', sans-serif);
       font-size: 120px; font-weight: 400; line-height: 0.95;
       text-transform: uppercase; letter-spacing: 6px;
       text-shadow: 0 4px 40px rgba(0,0,0,0.6), 0 0 80px rgba(249,115,22,0.15);
@@ -57,15 +57,15 @@
       margin-top: 16px;
     }
     .countdown-time {
-      font-family: 'Oswald', sans-serif;
+      font-family: var(--font-body, 'Oswald', sans-serif);
       font-size: 96px; font-weight: 700; letter-spacing: 4px; line-height: 1;
       text-shadow: 0 4px 30px rgba(0,0,0,0.5);
-      color: #fff;
+      color: var(--countdown-color, #fff);
     }
     .countdown-label {
       padding: 10px 32px; font-size: 22px; font-weight: 700;
       text-transform: uppercase; letter-spacing: 4px;
-      background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+      background: var(--countdown-label-gradient, linear-gradient(135deg, #f97316, #ef4444));
       color: white; border-radius: 6px;
       box-shadow: 0 4px 20px rgba(249,115,22,0.3);
     }
@@ -75,7 +75,7 @@
       margin-top: 32px;
       padding: 14px 48px; font-size: 20px; font-weight: 700;
       text-transform: uppercase; letter-spacing: 4px;
-      background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+      background: var(--accent-gradient, linear-gradient(135deg, #f97316, #ef4444));
       color: white; border-radius: 6px; display: inline-block;
       box-shadow: 0 4px 20px rgba(249,115,22,0.3);
     }
@@ -92,11 +92,11 @@
     }
     .match-row {
       display: flex; align-items: center; padding: 10px 16px; margin-bottom: 4px;
-      background: rgba(15,15,25,0.85); border-radius: 4px;
+      background: var(--schedule-row-bg, rgba(15,15,25,0.85)); border-radius: 4px;
       border-left: 3px solid transparent; transition: all 0.3s;
     }
     .match-row.up-next {
-      border-left-color: #f97316;
+      border-left-color: var(--schedule-upnext, #f97316);
       background: rgba(249,115,22,0.15);
     }
     .match-row .team-left, .match-row .team-right {
@@ -111,7 +111,7 @@
     }
     .match-row .match-label {
       font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
-      color: #f97316; text-align: right; display: block;
+      color: var(--schedule-upnext, #f97316); text-align: right; display: block;
     }
     .match-row .match-info { text-align: right; min-width: 90px; }
 
@@ -145,6 +145,7 @@
 <body>
   <div class="container" id="root" style="animation: fadeIn 0.8s ease-out both;"></div>
 
+  <script src="./theme-helpers.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     const API = 'http://localhost:3001';
@@ -193,6 +194,7 @@
     }
 
     function update(state) {
+      applyTheme(state);
       const el = document.getElementById('root');
 
       countdownDuration = state.countdown?.duration || 0;
