@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import MatchHub from './pages/MatchHub'
 import ProductionControls from './pages/ProductionControls'
+import Theming from './pages/Theming'
 import Settings from './pages/Settings'
 import StatusBar from './components/StatusBar'
 
@@ -9,6 +10,7 @@ const API = 'http://localhost:3001';
 const PAGES = [
   { id: 'match', label: 'Match Hub', icon: '🎮' },
   { id: 'production', label: 'Production', icon: '🎬' },
+  { id: 'theming', label: 'Theming', icon: '🎨' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -164,6 +166,7 @@ export default function App() {
         <div className="content-body">
           {page === 'match' && <MatchHub state={state} updateState={updateState} api={API} />}
           {page === 'production' && <ProductionControls state={state} updateState={updateState} api={API} />}
+          {page === 'theming' && <Theming state={state} updateState={updateState} api={API} customFonts={customFonts} />}
           {page === 'settings' && <Settings state={state} updateState={updateState} api={API} obsConnected={obsConnected} setObsConnected={setObsConnected} customFonts={customFonts} setCustomFonts={setCustomFonts} onDirtyChange={setSettingsDirty} />}
         </div>
       </main>
