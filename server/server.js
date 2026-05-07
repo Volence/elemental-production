@@ -334,6 +334,19 @@ app.post('/api/state/reset', (req, res) => {
   res.json(updated);
 });
 
+// ============ HOTKEYS API ============
+
+app.get('/api/hotkeys', (req, res) => {
+  const state = getState();
+  res.json(state.hotkeys || {});
+});
+
+app.put('/api/hotkeys', (req, res) => {
+  const updated = setState({ hotkeys: req.body });
+  broadcast('state', updated);
+  res.json(updated.hotkeys);
+});
+
 // ============ OBS API ============
 
 app.get('/api/obs/status', (req, res) => {

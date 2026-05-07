@@ -11,7 +11,7 @@
  *   - Server is already running via concurrently, so we skip forking it.
  *   - Window loads the Vite dev server URL for HMR.
  */
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, globalShortcut, ipcMain } from 'electron';
 import { join } from 'path';
 import { fork } from 'child_process';
 import { existsSync, copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
@@ -28,6 +28,50 @@ function appPath(relativePath) {
   // In dev: __dirname = <project>/out/main
   // Both cases: ../../ gets us to the app root
   return join(__dirname, '..', '..', relativePath);
+}
+
+async function fetchAndRegisterHotkeys() {
+  try {
+    const res = await fetch(`http://localhost:${SERVER_PORT}/api/hotkeys`);
+    const config = await res.json();
+
+    globalShortcut.unregisterAll();
+
+    if (config.sceneSwitch) {
+      for (const [scene, accelerator] of Object.entries(config.sceneSwitch)) {
+        if (!accelerator) continue;
+        const ok = globalShortcut.register(accelerator, () => {
+          fetch(`http://localhost:${SERVER_PORT}/api/obs/scene`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: scene }),
+          }).catch(e => console.warn('[Hotkeys] Scene switch failed:', e.message));
+        });
+        if (!ok) console.warn(`[Hotkeys] Failed to register ${accelerator} for ${scene}`);
+      }
+    }
+
+    if (config.swapSides) {
+      const ok = globalShortcut.register(config.swapSides, async () => {
+        try {
+          const stateRes = await fetch(`http://localhost:${SERVER_PORT}/api/state`);
+          const state = await stateRes.json();
+          await fetch(`http://localhost:${SERVER_PORT}/api/state`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ swapSides: !state.swapSides }),
+          });
+        } catch (e) {
+          console.warn('[Hotkeys] Swap sides failed:', e.message);
+        }
+      });
+      if (!ok) console.warn(`[Hotkeys] Failed to register ${config.swapSides} for swap sides`);
+    }
+
+    console.log('[Hotkeys] Registered global shortcuts');
+  } catch (e) {
+    console.warn('[Hotkeys] Failed to fetch/register:', e.message);
+  }
 }
 
 function initUserData() {
@@ -105,6 +149,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: join(__dirname, 'preload.js'),
     },
     backgroundColor: '#0a0a12',
     autoHideMenuBar: true,
@@ -129,18 +174,24 @@ app.whenReady().then(async () => {
   const userDataPath = initUserData();
 
   if (!IS_DEV) {
-    // Production: fork the Express server as a child process
     startServer(userDataPath);
-    // Wait for server to bind
     await new Promise((r) => setTimeout(r, 3000));
   } else {
     console.log('[Electron] Dev mode — server managed externally');
   }
 
   createWindow();
+
+  await fetchAndRegisterHotkeys();
+
+  ipcMain.on('reload-hotkeys', async () => {
+    console.log('[Hotkeys] Reloading...');
+    await fetchAndRegisterHotkeys();
+  });
 });
 
 app.on('window-all-closed', () => {
+  globalShortcut.unregisterAll();
   if (serverProcess) serverProcess.kill();
   app.quit();
 });
