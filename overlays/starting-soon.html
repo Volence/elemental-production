@@ -195,6 +195,10 @@
 
       if (timerEl && currentKey === lastBuiltKey) {
         timerEl.textContent = formatTime(localRemaining);
+        var timerSection = document.getElementById('countdown-section');
+        if (timerSection) {
+          timerSection.style.display = (state.countdown.visible === false) ? 'none' : '';
+        }
         return;
       }
 
@@ -246,7 +250,7 @@
         <div class="hero-center">
           <img class="org-logo-hero" src="./org.png">
           <div class="hero-title"><span>STARTING SOON</span></div>
-          <div class="countdown-center">
+          <div class="countdown-center" id="countdown-section">
             <div class="countdown-time" id="countdown-timer">${formatTime(localRemaining)}</div>
           </div>
           ${eventTitle ? `<div class="event-bar">${eventTitle}</div>` : ''}
@@ -272,6 +276,10 @@
           </div>
         </div>
       `;
+      var timerSection2 = document.getElementById('countdown-section');
+      if (timerSection2) {
+        timerSection2.style.display = (state.countdown.visible === false) ? 'none' : '';
+      }
     }
     stateSync(update);
   </script>

@@ -547,6 +547,11 @@ export default function ProductionControls({ state, updateState, api }) {
             <button className="btn btn-danger btn-sm" onClick={() => fetch(`${api}/api/timer/stop`, { method: 'POST' })}>⏹ Stop</button>
           )}
           <button className="btn btn-ghost btn-sm" onClick={() => fetch(`${api}/api/timer/reset`, { method: 'POST' })}>↺ Reset</button>
+          <button
+            className={`btn btn-sm ${state.countdown.visible === false ? 'btn-danger' : 'btn-ghost'}`}
+            onClick={() => updateState({ countdown: { ...state.countdown, visible: !state.countdown.visible } })}
+            title={state.countdown.visible === false ? 'Timer is hidden on overlays' : 'Hide timer on overlays'}
+          >{state.countdown.visible === false ? '👁️‍🗨️ Hidden' : '👁️ Visible'}</button>
         </div>
       </div>
 
