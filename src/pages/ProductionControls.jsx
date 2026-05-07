@@ -25,7 +25,6 @@ export default function ProductionControls({ state, updateState, api }) {
   const [scenes, setScenes] = useState([]);
   const [currentScene, setCurrentScene] = useState('');
   const [expandedGroups, setExpandedGroups] = useState(['🎵 Music', '🎙️ Casters', '🔊 App Audio']);
-  const [hoveredScene, setHoveredScene] = useState(null);
   const [capturedThumbs, setCapturedThumbs] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('elemental-scene-thumbs') || '{}');
@@ -47,10 +46,26 @@ export default function ProductionControls({ state, updateState, api }) {
     loadAudio();
   }, [api]);
 
+  const captureCurrentScene = (sceneName) => {
+    setTimeout(async () => {
+      try {
+        const res = await fetch(`${api}/api/obs/preview?scene=${encodeURIComponent(sceneName)}`);
+        const data = await res.json();
+        if (data.imageData) {
+          setCapturedThumbs(prev => {
+            const updated = { ...prev, [sceneName]: data.imageData };
+            try { localStorage.setItem('elemental-scene-thumbs', JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+        }
+      } catch {}
+    }, 1500);
+  };
+
   useEffect(() => {
     if (state?.currentScene) {
       setCurrentScene(state.currentScene);
-      // Auto-expand the audio group matching the current scene
+      captureCurrentScene(state.currentScene);
       const group = SCENE_TO_GROUP[state.currentScene];
       if (group && !expandedGroups.includes(group)) {
         setExpandedGroups(prev => [...prev.filter(g => g === '🎵 Shared / Global'), group]);
@@ -488,25 +503,12 @@ export default function ProductionControls({ state, updateState, api }) {
                 className={`scene-preview-card ${currentScene === name ? 'active' : ''}`}
                 onClick={() => switchScene(name)}
                 onMouseEnter={() => {
-                  hoverTimeoutRef.current = setTimeout(async () => {
-                    setHoveredScene(name);
-                    try {
-                      const res = await fetch(`${api}/api/obs/preview?scene=${encodeURIComponent(name)}`);
-                      const data = await res.json();
-                      if (data.imageData) {
-                        setCapturedThumbs(prev => {
-                          const updated = { ...prev, [name]: data.imageData };
-                          try { localStorage.setItem('elemental-scene-thumbs', JSON.stringify(updated)); } catch {}
-                          return updated;
-                        });
-                      }
-                    } catch {}
-                    setHoveredScene(null);
-                  }, 300);
+                  if (currentScene === name) {
+                    hoverTimeoutRef.current = setTimeout(() => captureCurrentScene(name), 300);
+                  }
                 }}
                 onMouseLeave={() => {
                   clearTimeout(hoverTimeoutRef.current);
-                  setHoveredScene(null);
                 }}
               >
                 <div style={{
