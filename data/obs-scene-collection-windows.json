@@ -567,7 +567,7 @@
       "versioned_id": "game_capture",
       "id": "game_capture",
       "settings": {
-        "capture_mode": "any_fullscreen"
+        "capture_mode": "window"
       },
       "mixers": 0,
       "sync": 0,
