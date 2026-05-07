@@ -116,7 +116,8 @@
     let countdownStartedAt = null;
     let countdownRunning = false;
     let countdownVisible = true;
-    let tickInterval = null;
+    let lastDisplayed = -1;
+    let rafId = null;
     let lastBuiltKey = '';
 
     function getRemaining() {
@@ -131,13 +132,19 @@
       return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
     }
 
+    function tick() {
+      rafId = requestAnimationFrame(tick);
+      if (!countdownRunning || !countdownVisible) return;
+      var r = getRemaining();
+      if (r === lastDisplayed) return;
+      lastDisplayed = r;
+      var t = document.getElementById('bm-timer-text');
+      if (t) t.textContent = formatTime(r);
+    }
+
     function startLocalTick() {
-      if (tickInterval) return;
-      tickInterval = setInterval(function() {
-        if (!countdownRunning || !countdownVisible) return;
-        var t = document.getElementById('bm-timer-text');
-        if (t) t.textContent = formatTime(getRemaining());
-      }, 200);
+      if (rafId) return;
+      tick();
     }
 
     function buildKey(state) {
@@ -168,6 +175,7 @@
         return;
       }
       lastBuiltKey = currentKey;
+      lastDisplayed = -1;
 
       const schedule = state.schedule || [];
 

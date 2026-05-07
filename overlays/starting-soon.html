@@ -150,11 +150,11 @@
     const API = 'http://localhost:3001';
     let lastBuiltKey = '';
 
-    // Client-side countdown: compute remaining from startedAt for jitter-free display
     let countdownDuration = 0;
     let countdownStartedAt = null;
     let countdownRunning = false;
-    let tickInterval = null;
+    let lastDisplayed = -1;
+    let rafId = null;
 
     function getRemaining() {
       if (!countdownRunning || !countdownStartedAt) return countdownDuration;
@@ -162,14 +162,19 @@
       return Math.max(0, Math.ceil(countdownDuration - elapsed));
     }
 
+    function tick() {
+      rafId = requestAnimationFrame(tick);
+      if (!countdownRunning) return;
+      var r = getRemaining();
+      if (r === lastDisplayed) return;
+      lastDisplayed = r;
+      var t = document.getElementById('countdown-timer');
+      if (t) t.textContent = formatTime(r);
+    }
+
     function startLocalTick() {
-      if (tickInterval) return;
-      tickInterval = setInterval(function() {
-        if (!countdownRunning) return;
-        var remaining = getRemaining();
-        var t = document.getElementById('countdown-timer');
-        if (t) t.textContent = formatTime(remaining);
-      }, 200);
+      if (rafId) return;
+      tick();
     }
 
     function formatTime(sec) {

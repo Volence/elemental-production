@@ -248,6 +248,36 @@ select.input {
   padding-right: 32px;
 }
 
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '\2713';
+  position: absolute;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  top: 0;
+  left: 2px;
+}
+
 /* ========== BUTTONS ========== */
 
 .btn {

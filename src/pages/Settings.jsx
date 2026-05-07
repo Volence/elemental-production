@@ -456,8 +456,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
                           borderRadius: 4, fontSize: '0.8rem',
                           background: isCurrent ? 'rgba(34,197,94,0.1)' : 'transparent',
                         }}>
-                          <input type="checkbox" checked={inPlaylist} style={{ accentColor: '#22c55e' }}
-                            onChange={() => {
+                          <input type="checkbox" checked={inPlaylist}                            onChange={() => {
                               const newList = inPlaylist ? playlist.filter(x => x !== f) : [...playlist, f];
                               fetch(`${api}/api/bg-music/playlist`, {
                                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -472,8 +471,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
                   </div>
                   <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={!!shuffle} style={{ accentColor: '#22c55e' }}
-                        onChange={() => {
+                      <input type="checkbox" checked={!!shuffle}                        onChange={() => {
                           fetch(`${api}/api/bg-music/playlist`, {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ source, files: playlist, shuffle: !shuffle }),
