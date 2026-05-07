@@ -11,7 +11,7 @@ const BUILTIN_FONTS = {
   'Orbitron': 'https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap',
 };
 
-export default function Settings({ state, updateState, api, obsConnected, setObsConnected, customFonts, setCustomFonts }) {
+export default function Settings({ state, updateState, api, obsConnected, setObsConnected, customFonts, setCustomFonts, onDirtyChange }) {
   const [obsHost, setObsHost] = useState('localhost');
   const [obsPort, setObsPort] = useState('4455');
   const [obsPassword, setObsPassword] = useState('');
@@ -32,6 +32,17 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
   const [bgMusicSaving, setBgMusicSaving] = useState(false);
   const [bgMusicError, setBgMusicError] = useState('');
   const [browseTarget, setBrowseTarget] = useState(null); // 'flythroughs' | 'mapMusic' | 'bgMusic' | null
+  const [dirty, setDirty] = useState(false);
+  const markDirty = () => {
+    if (!dirty) {
+      setDirty(true);
+      onDirtyChange?.(true);
+    }
+  };
+  const clearDirty = () => {
+    setDirty(false);
+    onDirtyChange?.(false);
+  };
 
   // Load initial flythroughs state
   useState(() => {
@@ -65,6 +76,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         setFlythroughError(data.error);
       } else {
         setFlythroughMaps(data.maps || {});
+        clearDirty();
       }
     } catch (e) {
       setFlythroughError(e.message);
@@ -86,6 +98,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         setMapMusicError(data.error);
       } else {
         setMapMusicMaps(data.maps || {});
+        clearDirty();
       }
     } catch (e) {
       setMapMusicError(e.message);
@@ -107,6 +120,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         setBgMusicError(data.error);
       } else {
         setBgMusicFiles(data.files || []);
+        clearDirty();
       }
     } catch (e) {
       setBgMusicError(e.message);
@@ -316,7 +330,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             className="input"
             style={{ flex: 1 }}
             value={flythroughDir}
-            onChange={e => setFlythroughDir(e.target.value)}
+            onChange={e => { setFlythroughDir(e.target.value); markDirty(); }}
             placeholder="/home/volence/Videos/OW Flythroughs"
           />
           <button className="btn btn-ghost btn-sm" onClick={() => setBrowseTarget('flythroughs')}
@@ -358,7 +372,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             className="input"
             style={{ flex: 1 }}
             value={mapMusicDir}
-            onChange={e => setMapMusicDir(e.target.value)}
+            onChange={e => { setMapMusicDir(e.target.value); markDirty(); }}
             placeholder="/home/volence/Music/OW Map Music"
           />
           <button className="btn btn-ghost btn-sm" onClick={() => setBrowseTarget('mapMusic')}
@@ -400,7 +414,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             className="input"
             style={{ flex: 1 }}
             value={bgMusicDir}
-            onChange={e => setBgMusicDir(e.target.value)}
+            onChange={e => { setBgMusicDir(e.target.value); markDirty(); }}
             placeholder="/home/volence/Music/Royalty Free"
           />
           <button className="btn btn-ghost btn-sm" onClick={() => setBrowseTarget('bgMusic')}

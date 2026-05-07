@@ -25,6 +25,7 @@ export default function App() {
   const [scenes, setScenes] = useState([]);
   const [currentScene, setCurrentScene] = useState('');
   const [customFonts, setCustomFonts] = useState([]);
+  const [settingsDirty, setSettingsDirty] = useState(false);
 
   const fetchState = useCallback(async () => {
     try {
@@ -121,7 +122,13 @@ export default function App() {
             <button
               key={p.id}
               className={page === p.id ? 'active' : ''}
-              onClick={() => setPage(p.id)}
+              onClick={() => {
+                if (page === 'settings' && settingsDirty && p.id !== 'settings') {
+                  if (!confirm('You have unsaved changes in Settings. Leave anyway?')) return;
+                  setSettingsDirty(false);
+                }
+                setPage(p.id);
+              }}
             >
               <span className="icon">{p.icon}</span>
               {p.label}
@@ -156,7 +163,7 @@ export default function App() {
         <div className="content-body">
           {page === 'match' && <MatchHub state={state} updateState={updateState} api={API} />}
           {page === 'production' && <ProductionControls state={state} updateState={updateState} api={API} />}
-          {page === 'settings' && <Settings state={state} updateState={updateState} api={API} obsConnected={obsConnected} setObsConnected={setObsConnected} customFonts={customFonts} setCustomFonts={setCustomFonts} />}
+          {page === 'settings' && <Settings state={state} updateState={updateState} api={API} obsConnected={obsConnected} setObsConnected={setObsConnected} customFonts={customFonts} setCustomFonts={setCustomFonts} onDirtyChange={setSettingsDirty} />}
         </div>
       </main>
     </>
