@@ -521,7 +521,7 @@ export default function ProductionControls({ state, updateState, api }) {
       <div className="card">
         <div className="card-title">⏱️ Countdown Timer</div>
         <div className="countdown-display" style={{ marginTop: 8 }}>
-          {formatTime(state.countdown.remaining || 0)}
+          {formatTime(timerRunning || timerPaused ? state.countdown.remaining : timerMinutes * 60)}
         </div>
         <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
           {state.countdown.label}
