@@ -504,7 +504,8 @@
         "url": "",
         "width": 1920,
         "height": 1080,
-        "css": ""
+        "css": "",
+        "reroute_audio": true
       },
       "mixers": 255,
       "sync": 0,
@@ -525,7 +526,8 @@
         "url": "",
         "width": 1920,
         "height": 1080,
-        "css": ""
+        "css": "",
+        "reroute_audio": true
       },
       "mixers": 255,
       "sync": 0,
@@ -546,7 +548,8 @@
         "url": "",
         "width": 1920,
         "height": 1080,
-        "css": ""
+        "css": "",
+        "reroute_audio": true
       },
       "mixers": 255,
       "sync": 0,
