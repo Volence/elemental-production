@@ -131,6 +131,11 @@
 
       var currentKey = buildKey(state);
       if (currentKey === lastBuildKey) {
+        var t = document.getElementById('brb-timer-text');
+        if (t) {
+          var val = (countdownRunning || countdownDuration > 0) ? formatTime(getRemaining()) : '';
+          t.textContent = val;
+        }
         return;
       }
       lastBuildKey = currentKey;
