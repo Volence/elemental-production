@@ -224,7 +224,14 @@
       return hero ? hero.portrait : '';
     }
 
+    var lastRenderKey = '';
     function update(state) {
+      var renderKey = JSON.stringify([
+        state.teams, state.maps, state.casters, state.casterLayout,
+        state.playerStats, state.bestOf, state.eventName, state.theme
+      ]);
+      if (renderKey === lastRenderKey) return;
+      lastRenderKey = renderKey;
       applyTheme(state);
       const el = document.getElementById('root');
       const stats = state.playerStats;

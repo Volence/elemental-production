@@ -91,7 +91,13 @@
   <script>
     const API = 'http://localhost:3001';
 
+    var lastRenderKey = '';
     function update(state) {
+      var renderKey = JSON.stringify([
+        state.casters, state.casterLayout, state.eventName, state.theme
+      ]);
+      if (renderKey === lastRenderKey) return;
+      lastRenderKey = renderKey;
       applyTheme(state);
       const el = document.getElementById('root');
       const layout = state.casterLayout ?? 2;

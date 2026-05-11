@@ -121,6 +121,7 @@
     // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
     let heroData = [];
+    let lastRenderKey = '';
 
     async function loadHeroes() {
       heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
@@ -132,6 +133,11 @@
     }
 
     function update(state) {
+      var renderKey = JSON.stringify([
+        state.teams, state.maps, state.heroBans, state.theme
+      ]);
+      if (renderKey === lastRenderKey) return;
+      lastRenderKey = renderKey;
       applyTheme(state);
       const el = document.getElementById('root');
       const t1 = state.teams?.team1 || {};

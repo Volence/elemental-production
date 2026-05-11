@@ -102,7 +102,13 @@
       heroData = await res.json();
     }
 
+    var lastRenderKey = '';
     function update(state) {
+      var renderKey = JSON.stringify([
+        state.teams, state.heroBans, state.theme
+      ]);
+      if (renderKey === lastRenderKey) return;
+      lastRenderKey = renderKey;
       applyTheme(state);
       const container = document.getElementById('bans');
       const t1bans = state.heroBans?.team1 || [];

@@ -286,6 +286,7 @@
     const GRAPHICS = `${API}/assets/graphics`;
     const CACHE_BUST = `v=${Date.now()}`;
     let heroData = [];
+    let lastRenderKey = '';
 
     async function loadHeroes() {
       heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
@@ -297,6 +298,12 @@
     }
 
     function update(state) {
+      var renderKey = JSON.stringify([
+        state.teams, state.maps, state.heroBans, state.swapSides,
+        state.eventName, state.bestOf, state.font?.family
+      ]);
+      if (renderKey === lastRenderKey) return;
+      lastRenderKey = renderKey;
       applyTheme(state);
       const el = document.getElementById('root');
       const swap = !!state.swapSides;

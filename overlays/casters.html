@@ -81,7 +81,14 @@
   <script>
     // Loaded via state-sync.js for SSE + polling fallback
     const API = 'http://localhost:3001';
+    var lastRenderKey = '';
     function update(state) {
+      var renderKey = JSON.stringify([
+        state.teams?.team1?.color, state.teams?.team2?.color,
+        state.casters, state.casterLayout, state.eventName, state.theme
+      ]);
+      if (renderKey === lastRenderKey) return;
+      lastRenderKey = renderKey;
       applyTheme(state);
       const el = document.getElementById('root');
       // Support ?bg=transparent for flythrough scenes

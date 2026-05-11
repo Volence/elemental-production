@@ -675,11 +675,16 @@ app.post('/api/faceit/match', async (req, res) => {
     update.perMapBans = perMapBans;
     if (!isOverridden('heroBans')) update.heroBans = heroBans;
 
+    // Compute score from completed maps to avoid FACEIT reporting partial
+    // scores mid-control-map (e.g. Lijiang Tower objective wins)
+    const computedScore1 = maps.filter(m => m.winner === 'team1').length;
+    const computedScore2 = maps.filter(m => m.winner === 'team2').length;
+
     // Team 1 fields
     const t1 = {};
     if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
     if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
-    if (!isOverridden('teams.team1.score')) t1.score = details.results?.score?.faction1 || 0;
+    if (!isOverridden('teams.team1.score')) t1.score = computedScore1;
     t1.color = '#3b82f6';
     t1.faceitId = faction1.id;
 
@@ -687,7 +692,7 @@ app.post('/api/faceit/match', async (req, res) => {
     const t2 = {};
     if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
     if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
-    if (!isOverridden('teams.team2.score')) t2.score = details.results?.score?.faction2 || 0;
+    if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
     t2.color = '#ef4444';
     t2.faceitId = faction2.id;
 
@@ -742,14 +747,17 @@ app.post('/api/faceit/refresh', async (req, res) => {
       update.players = { team1: faction1.roster, team2: faction2.roster };
     }
 
+    const computedScore1 = maps.filter(m => m.winner === 'team1').length;
+    const computedScore2 = maps.filter(m => m.winner === 'team2').length;
+
     const t1 = { color: '#3b82f6', faceitId: faction1.id };
     if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
     if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
-    if (!isOverridden('teams.team1.score')) t1.score = details.results?.score?.faction1 || 0;
+    if (!isOverridden('teams.team1.score')) t1.score = computedScore1;
     const t2 = { color: '#ef4444', faceitId: faction2.id };
     if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
     if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
-    if (!isOverridden('teams.team2.score')) t2.score = details.results?.score?.faction2 || 0;
+    if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
     update.teams = { team1: t1, team2: t2 };
 
     const updated = setState(update);
@@ -856,14 +864,19 @@ async function faceitPollTick() {
     update.perMapBans = perMapBans;
     if (!isOverridden('heroBans')) update.heroBans = heroBans;
 
+    // Compute score from completed maps to avoid FACEIT reporting partial
+    // scores mid-control-map (e.g. Lijiang Tower objective wins)
+    const computedScore1 = maps.filter(m => m.winner === 'team1').length;
+    const computedScore2 = maps.filter(m => m.winner === 'team2').length;
+
     const t1 = { color: '#3b82f6', faceitId: faction1.id };
     if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
     if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
-    if (!isOverridden('teams.team1.score')) t1.score = details.results?.score?.faction1 || 0;
+    if (!isOverridden('teams.team1.score')) t1.score = computedScore1;
     const t2 = { color: '#ef4444', faceitId: faction2.id };
     if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
     if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
-    if (!isOverridden('teams.team2.score')) t2.score = details.results?.score?.faction2 || 0;
+    if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
     update.teams = { team1: t1, team2: t2 };
 
     const updated = setState(update);

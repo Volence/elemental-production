@@ -154,7 +154,14 @@
 
     let lastState = null;
 
+    var lastRenderKey = '';
     function update(state) {
+      var renderKey = JSON.stringify([
+        state.teams, state.maps, state.casters, state.casterLayout,
+        state.bestOf, state.eventName, state.theme
+      ]);
+      if (renderKey === lastRenderKey) return;
+      lastRenderKey = renderKey;
       applyTheme(state);
       lastState = state;
       const el = document.getElementById('root');

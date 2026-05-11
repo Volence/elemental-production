@@ -193,7 +193,14 @@
       return name.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
     }
 
+    var lastRenderKey = '';
     function update(state) {
+      var renderKey = JSON.stringify([
+        state.teams, state.maps, state.perMapBans, state.bestOf,
+        state.eventName, state.theme
+      ]);
+      if (renderKey === lastRenderKey) return;
+      lastRenderKey = renderKey;
       applyTheme(state);
       const el = document.getElementById('root');
       const t1 = state.teams?.team1 || {};

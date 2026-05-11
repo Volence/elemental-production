@@ -172,7 +172,13 @@
   <script src="./state-sync.js"></script>
   <script>
     const API = 'http://localhost:3001';
+    var lastRenderKey = '';
     function update(state) {
+      var renderKey = JSON.stringify([
+        state.teams, state.bestOf, state.seriesWinner, state.eventName, state.theme
+      ]);
+      if (renderKey === lastRenderKey) return;
+      lastRenderKey = renderKey;
       applyTheme(state);
       const el = document.getElementById('root');
       const t1 = state.teams?.team1;

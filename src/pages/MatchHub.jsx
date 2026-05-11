@@ -138,6 +138,7 @@ export default function MatchHub({ state, updateState, api }) {
   const setMapStatus = (idx, status, winner = null) => {
     const maps = state.maps.map((m, i) => i === idx ? { ...m, status, winner } : m);
     updateState({ maps });
+    setOverride('maps');
   };
 
   const toggleBan = (heroKey) => {
@@ -494,6 +495,43 @@ export default function MatchHub({ state, updateState, api }) {
                     </div>
                   )}
                   {m.roundScore && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 4 }}>{m.roundScore}</div>}
+                  {/* Per-map ban indicators */}
+                  {(() => {
+                    const mapBans = state.perMapBans?.[i];
+                    if (!mapBans?.team1Ban && !mapBans?.team2Ban) return null;
+                    const allHeroes = [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
+                    const faceitNameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
+                    const toKey = (n) => n ? (faceitNameOverrides[n] || n.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '')) : '';
+                    const getPortrait = (ban) => {
+                      if (!ban?.name) return null;
+                      const hero = allHeroes.find(h => h.key === toKey(ban.name));
+                      return hero?.portrait;
+                    };
+                    const t1Color = state.teams.team1.color || '#3b82f6';
+                    const t2Color = state.teams.team2.color || '#ef4444';
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6 }}>
+                        {mapBans.team1Ban && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ fontSize: '0.5rem', color: t1Color, fontWeight: 700 }}>BAN</span>
+                            {getPortrait(mapBans.team1Ban) && (
+                              <img src={getPortrait(mapBans.team1Ban)} alt={mapBans.team1Ban.name}
+                                style={{ width: 22, height: 22, borderRadius: 4, border: `2px solid ${t1Color}` }} />
+                            )}
+                          </div>
+                        )}
+                        {mapBans.team2Ban && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            {getPortrait(mapBans.team2Ban) && (
+                              <img src={getPortrait(mapBans.team2Ban)} alt={mapBans.team2Ban.name}
+                                style={{ width: 22, height: 22, borderRadius: 4, border: `2px solid ${t2Color}` }} />
+                            )}
+                            <span style={{ fontSize: '0.5rem', color: t2Color, fontWeight: 700 }}>BAN</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {/* Controls for manual map management */}
                   <div style={{ marginTop: 8, display: 'flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
                     {m.status === 'upcoming' && (
@@ -506,13 +544,15 @@ export default function MatchHub({ state, updateState, api }) {
                             e.stopPropagation();
                             const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'completed', winner: 'team1' } : mm);
                             updateState({ maps: updatedMaps, teams: { ...state.teams, team1: { ...state.teams.team1, score: state.teams.team1.score + 1 } } });
-                          }}>T1 Win</button>
+                            setOverride('maps', 'teams.team1.score');
+                          }}>{state.teams.team1.name} Win</button>
                         <button className="btn btn-sm" style={{ background: 'var(--team2)', color: 'white', fontSize: '0.65rem' }}
                           onClick={(e) => {
                             e.stopPropagation();
                             const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'completed', winner: 'team2' } : mm);
                             updateState({ maps: updatedMaps, teams: { ...state.teams, team2: { ...state.teams.team2, score: state.teams.team2.score + 1 } } });
-                          }}>T2 Win</button>
+                            setOverride('maps', 'teams.team2.score');
+                          }}>{state.teams.team2.name} Win</button>
                       </>
                     )}
                     {m.status === 'completed' && m.winner && (
@@ -531,6 +571,7 @@ export default function MatchHub({ state, updateState, api }) {
                                 team2: { ...state.teams.team2, score: state.teams.team2.score + (newWinner === 'team2' ? 1 : -1) },
                               }
                             });
+                            setOverride('maps', 'teams.team1.score', 'teams.team2.score');
                           }}>⇄ Swap</button>
                         <button className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', fontSize: '0.6rem' }}
                           onClick={(e) => {
@@ -544,8 +585,36 @@ export default function MatchHub({ state, updateState, api }) {
                                 [oldWinner]: { ...state.teams[oldWinner], score: Math.max(0, state.teams[oldWinner].score - 1) },
                               }
                             });
+                            setOverride('maps', `teams.${oldWinner}.score`);
                           }}>↩ Undo</button>
                       </>
+                    )}
+                    {/* Swap hero bans between teams for this map */}
+                    {state.perMapBans?.[i]?.team1Ban && state.perMapBans?.[i]?.team2Ban && (
+                      <button className="btn btn-ghost btn-sm" style={{ fontSize: '0.6rem' }}
+                        title="Swap hero ban assignments between teams"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const perMapBans = [...(state.perMapBans || [])];
+                          const old = perMapBans[i];
+                          perMapBans[i] = { ...old, team1Ban: old.team2Ban, team2Ban: old.team1Ban };
+                          const updates = { perMapBans };
+                          const activeIdx = selectedMapIdx >= 0 ? selectedMapIdx : (
+                            state.maps?.findIndex(mm => mm.status === 'current') >= 0
+                              ? state.maps.findIndex(mm => mm.status === 'current')
+                              : (state.maps?.every(mm => mm.status === 'completed') ? state.maps.length - 1 : -1)
+                          );
+                          if (activeIdx === i) {
+                            const faceitNameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
+                            const toKey = (n) => n ? (faceitNameOverrides[n] || n.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '')) : '';
+                            updates.heroBans = {
+                              team1: perMapBans[i].team1Ban ? [toKey(perMapBans[i].team1Ban.name)] : [],
+                              team2: perMapBans[i].team2Ban ? [toKey(perMapBans[i].team2Ban.name)] : [],
+                            };
+                          }
+                          updateState(updates);
+                          setOverride('heroBans');
+                        }}>⇄ Bans</button>
                     )}
                     {/* Map picker toggle — always available */}
                     <select className="input" style={{ width: 80, fontSize: '0.6rem', padding: '2px 4px', height: 'auto' }}
