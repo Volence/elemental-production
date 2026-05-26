@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import FolderBrowser from '../components/FolderBrowser'
 
 const BUILTIN_FONTS = {
@@ -12,9 +12,24 @@ const BUILTIN_FONTS = {
 };
 
 export default function Settings({ state, updateState, api, obsConnected, setObsConnected, customFonts, setCustomFonts, onDirtyChange }) {
-  const [obsHost, setObsHost] = useState('localhost');
-  const [obsPort, setObsPort] = useState('4455');
-  const [obsPassword, setObsPassword] = useState('');
+  const [hotkeys, setHotkeys] = useState(state.hotkeys || {});
+  const [hotkeysDirty, setHotkeysDirty] = useState(false);
+  const [capturingKey, setCapturingKey] = useState(null);
+
+  useEffect(() => {
+    setHotkeys(state.hotkeys || {});
+    setHotkeysDirty(false);
+  }, [state.hotkeys]);
+
+  const saveHotkeys = async () => {
+    await updateState({ hotkeys });
+    setHotkeysDirty(false);
+    window.electronAPI?.reloadHotkeys();
+  };
+
+  const [obsHost, setObsHost] = useState(state.obsConnection?.host || 'localhost');
+  const [obsPort, setObsPort] = useState(String(state.obsConnection?.port || '4455'));
+  const [obsPassword, setObsPassword] = useState(state.obsConnection?.password || '');
   const [connecting, setConnecting] = useState(false);
   const fontInputRef = useRef(null);
   const [flythroughDir, setFlythroughDir] = useState(state.flythroughsDir || '');
@@ -584,6 +599,63 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         ))}
       </div>
 
+      {/* Hotkeys */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-header">
+          <span className="card-title">⌨️ Hotkeys</span>
+          <button className="btn btn-primary btn-sm" onClick={saveHotkeys} disabled={!hotkeysDirty}>
+            {hotkeysDirty ? 'Save Hotkeys' : 'Saved'}
+          </button>
+        </div>
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+          Global shortcuts work even when the app is not focused. Click a binding to change it.
+        </p>
+        <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+              <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-secondary)' }}>Action</th>
+              <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-secondary)' }}>Shortcut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(hotkeys.sceneSwitch || {}).map(([scene, binding]) => (
+              <tr key={scene} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '6px 8px' }}>Scene: {scene}</td>
+                <td style={{ padding: '6px 8px' }}>
+                  <HotkeyCapture
+                    value={binding}
+                    active={capturingKey === `scene:${scene}`}
+                    onStartCapture={() => setCapturingKey(`scene:${scene}`)}
+                    onChange={newBinding => {
+                      setHotkeys(prev => ({ ...prev, sceneSwitch: { ...prev.sceneSwitch, [scene]: newBinding } }));
+                      setHotkeysDirty(true);
+                      setCapturingKey(null);
+                    }}
+                    onCancel={() => setCapturingKey(null)}
+                  />
+                </td>
+              </tr>
+            ))}
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+              <td style={{ padding: '6px 8px' }}>Swap Sides</td>
+              <td style={{ padding: '6px 8px' }}>
+                <HotkeyCapture
+                  value={hotkeys.swapSides || ''}
+                  active={capturingKey === 'swapSides'}
+                  onStartCapture={() => setCapturingKey('swapSides')}
+                  onChange={newBinding => {
+                    setHotkeys(prev => ({ ...prev, swapSides: newBinding }));
+                    setHotkeysDirty(true);
+                    setCapturingKey(null);
+                  }}
+                  onCancel={() => setCapturingKey(null)}
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       {/* Stream Deck API */}
       <div className="card">
         <div className="card-title">🎛️ Stream Deck API Endpoints</div>
@@ -595,8 +667,12 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             { name: 'Starting', method: 'POST', url: 'http://localhost:3001/api/scene/Starting' },
             { name: 'Map Pick', method: 'POST', url: 'http://localhost:3001/api/scene/Map%20Pick' },
             { name: 'Map Intro', method: 'POST', url: 'http://localhost:3001/api/scene/Map%20Intro' },
+            { name: 'Casters Flythrough', method: 'POST', url: 'http://localhost:3001/api/scene/Casters%20Flythrough' },
             { name: 'Gameplay', method: 'POST', url: 'http://localhost:3001/api/scene/Gameplay' },
             { name: 'Casters', method: 'POST', url: 'http://localhost:3001/api/scene/Casters' },
+            { name: 'Casters Lobby', method: 'POST', url: 'http://localhost:3001/api/scene/Casters%20Lobby' },
+            { name: 'Casters Scoreboard', method: 'POST', url: 'http://localhost:3001/api/scene/Casters%20Scoreboard' },
+            { name: 'Map Score', method: 'POST', url: 'http://localhost:3001/api/scene/Map%20Score' },
             { name: 'Between Matches', method: 'POST', url: 'http://localhost:3001/api/scene/Between%20Matches' },
             { name: 'BRB', method: 'POST', url: 'http://localhost:3001/api/scene/BRB' },
             { name: 'Interview', method: 'POST', url: 'http://localhost:3001/api/scene/Interview' },
@@ -660,5 +736,59 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         />
       )}
     </div>
+  );
+}
+
+function HotkeyCapture({ value, active, onStartCapture, onChange, onCancel }) {
+  useEffect(() => {
+    if (!active) return;
+    const handler = (e) => {
+      e.preventDefault();
+      if (e.key === 'Escape') { onCancel(); return; }
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+
+      const parts = [];
+      if (e.ctrlKey) parts.push('Ctrl');
+      if (e.shiftKey) parts.push('Shift');
+      if (e.altKey) parts.push('Alt');
+
+      let key = e.key;
+      if (key === ' ') key = 'Space';
+      else if (key.length === 1) key = key.toUpperCase();
+      else if (key === 'ArrowUp') key = 'Up';
+      else if (key === 'ArrowDown') key = 'Down';
+      else if (key === 'ArrowLeft') key = 'Left';
+      else if (key === 'ArrowRight') key = 'Right';
+
+      parts.push(key);
+      onChange(parts.join('+'));
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [active, onChange, onCancel]);
+
+  if (active) {
+    return (
+      <span style={{
+        padding: '2px 8px', borderRadius: 4,
+        background: 'var(--accent-glow)', border: '1px solid var(--accent)',
+        fontSize: '0.75rem', cursor: 'pointer',
+      }}>
+        Press keys... (Esc to cancel)
+      </span>
+    );
+  }
+
+  return (
+    <span
+      onClick={onStartCapture}
+      style={{
+        padding: '2px 8px', borderRadius: 4,
+        background: 'var(--bg-input)', border: '1px solid var(--border)',
+        fontSize: '0.75rem', cursor: 'pointer',
+      }}
+    >
+      {value || 'None'}
+    </span>
   );
 }

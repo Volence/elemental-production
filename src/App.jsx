@@ -114,8 +114,10 @@ export default function App() {
       console.warn('SSE connection lost, reconnecting...');
     };
 
-    // Check OBS status + get scenes
-    fetch(`${API}/api/obs/status`).then(r => r.json()).then(d => setObsConnected(d.connected)).catch(() => {});
+    // Poll OBS status
+    const checkObs = () => fetch(`${API}/api/obs/status`).then(r => r.json()).then(d => setObsConnected(d.connected)).catch(() => {});
+    checkObs();
+    const obsPoll = setInterval(checkObs, 5000);
     fetch(`${API}/api/obs/scenes`).then(r => r.json()).then(d => {
       setScenes(d.scenes || []);
       setCurrentScene(d.currentScene || '');
@@ -131,7 +133,7 @@ export default function App() {
       });
     }).catch(() => {});
 
-    return () => es.close();
+    return () => { es.close(); clearInterval(obsPoll); };
   }, [fetchState]);
 
   // Keep current scene in sync
@@ -244,7 +246,7 @@ export default function App() {
           {page === 'settings' && <Settings state={state} updateState={updateState} api={API} obsConnected={obsConnected} setObsConnected={setObsConnected} customFonts={customFonts} setCustomFonts={setCustomFonts} onDirtyChange={setSettingsDirty} />}
         </div>
       </main>
-      <StatusBar />
+      <StatusBar state={state} />
     </>
   );
 }

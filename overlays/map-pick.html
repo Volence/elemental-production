@@ -13,7 +13,10 @@
       font-family: var(--font-body, 'Oswald', sans-serif); color: white;
     }
 
-    .container { position: relative; width: 1920px; height: 1080px; }
+    .container {
+      position: relative; width: 1920px; height: 1080px;
+      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    }
 
     /* Top scoreboard bar */
     .top-bar {
@@ -196,8 +199,8 @@
     var lastRenderKey = '';
     function update(state) {
       var renderKey = JSON.stringify([
-        state.teams, state.maps, state.perMapBans, state.bestOf,
-        state.eventName, state.theme
+        state.teams, state.maps, state.perMapBans, state.heroBans,
+        state.bestOf, state.eventName, state.theme
       ]);
       if (renderKey === lastRenderKey) return;
       lastRenderKey = renderKey;
@@ -235,13 +238,16 @@
         }
         let roundScore = m.roundScore ? `<span class="round-score">${m.roundScore}</span>` : '';
 
-        // Winner logo — placed on slot, not inside map-image
+        // Winner display — logo and name badge
         let winnerLogo = '';
         if (m.winner) {
           const wt = m.winner === 'team1' ? t1 : t2;
           if (wt.logo) {
             winnerLogo = `<div class="winner-logo-wrap"><img src="${wt.logo}" alt="${wt.name}"></div>`;
           }
+          winnerLogo += `<div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);z-index:5;
+            background:${winnerColor}dd;padding:3px 10px;border-radius:4px;font-size:10px;font-weight:700;
+            text-transform:uppercase;letter-spacing:1px;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.5)">${wt.name}</div>`;
         }
 
         // Map image + color overlay
@@ -265,11 +271,18 @@
           imageContent = `<div class="map-image"><span class="map-status">—</span></div>`;
         }
 
-        // Per-map hero bans
+        // Per-map hero bans (fall back to heroBans for current map if perMapBans empty)
         let bansHtml = '';
-        if (mapBans && (mapBans.ban1 || mapBans.ban2)) {
-          const b1Key = mapBans.team1Ban ? heroNameToKey(mapBans.team1Ban.name) : '';
-          const b2Key = mapBans.team2Ban ? heroNameToKey(mapBans.team2Ban.name) : '';
+        let b1Key = '', b2Key = '';
+        if (mapBans && (mapBans.ban1 || mapBans.ban2 || mapBans.team1Ban || mapBans.team2Ban)) {
+          b1Key = mapBans.team1Ban ? heroNameToKey(mapBans.team1Ban.name) : '';
+          b2Key = mapBans.team2Ban ? heroNameToKey(mapBans.team2Ban.name) : '';
+        } else if (isCurrent || (m.status === 'current')) {
+          const hb = state.heroBans || {};
+          b1Key = (hb.team1 || [])[0] || '';
+          b2Key = (hb.team2 || [])[0] || '';
+        }
+        if (b1Key || b2Key) {
           const b1Port = b1Key ? getHeroPortrait(b1Key) : '';
           const b2Port = b2Key ? getHeroPortrait(b2Key) : '';
 

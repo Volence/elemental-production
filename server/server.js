@@ -397,11 +397,13 @@ app.get('/api/status', async (req, res) => {
 
 app.post('/api/obs/connect', async (req, res) => {
   const { host, port, password } = req.body;
-  const result = await obs.connect(
-    host || process.env.OBS_WS_HOST,
-    port || process.env.OBS_WS_PORT,
-    password || process.env.OBS_WS_PASSWORD
-  );
+  const h = host || process.env.OBS_WS_HOST || 'localhost';
+  const p = port || parseInt(process.env.OBS_WS_PORT) || 4455;
+  const pw = password ?? process.env.OBS_WS_PASSWORD ?? '';
+  const result = await obs.connect(h, p, pw);
+  if (result.connected) {
+    setState({ obsConnection: { host: h, port: p, password: pw } });
+  }
   res.json(result);
 });
 
@@ -410,10 +412,37 @@ app.get('/api/obs/scenes', async (req, res) => {
   res.json(result);
 });
 
+const SCENE_TO_BROWSER_SOURCE = {
+  'Starting': 'Starting Soon BS',
+  'Map Pick': 'Map Pick BS',
+  'Map Intro': 'Map Intro BS',
+  'Gameplay': 'Gameplay HUD',
+  'Casters': 'Casters BS',
+  'Casters Lobby': 'Casters Lobby BS',
+  'Casters Scoreboard': 'Casters Scoreboard BS',
+  'Casters Flythrough': 'Casters BS',
+  'Map Score': 'Casters Map Score BS',
+  'Between Matches': 'Between Matches BS',
+  'BRB': 'BRB BS',
+  'Interview': 'Interview BS',
+  'Series Winner': 'Series Winner BS',
+  'Ending': 'End Stream BS',
+};
+
+async function refreshSceneOverlay(sceneName) {
+  const source = SCENE_TO_BROWSER_SOURCE[sceneName];
+  if (source) {
+    await obs.refreshBrowserSource(source).catch(() => {});
+  }
+}
+
 app.post('/api/obs/scene', async (req, res) => {
   const { name } = req.body;
   const ok = await obs.setScene(name);
-  if (ok) setState({ currentScene: name });
+  if (ok) {
+    setState({ currentScene: name });
+    refreshSceneOverlay(name);
+  }
   broadcast('state', getState());
   res.json({ success: ok });
 });
@@ -421,7 +450,10 @@ app.post('/api/obs/scene', async (req, res) => {
 // Alias for Stream Deck
 app.post('/api/scene/:name', async (req, res) => {
   const ok = await obs.setScene(req.params.name);
-  if (ok) setState({ currentScene: req.params.name });
+  if (ok) {
+    setState({ currentScene: req.params.name });
+    refreshSceneOverlay(req.params.name);
+  }
   broadcast('state', getState());
   res.json({ success: ok });
 });
@@ -654,6 +686,9 @@ app.post('/api/faceit/match', async (req, res) => {
     const update = {
       mode: 'faceit',
       faceitMatchId: matchId,
+      selectedMapIdx: -1,
+      faceitLastSync: Date.now(),
+      faceitLastSyncError: null,
     };
 
     if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
@@ -807,18 +842,27 @@ async function faceitPollTick() {
     const faction1 = details.teams.faction1;
     const faction2 = details.teams.faction2;
 
+    const STATUS_RANK = { 'upcoming': 0, 'current': 1, 'completed': 2 };
     const maps = details.pickedMaps.map((m, i) => {
       const roundStats = stats[i];
-      let winner = null;
+      const current = currentState.maps?.[i] || {};
+
+      // Winner: use FACEIT if available, otherwise preserve manual selection
+      let winner = current.winner || null;
       if (roundStats?.winner) {
         winner = roundStats.winner === faction1.id ? 'team1' : 'team2';
       }
+
+      // Status: forward-only — never demote (e.g. current back to upcoming)
+      const faceitStatus = roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming';
+      const status = (STATUS_RANK[faceitStatus] >= STATUS_RANK[current.status || 'upcoming'])
+        ? faceitStatus : (current.status || 'upcoming');
+
       return {
         name: m.name, mode: m.mode,
         image: m.imageSm || m.imageLg,
-        status: roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming',
-        winner,
-        roundScore: roundStats?.scoreSummary || null,
+        status, winner,
+        roundScore: roundStats?.scoreSummary || current.roundScore || null,
       };
     });
 
@@ -851,12 +895,10 @@ async function faceitPollTick() {
       team2: activeBans?.team2Ban ? [heroNameToKey(activeBans.team2Ban.name)] : [],
     };
 
-    // Build update, respecting all overrides
+    // Build update, respecting overrides (maps always update — forward-only logic prevents regressions)
     const update = {};
     if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
-    if (!isOverridden('maps')) {
-      update.maps = maps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null }));
-    }
+    update.maps = maps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null }));
     if (!isOverridden('players')) {
       update.players = { team1: faction1.roster, team2: faction2.roster };
     }
@@ -864,27 +906,27 @@ async function faceitPollTick() {
     update.perMapBans = perMapBans;
     if (!isOverridden('heroBans')) update.heroBans = heroBans;
 
-    // Compute score from completed maps to avoid FACEIT reporting partial
-    // scores mid-control-map (e.g. Lijiang Tower objective wins)
+    // Compute score from merged maps (includes manual wins via forward-only logic)
     const computedScore1 = maps.filter(m => m.winner === 'team1').length;
     const computedScore2 = maps.filter(m => m.winner === 'team2').length;
 
     const t1 = { color: '#3b82f6', faceitId: faction1.id };
     if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
     if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
-    if (!isOverridden('teams.team1.score')) t1.score = computedScore1;
+    t1.score = computedScore1;
     const t2 = { color: '#ef4444', faceitId: faction2.id };
     if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
     if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
-    if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
+    t2.score = computedScore2;
     update.teams = { team1: t1, team2: t2 };
+    update.faceitLastSync = Date.now();
 
     const updated = setState(update);
     broadcast('state', updated);
     syncToOBS(updated);
   } catch (e) {
     console.warn(`[FACEIT Poll] Error: ${e.message}`);
-    // Don't stop polling on transient errors — just skip this tick
+    setState({ faceitLastSyncError: Date.now() });
   }
 }
 
@@ -1927,13 +1969,13 @@ async function setupBrowserSources() {
   console.log('[OBS] Browser sources configured for all overlays');
 }
 
-// Try to connect to OBS on startup
-if (process.env.OBS_WS_HOST) {
-  obs.connect(
-    process.env.OBS_WS_HOST,
-    parseInt(process.env.OBS_WS_PORT) || 4455,
-    process.env.OBS_WS_PASSWORD || ''
-  ).then(async () => {
+// Try to connect to OBS on startup (saved settings or env vars)
+const _savedObs = getState().obsConnection;
+const _obsHost = process.env.OBS_WS_HOST || _savedObs?.host;
+const _obsPort = parseInt(process.env.OBS_WS_PORT) || _savedObs?.port || 4455;
+const _obsPw = process.env.OBS_WS_PASSWORD ?? _savedObs?.password ?? '';
+if (_obsHost) {
+  obs.connect(_obsHost, _obsPort, _obsPw).then(async () => {
     // Initial sync of current state to OBS after connecting
     setTimeout(async () => {
       await syncToOBS(getState());

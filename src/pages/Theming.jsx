@@ -35,19 +35,10 @@ export default function Theming({ state, updateState, api, customFonts }) {
   const theme = state.theme || {};
   const [local, setLocal] = useState({ ...DEFAULT_THEME, ...theme });
   const [dirty, setDirty] = useState(false);
-  const [hotkeys, setHotkeys] = useState(state.hotkeys || {});
-  const [hotkeysDirty, setHotkeysDirty] = useState(false);
-  const [capturingKey, setCapturingKey] = useState(null);
-
   useEffect(() => {
     setLocal({ ...DEFAULT_THEME, ...state.theme });
     setDirty(false);
   }, [state.theme]);
-
-  useEffect(() => {
-    setHotkeys(state.hotkeys || {});
-    setHotkeysDirty(false);
-  }, [state.hotkeys]);
 
   const update = (key, value) => {
     setLocal(prev => ({ ...prev, [key]: value }));
@@ -95,19 +86,13 @@ export default function Theming({ state, updateState, api, customFonts }) {
     setDirty(false);
   };
 
-  const saveHotkeys = async () => {
-    await updateState({ hotkeys });
-    setHotkeysDirty(false);
-    window.electronAPI?.reloadHotkeys();
-  };
-
   const allFonts = [...BUILTIN_FONTS, ...(customFonts || []).map(f => f.name)];
 
   return (
     <div>
       <div className="page-header">
         <h2>Theming</h2>
-        <p>Customize overlay appearance, team colors, and hotkey bindings</p>
+        <p>Customize overlay appearance and team colors</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -243,62 +228,6 @@ export default function Theming({ state, updateState, api, customFonts }) {
         </div>
       </div>
 
-      {/* Hotkeys */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header">
-          <span className="card-title">Hotkeys</span>
-          <button className="btn btn-primary btn-sm" onClick={saveHotkeys} disabled={!hotkeysDirty}>
-            {hotkeysDirty ? 'Save Hotkeys' : 'Saved'}
-          </button>
-        </div>
-        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8 }}>
-          Global shortcuts work even when the app is not focused. Click a binding to change it.
-        </p>
-        <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-secondary)' }}>Action</th>
-              <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-secondary)' }}>Shortcut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(hotkeys.sceneSwitch || {}).map(([scene, binding]) => (
-              <tr key={scene} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '6px 8px' }}>Scene: {scene}</td>
-                <td style={{ padding: '6px 8px' }}>
-                  <HotkeyCapture
-                    value={binding}
-                    active={capturingKey === `scene:${scene}`}
-                    onStartCapture={() => setCapturingKey(`scene:${scene}`)}
-                    onChange={newBinding => {
-                      setHotkeys(prev => ({ ...prev, sceneSwitch: { ...prev.sceneSwitch, [scene]: newBinding } }));
-                      setHotkeysDirty(true);
-                      setCapturingKey(null);
-                    }}
-                    onCancel={() => setCapturingKey(null)}
-                  />
-                </td>
-              </tr>
-            ))}
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              <td style={{ padding: '6px 8px' }}>Swap Sides</td>
-              <td style={{ padding: '6px 8px' }}>
-                <HotkeyCapture
-                  value={hotkeys.swapSides || ''}
-                  active={capturingKey === 'swapSides'}
-                  onStartCapture={() => setCapturingKey('swapSides')}
-                  onChange={newBinding => {
-                    setHotkeys(prev => ({ ...prev, swapSides: newBinding }));
-                    setHotkeysDirty(true);
-                    setCapturingKey(null);
-                  }}
-                  onCancel={() => setCapturingKey(null)}
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
@@ -431,56 +360,3 @@ function TeamColorSection({ label, color, auto, logoUrl, api, onColorChange, onA
   );
 }
 
-function HotkeyCapture({ value, active, onStartCapture, onChange, onCancel }) {
-  useEffect(() => {
-    if (!active) return;
-    const handler = (e) => {
-      e.preventDefault();
-      if (e.key === 'Escape') { onCancel(); return; }
-      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
-
-      const parts = [];
-      if (e.ctrlKey) parts.push('Ctrl');
-      if (e.shiftKey) parts.push('Shift');
-      if (e.altKey) parts.push('Alt');
-
-      let key = e.key;
-      if (key === ' ') key = 'Space';
-      else if (key.length === 1) key = key.toUpperCase();
-      else if (key === 'ArrowUp') key = 'Up';
-      else if (key === 'ArrowDown') key = 'Down';
-      else if (key === 'ArrowLeft') key = 'Left';
-      else if (key === 'ArrowRight') key = 'Right';
-
-      parts.push(key);
-      onChange(parts.join('+'));
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [active, onChange, onCancel]);
-
-  if (active) {
-    return (
-      <span style={{
-        padding: '2px 8px', borderRadius: 4,
-        background: 'var(--accent-glow)', border: '1px solid var(--accent)',
-        fontSize: '0.75rem', cursor: 'pointer',
-      }}>
-        Press keys... (Esc to cancel)
-      </span>
-    );
-  }
-
-  return (
-    <span
-      onClick={onStartCapture}
-      style={{
-        padding: '2px 8px', borderRadius: 4,
-        background: 'var(--bg-input)', border: '1px solid var(--border)',
-        fontSize: '0.75rem', cursor: 'pointer',
-      }}
-    >
-      {value || 'None'}
-    </span>
-  );
-}

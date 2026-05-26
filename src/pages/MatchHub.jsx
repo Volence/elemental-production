@@ -138,7 +138,6 @@ export default function MatchHub({ state, updateState, api }) {
   const setMapStatus = (idx, status, winner = null) => {
     const maps = state.maps.map((m, i) => i === idx ? { ...m, status, winner } : m);
     updateState({ maps });
-    setOverride('maps');
   };
 
   const toggleBan = (heroKey) => {
@@ -153,7 +152,28 @@ export default function MatchHub({ state, updateState, api }) {
       teamBans.push(heroKey);
     }
     bans[banTeam] = teamBans;
-    updateState({ heroBans: bans });
+
+    // Also sync to perMapBans for the current/selected map so overlays can display them
+    const allHeroes = [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
+    const toHeroObj = (key) => {
+      const h = allHeroes.find(x => x.key === key);
+      return h ? { name: h.name, role: h.role, image: h.portrait } : { name: key, role: '', image: '' };
+    };
+    const mapIdx = selectedMapIdx >= 0 ? selectedMapIdx
+      : (state.maps?.findIndex(m => m.status === 'current') >= 0
+        ? state.maps.findIndex(m => m.status === 'current')
+        : Math.max(0, (state.maps?.length || 1) - 1));
+    const perMapBans = [...(state.perMapBans || [])];
+    while (perMapBans.length <= mapIdx) perMapBans.push({});
+    perMapBans[mapIdx] = {
+      ...perMapBans[mapIdx],
+      team1Ban: bans.team1?.[0] ? toHeroObj(bans.team1[0]) : null,
+      team2Ban: bans.team2?.[0] ? toHeroObj(bans.team2[0]) : null,
+      ban1: bans.team1?.[0] ? toHeroObj(bans.team1[0]) : null,
+      ban2: bans.team2?.[0] ? toHeroObj(bans.team2[0]) : null,
+    };
+
+    updateState({ heroBans: bans, perMapBans });
   };
 
   const allBans = [...(state.heroBans?.team1 || []), ...(state.heroBans?.team2 || [])];
@@ -271,8 +291,10 @@ export default function MatchHub({ state, updateState, api }) {
           </div>
           {error && <p style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 4 }}>{error}</p>}
           {state.faceitAutoSync && (
-            <p style={{ color: '#22c55e', fontSize: '0.7rem', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              ↻ Live syncing every 15s — auto-stops when match finishes
+            <p style={{ color: state.faceitLastSyncError && (!state.faceitLastSync || state.faceitLastSyncError > state.faceitLastSync) ? '#ef4444' : '#22c55e', fontSize: '0.7rem', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              ↻ Live syncing every 15s
+              {state.faceitLastSync && <span style={{ color: 'var(--text-muted)' }}>— last sync {Math.floor((Date.now() - state.faceitLastSync) / 1000) < 5 ? 'just now' : `${Math.floor((Date.now() - state.faceitLastSync) / 1000)}s ago`}</span>}
+              {state.faceitLastSyncError && (!state.faceitLastSync || state.faceitLastSyncError > state.faceitLastSync) && <span style={{ color: '#ef4444' }}>— sync error, retrying...</span>}
             </p>
           )}
         </div>
@@ -544,14 +566,12 @@ export default function MatchHub({ state, updateState, api }) {
                             e.stopPropagation();
                             const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'completed', winner: 'team1' } : mm);
                             updateState({ maps: updatedMaps, teams: { ...state.teams, team1: { ...state.teams.team1, score: state.teams.team1.score + 1 } } });
-                            setOverride('maps', 'teams.team1.score');
                           }}>{state.teams.team1.name} Win</button>
                         <button className="btn btn-sm" style={{ background: 'var(--team2)', color: 'white', fontSize: '0.65rem' }}
                           onClick={(e) => {
                             e.stopPropagation();
                             const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'completed', winner: 'team2' } : mm);
                             updateState({ maps: updatedMaps, teams: { ...state.teams, team2: { ...state.teams.team2, score: state.teams.team2.score + 1 } } });
-                            setOverride('maps', 'teams.team2.score');
                           }}>{state.teams.team2.name} Win</button>
                       </>
                     )}
@@ -571,7 +591,6 @@ export default function MatchHub({ state, updateState, api }) {
                                 team2: { ...state.teams.team2, score: state.teams.team2.score + (newWinner === 'team2' ? 1 : -1) },
                               }
                             });
-                            setOverride('maps', 'teams.team1.score', 'teams.team2.score');
                           }}>⇄ Swap</button>
                         <button className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', fontSize: '0.6rem' }}
                           onClick={(e) => {
@@ -585,7 +604,6 @@ export default function MatchHub({ state, updateState, api }) {
                                 [oldWinner]: { ...state.teams[oldWinner], score: Math.max(0, state.teams[oldWinner].score - 1) },
                               }
                             });
-                            setOverride('maps', `teams.${oldWinner}.score`);
                           }}>↩ Undo</button>
                       </>
                     )}
