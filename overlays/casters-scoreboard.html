@@ -382,8 +382,9 @@
       }
       if (t1Bans || t2Bans) {
         bansHtml = `<div class="bans-row">
+          ${t1Bans}
           <span class="ban-label">Bans</span>
-          ${t1Bans}${t2Bans}
+          ${t2Bans}
         </div>`;
       }
 

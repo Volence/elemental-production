@@ -27,6 +27,9 @@ export async function connect(host = 'localhost', port = 4455, password = '') {
   } catch (e) {
     connected = false;
     console.warn('[OBS] Connection failed:', e.message);
+    setTimeout(() => {
+      if (!connected) connect(host, port, password);
+    }, 5000);
     return { connected: false, error: e.message };
   }
 }

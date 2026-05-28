@@ -97,6 +97,7 @@ export default function MatchHub({ state, updateState, api }) {
         maps: [],
         playerStats: [],
         heroBans: { team1: [], team2: [] },
+        perMapBans: [],
       });
     } else if (mode === 'scrim') {
       updateState({
@@ -107,6 +108,7 @@ export default function MatchHub({ state, updateState, api }) {
         maps: [],
         playerStats: [],
         heroBans: { team1: [], team2: [] },
+        perMapBans: [],
         bestOf: 1,
       });
     }
