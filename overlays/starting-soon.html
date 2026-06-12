@@ -240,13 +240,13 @@
       }).join('') : `
         <div class="match-row up-next">
           <div class="team-left">
-            ${state.teams?.team1?.logo ? `<img class="team-logo" src="${state.teams.team1.logo}">` : ''}
+            ${state.teams?.team1?.logo ? `<img class="team-logo" src="${proxyImg(state.teams.team1.logo)}">` : ''}
             <span class="team-name">${state.teams?.team1?.name || 'TBD'}</span>
           </div>
           <span class="vs">—</span>
           <div class="team-right">
             <span class="team-name">${state.teams?.team2?.name || 'TBD'}</span>
-            ${state.teams?.team2?.logo ? `<img class="team-logo" src="${state.teams.team2.logo}">` : ''}
+            ${state.teams?.team2?.logo ? `<img class="team-logo" src="${proxyImg(state.teams.team2.logo)}">` : ''}
           </div>
           <div class="match-info">
             <span class="match-label">UP NEXT</span>

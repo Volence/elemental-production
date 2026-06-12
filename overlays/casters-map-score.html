@@ -139,17 +139,19 @@
     let mapData = [];
 
     async function loadMaps() {
-      mapData = await fetch('https://overfast-api.tekrop.fr/maps').then(r => r.json()).catch(() => []);
+      // Local API (cached server-side) — external fetches fail intermittently in OBS browser sources
+      mapData = await fetch(`${API}/api/maps`).then(r => r.json()).catch(() => []);
+      if (!Array.isArray(mapData)) mapData = [];
     }
 
     function getMapScreenshot(mapName, faceitImage) {
-      if (!mapName) return faceitImage || '';
+      if (!mapName) return proxyImg(faceitImage);
       const normalized = mapName.toLowerCase().trim();
       const match = mapData.find(m =>
         m.name.toLowerCase() === normalized ||
         m.key === normalized.replace(/[^a-z0-9]+/g, '-')
       );
-      return match ? match.screenshot : (faceitImage || '');
+      return proxyImg(match ? match.screenshot : faceitImage);
     }
 
     let lastState = null;
@@ -212,7 +214,7 @@
         const pad = Array(Math.max(0, mapCount - maps.length)).fill(0)
           .map(() => `<div class="map-cell pending">—</div>`).join('');
         return `<div class="score-row" style="--map-count:${mapCount}">
-          <div class="team-logo-cell">${team.logo ? `<img src="${team.logo}">` : ''}</div>
+          <div class="team-logo-cell">${team.logo ? `<img src="${proxyImg(team.logo)}">` : ''}</div>
           <div class="team-name-cell" style="color:${color}">${team.name}</div>
           ${mapCells}${pad}
           <div class="series-cell" style="color:${color}">${team.score || 0}</div>
@@ -280,8 +282,19 @@
     }
     stateSync(function(s) { lastState = s; update(s); });
 
-    // Load map screenshots in background — re-render when ready
-    loadMaps().then(() => { if (lastState) update(lastState); });
+    // Map screenshots load in the background — retry until available, then
+    // force a re-render (the renderKey cache would otherwise skip it)
+    function loadMapsWithRetry() {
+      loadMaps().then(() => {
+        if (mapData.length > 0) {
+          lastRenderKey = '';
+          if (lastState) update(lastState);
+        } else {
+          setTimeout(loadMapsWithRetry, 5000);
+        }
+      });
+    }
+    loadMapsWithRetry();
   </script>
 </body>
 </html>

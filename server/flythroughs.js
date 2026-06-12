@@ -3,43 +3,58 @@
  * Scans a configurable directory and fuzzy-matches map names to filenames.
  */
 import fs from 'fs';
-import path from 'path';
 
-// Canonical map-name → expected filename fragments (lowercase)
-const MAP_ALIASES = {
-  'blizzard world': ['blizzard world'],
-  'busan': ['busan'],
-  'colosseo': ['colosseo'],
-  'dorado': ['dorado'],
-  'watchpoint: gibraltar': ['gibraltar'],
-  'gibraltar': ['gibraltar'],
-  'ilios': ['ilios'],
-  "king's row": ['kings row'],
-  'kings row': ['kings row'],
-  'lijiang tower': ['lilijang', 'lijiang'],
-  'midtown': ['midtown'],
-  'nepal': ['nepal'],
-  'new junk city': ['new junk city'],
-  'rialto': ['rialto'],
-  'route 66': ['route 66'],
-  'runasapi': ['runasapi'],
-  'samoa': ['samoa'],
-  'suravasa': ['suravasa'],
-  'esperança': ['esperanca', 'esperança'],
-  'esperanca': ['esperanca', 'esperança'],
-  'antarctic peninsula': ['antarctic'],
-  'circuit royal': ['circuit'],
-  'havana': ['havana'],
-  'numbani': ['numbani'],
-  'oasis': ['oasis'],
-  'paraíso': ['paraiso', 'paraíso'],
-  'shambali monastery': ['shambali'],
-  'hollywood': ['hollywood'],
-  'eichenwalde': ['eichenwalde'],
-  'new queen street': ['new queen'],
-  'hanaoka': ['hanaoka'],
-  'thrown room': ['throne'],
-};
+// Canonical map list — one entry per map so the detected list never shows
+// duplicates. `aliases` are filename fragments to match against (compressed:
+// lowercase, accents stripped, non-alphanumerics removed).
+const MAP_DEFS = [
+  { display: 'Aatlis', aliases: ['aatlis'] },
+  { display: 'Antarctic Peninsula', aliases: ['antarctic'] },
+  { display: 'Blizzard World', aliases: ['blizzard world'] },
+  { display: 'Busan', aliases: ['busan'] },
+  { display: 'Circuit Royal', aliases: ['circuit'] },
+  { display: 'Colosseo', aliases: ['colosseo'] },
+  { display: 'Dorado', aliases: ['dorado'] },
+  { display: 'Eichenwalde', aliases: ['eichenwalde'] },
+  { display: 'Esperança', aliases: ['esperanca'] },
+  { display: 'Hanaoka', aliases: ['hanaoka'] },
+  { display: 'Havana', aliases: ['havana'] },
+  { display: 'Hollywood', aliases: ['hollywood'] },
+  { display: 'Ilios', aliases: ['ilios'] },
+  { display: 'Junkertown', aliases: ['junkertown'] },
+  { display: "King's Row", aliases: ['kings row'] },
+  { display: 'Lijiang Tower', aliases: ['lilijang', 'lijiang'] },
+  { display: 'Midtown', aliases: ['midtown'] },
+  { display: 'Nepal', aliases: ['nepal'] },
+  { display: 'New Junk City', aliases: ['new junk city'] },
+  { display: 'New Queen Street', aliases: ['new queen'] },
+  { display: 'Numbani', aliases: ['numbani'] },
+  { display: 'Oasis', aliases: ['oasis'] },
+  { display: 'Paraíso', aliases: ['paraiso'] },
+  { display: 'Rialto', aliases: ['rialto'] },
+  { display: 'Route 66', aliases: ['route 66'] },
+  { display: 'Runasapi', aliases: ['runasapi'] },
+  { display: 'Samoa', aliases: ['samoa'] },
+  { display: 'Shambali Monastery', aliases: ['shambali'] },
+  { display: 'Suravasa', aliases: ['suravasa'] },
+  { display: 'Throne Room', aliases: ['throne'] },
+  { display: 'Watchpoint: Gibraltar', aliases: ['gibraltar'] },
+];
+
+// Compress a name for fuzzy matching: strip accents/punctuation/spaces.
+// "King's Row Fly.mp4" → "kingsrowflymp4", "Esperança" → "esperanca"
+function compress(s) {
+  return (s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+// Lookup from compressed map name (display + aliases) → map definition
+const NAME_LOOKUP = {};
+for (const def of MAP_DEFS) {
+  NAME_LOOKUP[compress(def.display)] = def;
+  for (const a of def.aliases) NAME_LOOKUP[compress(a)] = def;
+}
 
 let cachedDir = null;
 let cachedFiles = [];
@@ -56,13 +71,22 @@ export function scanDirectory(dir) {
     }
     cachedFiles = fs.readdirSync(dir)
       .filter(f => /\.(mp4|webm)$/i.test(f))
-      .map(f => ({ filename: f, lower: f.toLowerCase() }));
+      .map(f => ({ filename: f, compressed: compress(f) }));
     return cachedFiles;
   } catch (e) {
     console.warn('[Flythroughs] Failed to scan directory:', e.message);
     cachedFiles = [];
     return [];
   }
+}
+
+function findFile(def) {
+  for (const alias of def.aliases) {
+    const needle = compress(alias);
+    const match = cachedFiles.find(f => f.compressed.includes(needle));
+    if (match) return match;
+  }
+  return null;
 }
 
 /**
@@ -72,19 +96,9 @@ export function scanDirectory(dir) {
 export function getFlythroughUrl(mapName) {
   if (!mapName || cachedFiles.length === 0) return null;
 
-  const normalizedMap = mapName.toLowerCase().trim();
-
-  // Look up aliases for this map name
-  const aliases = MAP_ALIASES[normalizedMap] || [normalizedMap];
-
-  for (const alias of aliases) {
-    const match = cachedFiles.find(f => f.lower.includes(alias));
-    if (match) {
-      return `/flythroughs/${encodeURIComponent(match.filename)}`;
-    }
-  }
-
-  return null;
+  const def = NAME_LOOKUP[compress(mapName)] || { aliases: [mapName] };
+  const match = findFile(def);
+  return match ? `/flythroughs/${encodeURIComponent(match.filename)}` : null;
 }
 
 /**
@@ -92,15 +106,10 @@ export function getFlythroughUrl(mapName) {
  */
 export function getAllFlythroughs() {
   const result = {};
-  for (const [mapName, aliases] of Object.entries(MAP_ALIASES)) {
-    for (const alias of aliases) {
-      const match = cachedFiles.find(f => f.lower.includes(alias));
-      if (match) {
-        // Use a clean display name (capitalize first letter of each word)
-        const displayName = mapName.replace(/\b\w/g, c => c.toUpperCase());
-        result[displayName] = `/flythroughs/${encodeURIComponent(match.filename)}`;
-        break;
-      }
+  for (const def of MAP_DEFS) {
+    const match = findFile(def);
+    if (match) {
+      result[def.display] = `/flythroughs/${encodeURIComponent(match.filename)}`;
     }
   }
   return result;

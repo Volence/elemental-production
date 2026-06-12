@@ -206,29 +206,29 @@
       heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
     }
     async function loadMaps() {
-      mapData = await fetch('https://overfast-api.tekrop.fr/maps').then(r => r.json()).catch(() => []);
+      // Local API (cached server-side) — external fetches fail intermittently in OBS browser sources
+      mapData = await fetch(`${API}/api/maps`).then(r => r.json()).catch(() => []);
+      if (!Array.isArray(mapData)) mapData = [];
     }
 
     function getMapScreenshot(mapName, faceitImage) {
-      if (!mapName) return faceitImage || '';
+      if (!mapName) return proxyImg(faceitImage);
       const normalized = mapName.toLowerCase().trim();
       const match = mapData.find(m =>
         m.name.toLowerCase() === normalized ||
         m.key === normalized.replace(/[^a-z0-9]+/g, '-')
       );
-      return match ? match.screenshot : (faceitImage || '');
+      return proxyImg(match ? match.screenshot : faceitImage);
     }
 
     function getHeroPortrait(key) {
-      const hero = heroData.find(h => h.key === key);
+      const hero = findHeroEntry(heroData, key);
       return hero ? hero.portrait : '';
     }
 
-    const nameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
     function heroNameToKey(name) {
-      if (!name) return '';
-      if (nameOverrides[name]) return nameOverrides[name];
-      return name.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+      const hero = findHeroEntry(heroData, name);
+      return hero ? hero.key : '';
     }
 
     const defaultAvatar = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect fill="%23222" width="40" height="40" rx="20"/><text x="20" y="26" text-anchor="middle" fill="%23555" font-size="18">?</text></svg>');
@@ -279,7 +279,7 @@
         let winnerLogo = '';
         if (m.winner) {
           const wt = m.winner === 'team1' ? t1 : t2;
-          if (wt.logo) winnerLogo = `<img class="map-winner-logo" src="${wt.logo}">`;
+          if (wt.logo) winnerLogo = `<img class="map-winner-logo" src="${proxyImg(wt.logo)}">`;
         }
 
         let pickerHtml = '';
@@ -321,7 +321,7 @@
           const faceitName = p.gamePlayerName && p.gamePlayerName !== p.nickname ? p.nickname : '';
           const lvl = p.skillLevel || 0;
           return `<div class="roster-player">
-            <img class="avatar" src="${avatar}" onerror="this.src='${defaultAvatar}'">
+            <img class="avatar" src="${proxyImg(avatar)}" onerror="this.src='${defaultAvatar}'">
             <div class="player-info">
               <div class="ign">${ign}</div>
               ${faceitName ? `<div class="faceit-name">${faceitName}</div>` : ''}
@@ -357,7 +357,7 @@
           <div class="center-panel">
             <div class="match-header">
               <div class="match-team">
-                ${t1.logo ? `<img class="logo" src="${t1.logo}">` : ''}
+                ${t1.logo ? `<img class="logo" src="${proxyImg(t1.logo)}">` : ''}
                 <span class="name" style="color:${t1Color}">${t1.name}</span>
                 <span class="score" style="color:${t1Color}">${t1.score || 0}</span>
               </div>
@@ -365,7 +365,7 @@
               <div class="match-team">
                 <span class="score" style="color:${t2Color}">${t2.score || 0}</span>
                 <span class="name" style="color:${t2Color}">${t2.name}</span>
-                ${t2.logo ? `<img class="logo" src="${t2.logo}">` : ''}
+                ${t2.logo ? `<img class="logo" src="${proxyImg(t2.logo)}">` : ''}
               </div>
             </div>
             <div class="match-meta">BEST OF ${bestOf}</div>
@@ -377,14 +377,14 @@
             <div class="rosters">
               <div class="roster-col">
                 <div class="roster-header">
-                  ${t1.logo ? `<img class="team-logo" src="${t1.logo}">` : ''}
+                  ${t1.logo ? `<img class="team-logo" src="${proxyImg(t1.logo)}">` : ''}
                   <span class="team-name" style="color:${t1Color}">${t1.name}</span>
                 </div>
                 ${renderRoster(players1)}
               </div>
               <div class="roster-col">
                 <div class="roster-header">
-                  ${t2.logo ? `<img class="team-logo" src="${t2.logo}">` : ''}
+                  ${t2.logo ? `<img class="team-logo" src="${proxyImg(t2.logo)}">` : ''}
                   <span class="team-name" style="color:${t2Color}">${t2.name}</span>
                 </div>
                 ${renderRoster(players2)}
@@ -399,7 +399,19 @@
 
     loadHeroes().then(() => stateSync(function(s) { lastState = s; update(s); }));
 
-    loadMaps().then(() => { if (lastState) update(lastState); });
+    // Map screenshots load in the background — retry until available, then
+    // force a re-render (the renderKey cache would otherwise skip it)
+    function loadMapsWithRetry() {
+      loadMaps().then(() => {
+        if (mapData.length > 0) {
+          lastRenderKey = '';
+          if (lastState) update(lastState);
+        } else {
+          setTimeout(loadMapsWithRetry, 5000);
+        }
+      });
+    }
+    loadMapsWithRetry();
   </script>
 </body>
 </html>

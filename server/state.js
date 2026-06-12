@@ -166,14 +166,43 @@ export function loadState() {
   return state;
 }
 
+// Debounced + atomic persistence. State changes arrive every keystroke and
+// every countdown tick, so coalesce writes; write-to-temp + rename means a
+// crash mid-write can never leave a truncated state.json behind.
+let persistTimer = null;
+let dirty = false;
+
 function persist() {
+  dirty = true;
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    flush();
+  }, 300);
+}
+
+function flush() {
+  if (!dirty) return;
+  dirty = false;
   try {
     const dir = path.dirname(STATE_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+    const tmpFile = `${STATE_FILE}.tmp`;
+    fs.writeFileSync(tmpFile, JSON.stringify(state, null, 2));
+    fs.renameSync(tmpFile, STATE_FILE);
   } catch (e) {
     console.error('[State] Failed to persist:', e.message);
   }
+}
+
+// Flush any pending debounced write on shutdown (Electron kills the forked
+// server with SIGTERM on quit)
+process.on('exit', flush);
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    flush();
+    process.exit(0);
+  });
 }
 
 function deepMerge(target, source) {

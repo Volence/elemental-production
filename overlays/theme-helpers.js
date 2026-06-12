@@ -42,6 +42,31 @@ function applyTheme(state) {
   s.setProperty('--font-body', "'" + bodyFont + "', sans-serif");
 }
 
+// Route external image URLs through the local caching proxy — OBS's embedded
+// Chromium fails intermittently on direct external CDN fetches.
+function proxyImg(u) {
+  if (!u || typeof u !== 'string') return '';
+  if (/^https?:\/\//i.test(u) && u.indexOf('localhost') === -1 && u.indexOf('127.0.0.1') === -1) {
+    return 'http://localhost:3001/api/proxy-image?url=' + encodeURIComponent(u);
+  }
+  return u;
+}
+
+// Accent/punctuation-insensitive hero matching ("Lúcio" ↔ "Lucio" ↔ "lucio")
+function normHeroName(s) {
+  if (!s) return '';
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function findHeroEntry(heroData, name) {
+  var n = normHeroName(name);
+  if (!n) return null;
+  for (var i = 0; i < (heroData || []).length; i++) {
+    if (normHeroName(heroData[i].key) === n || normHeroName(heroData[i].name) === n) return heroData[i];
+  }
+  return null;
+}
+
 function hexToAlpha(hex, alpha) {
   if (!hex || hex.charAt(0) !== '#') return hex;
   var r = parseInt(hex.slice(1, 3), 16);

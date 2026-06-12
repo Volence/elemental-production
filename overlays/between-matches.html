@@ -186,25 +186,25 @@
         const completed = match.completed;
         return `<div class="sched-item ${isNext ? 'up-next' : ''}">
           <div class="sched-label">${match.label || `Match ${i+1}`}</div>
-          ${match.team1Logo ? `<img class="sched-team-logo" src="${match.team1Logo}">` : '<div class="sched-team-logo placeholder"></div>'}
+          ${match.team1Logo ? `<img class="sched-team-logo" src="${proxyImg(match.team1Logo)}">` : '<div class="sched-team-logo placeholder"></div>'}
           <span class="sched-team-name">${match.team1 || 'TBD'}</span>
           ${completed
             ? `<span class="sched-score">${match.score1 ?? ''}-${match.score2 ?? ''}</span>`
             : `<span class="sched-time">${match.time || ''}</span>`
           }
           <span class="sched-team-name" style="text-align:right">${match.team2 || 'TBD'}</span>
-          ${match.team2Logo ? `<img class="sched-team-logo" src="${match.team2Logo}">` : '<div class="sched-team-logo placeholder"></div>'}
+          ${match.team2Logo ? `<img class="sched-team-logo" src="${proxyImg(match.team2Logo)}">` : '<div class="sched-team-logo placeholder"></div>'}
         </div>`;
       }).join('');
 
       const fallbackSched = !schedule.length ? `
         <div class="sched-item up-next">
           <div class="sched-label">UP NEXT</div>
-          ${state.teams?.team1?.logo ? `<img class="sched-team-logo" src="${state.teams.team1.logo}">` : '<div class="sched-team-logo placeholder"></div>'}
+          ${state.teams?.team1?.logo ? `<img class="sched-team-logo" src="${proxyImg(state.teams.team1.logo)}">` : '<div class="sched-team-logo placeholder"></div>'}
           <span class="sched-team-name">${state.teams?.team1?.name || 'TBD'}</span>
           <span class="sched-score">vs</span>
           <span class="sched-team-name">${state.teams?.team2?.name || 'TBD'}</span>
-          ${state.teams?.team2?.logo ? `<img class="sched-team-logo" src="${state.teams.team2.logo}">` : '<div class="sched-team-logo placeholder"></div>'}
+          ${state.teams?.team2?.logo ? `<img class="sched-team-logo" src="${proxyImg(state.teams.team2.logo)}">` : '<div class="sched-team-logo placeholder"></div>'}
         </div>` : '';
 
       el.innerHTML = `

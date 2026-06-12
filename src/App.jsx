@@ -4,6 +4,7 @@ import ProductionControls from './pages/ProductionControls'
 import Theming from './pages/Theming'
 import Settings from './pages/Settings'
 import StatusBar from './components/StatusBar'
+import ConfirmModal from './components/ConfirmModal'
 
 function extractColorFromLogo(logoUrl, proxyBase) {
   return new Promise((resolve) => {
@@ -76,6 +77,7 @@ export default function App() {
   const [currentScene, setCurrentScene] = useState('');
   const [customFonts, setCustomFonts] = useState([]);
   const [settingsDirty, setSettingsDirty] = useState(false);
+  const [pendingPage, setPendingPage] = useState(null);
 
   const fetchState = useCallback(async () => {
     try {
@@ -203,8 +205,8 @@ export default function App() {
               className={page === p.id ? 'active' : ''}
               onClick={() => {
                 if (page === 'settings' && settingsDirty && p.id !== 'settings') {
-                  if (!confirm('You have unsaved changes in Settings. Leave anyway?')) return;
-                  setSettingsDirty(false);
+                  setPendingPage(p.id);
+                  return;
                 }
                 setPage(p.id);
               }}
@@ -247,6 +249,13 @@ export default function App() {
         </div>
       </main>
       <StatusBar state={state} />
+      <ConfirmModal
+        open={!!pendingPage}
+        message="You have unsaved changes in Settings. Leave anyway?"
+        confirmLabel="Leave"
+        onConfirm={() => { setSettingsDirty(false); setPage(pendingPage); setPendingPage(null); }}
+        onCancel={() => setPendingPage(null)}
+      />
     </>
   );
 }

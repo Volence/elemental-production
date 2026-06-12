@@ -16,6 +16,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { getState, setState, resetState, loadState, setOverrides, clearOverride, clearAllOverrides, isOverridden } from './state.js';
 import * as obs from './obs.js';
@@ -95,7 +96,7 @@ app.get('/overlays/:file', async (req, res) => {
 
   // Inject hero data + state as server-side bootstrap
   let heroJson = '[]';
-  try { heroJson = JSON.stringify(await getHeroes()).replace(/<\//g, '<\\/'); } catch(e) {}
+  try { heroJson = JSON.stringify(proxyHeroes(await getHeroes())).replace(/<\//g, '<\\/'); } catch(e) {}
   const stateJson = JSON.stringify(getState()).replace(/<\//g, '<\\/');
   const bootstrap = `<script>
 // Server-injected: pre-populate hero data so OBS doesn't need to fetch /api/heroes
@@ -129,6 +130,7 @@ window.__HERO_DATA__ = ${heroJson};
 app.use('/overlays', express.static(overlaysDir, { setHeaders: noCacheHeaders }));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { setHeaders: noCacheHeaders }));
 app.use('/fonts', express.static(FONTS_DIR));
+app.use('/cache', express.static(CACHE_DIR));
 
 // SSE clients for real-time overlay updates
 const sseClients = new Set();
@@ -216,8 +218,13 @@ async function syncToOBS(state) {
     lastSyncedState.c2name = state.casters?.[1]?.name;
   }
 
-  // Flythrough video sync — update OBS media source when current map changes
-  const currentMap = (state.maps || []).find(m => m.status === 'current') || state.maps?.[0];
+  // Flythrough video sync — update OBS media source when current map changes.
+  // Fallback order: live map → next upcoming map (so adding a map in
+  // manual/scrim mode updates the flythrough without clicking Play) → first map
+  const maps = state.maps || [];
+  const currentMap = maps.find(m => m.status === 'current')
+    || maps.find(m => m.status === 'upcoming')
+    || maps[0];
   const currentMapName = currentMap?.name || '';
   if (currentMapName && currentMapName !== lastSyncedState.currentMapFlythrough) {
     const flyUrl = flythroughs.getFlythroughUrl(currentMapName);
@@ -291,6 +298,31 @@ async function syncToOBS(state) {
   }
 }
 
+// Audio-only media sources render embedded album art as video in OBS.
+// Push their scene items far off-canvas so cover art never shows on stream;
+// audio playback is unaffected by position.
+const AUDIO_ONLY_SOURCES = ['Background Music', 'Casters Background Music'];
+
+async function hideAudioSourceVideo() {
+  if (!obs.isConnected()) return;
+  try {
+    const scenesRes = await obs.rawCall('GetSceneList');
+    for (const scene of scenesRes?.scenes || []) {
+      const items = await obs.getSceneItemList(scene.sceneName);
+      for (const item of items) {
+        if (AUDIO_ONLY_SOURCES.includes(item.sourceName)) {
+          await obs.setSceneItemTransform(scene.sceneName, item.sourceName, {
+            positionX: -4000, positionY: -4000,
+          }).catch(() => {});
+        }
+      }
+    }
+    console.log('[OBS Sync] Audio-only sources moved off-canvas (hides album art)');
+  } catch (e) {
+    console.warn('[OBS Sync] Failed to hide audio source video:', e.message);
+  }
+}
+
 // Countdown timer interval
 let countdownInterval = null;
 
@@ -339,19 +371,52 @@ app.post('/api/state/reset', (req, res) => {
 });
 
 // ============ IMAGE PROXY (for CORS-restricted logos) ============
+// Disk-cached so OBS browser sources load images from localhost reliably
+// (external CDN fetches inside OBS's embedded Chromium fail intermittently).
+
+const IMG_CACHE_DIR = path.join(CACHE_DIR, 'images');
+if (!fs.existsSync(IMG_CACHE_DIR)) fs.mkdirSync(IMG_CACHE_DIR, { recursive: true });
+
+/** Rewrite an external image URL to go through the local caching proxy */
+function proxyImageUrl(url) {
+  if (!url || typeof url !== 'string' || !/^https?:/i.test(url)) return url;
+  return `http://localhost:${PORT}/api/proxy-image?url=${encodeURIComponent(url)}`;
+}
 
 app.get('/api/proxy-image', async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing url' });
+
+  const hash = crypto.createHash('sha1').update(url).digest('hex');
+  const dataPath = path.join(IMG_CACHE_DIR, hash);
+  const metaPath = path.join(IMG_CACHE_DIR, `${hash}.json`);
+
+  const serveCached = () => {
+    if (!fs.existsSync(dataPath)) return false;
+    let contentType = 'image/png';
+    try { contentType = JSON.parse(fs.readFileSync(metaPath, 'utf8')).contentType || contentType; } catch { /* default */ }
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(fs.readFileSync(dataPath));
+    return true;
+  };
+
+  if (serveCached()) return;
+
   try {
     const response = await fetch(url);
+    if (!response.ok) throw new Error(`upstream ${response.status}`);
     const contentType = response.headers.get('content-type') || 'image/png';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
     const buffer = Buffer.from(await response.arrayBuffer());
+    try {
+      fs.writeFileSync(dataPath, buffer);
+      fs.writeFileSync(metaPath, JSON.stringify({ url, contentType }));
+    } catch { /* cache write failure is non-fatal */ }
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
     res.send(buffer);
   } catch (e) {
-    res.status(500).json({ error: 'Failed to fetch image' });
+    if (!serveCached()) res.status(502).json({ error: 'Failed to fetch image' });
   }
 });
 
@@ -403,6 +468,10 @@ app.post('/api/obs/connect', async (req, res) => {
   const result = await obs.connect(h, p, pw);
   if (result.connected) {
     setState({ obsConnection: { host: h, port: p, password: pw } });
+    setTimeout(() => {
+      syncToOBS(getState());
+      hideAudioSourceVideo();
+    }, 2000);
   }
   res.json(result);
 });
@@ -670,7 +739,8 @@ app.post('/api/faceit/match', async (req, res) => {
     const heroNameToKey = (name) => {
       if (!name) return '';
       if (faceitNameOverrides[name]) return faceitNameOverrides[name];
-      return name.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+      return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
     };
 
     // Find current map and auto-populate heroBans for it
@@ -690,6 +760,9 @@ app.post('/api/faceit/match', async (req, res) => {
       faceitLastSync: Date.now(),
       faceitLastSyncError: null,
     };
+
+    // Importing a match replaces any series name left over from manual/scrim mode
+    if (details.competitionName) update.eventName = details.competitionName;
 
     if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
     if (!isOverridden('maps')) {
@@ -735,9 +808,14 @@ app.post('/api/faceit/match', async (req, res) => {
 
     const updated = setState(update);
 
+    // Loading a live match turns auto-sync on automatically
+    if (details.status !== 'FINISHED' && details.status !== 'CANCELLED') {
+      startFaceitPoll();
+    }
+
     broadcast('state', updated);
     syncToOBS(updated);
-    res.json({ success: true, details, stats, state: updated });
+    res.json({ success: true, details, stats, state: getState() });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -884,7 +962,8 @@ async function faceitPollTick() {
     const heroNameToKey = (name) => {
       if (!name) return '';
       if (faceitNameOverrides[name]) return faceitNameOverrides[name];
-      return name.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+      return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
     };
 
     const currentMapIdx = maps.findIndex(m => m.status === 'current');
@@ -1474,14 +1553,24 @@ async function advancePlaylist(sourceName, stateKeyPrefix) {
 
 // ============ HEROES API ============
 
+// Serve hero portraits through the local caching proxy so the dashboard and
+// OBS overlays never depend on the Blizzard CDN being reachable mid-broadcast
+function proxyHeroes(heroes) {
+  return (heroes || []).map(h => ({ ...h, portrait: proxyImageUrl(h.portrait) }));
+}
+
 app.get('/api/heroes', async (req, res) => {
   const heroes = await getHeroes();
-  res.json(heroes);
+  res.json(proxyHeroes(heroes));
 });
 
 app.get('/api/heroes/grouped', async (req, res) => {
   const grouped = await getHeroesByRole();
-  res.json(grouped);
+  res.json({
+    tank: proxyHeroes(grouped.tank),
+    damage: proxyHeroes(grouped.damage),
+    support: proxyHeroes(grouped.support),
+  });
 });
 
 // ============ COUNTDOWN API ============
@@ -1892,6 +1981,19 @@ app.get('/api/history', (req, res) => {
   res.json(getState().matchHistory);
 });
 
+// ============ LOGO UPLOAD ============
+
+/** Upload a team logo image — returns a local URL usable by overlays */
+app.post('/api/upload-logo', express.raw({ type: '*/*', limit: '10mb' }), (req, res) => {
+  const filename = (req.headers['x-filename'] || 'logo.png').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const logosDir = path.join(CACHE_DIR, 'logos');
+  if (!fs.existsSync(logosDir)) fs.mkdirSync(logosDir, { recursive: true });
+  const safeName = `${Date.now()}_${filename}`;
+  fs.writeFileSync(path.join(logosDir, safeName), req.body);
+  console.log(`[Logos] Saved ${safeName}`);
+  res.json({ success: true, url: `http://localhost:${PORT}/cache/logos/${encodeURIComponent(safeName)}` });
+});
+
 // ============ FONT UPLOAD ============
 
 app.get('/api/fonts', (req, res) => {
@@ -1980,6 +2082,7 @@ if (_obsHost) {
     setTimeout(async () => {
       await syncToOBS(getState());
       await setupBrowserSources();
+      await hideAudioSourceVideo();
     }, 3000);
 
     // Auto-cycle replay clips when one finishes playing

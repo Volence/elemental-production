@@ -809,7 +809,9 @@ input[type="checkbox"]:checked::after {
 }
 
 .fade-in {
-  animation: fadeIn 0.3s ease forwards;
+  /* No fill-mode: a retained transform would make page wrappers the containing
+     block for position:fixed children, pushing modals below the viewport */
+  animation: fadeIn 0.3s ease;
 }
 
 @keyframes pulse-glow {

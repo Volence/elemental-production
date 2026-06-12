@@ -171,29 +171,29 @@
     }
 
     async function loadMaps() {
-      mapData = await fetch('https://overfast-api.tekrop.fr/maps').then(r => r.json()).catch(() => []);
+      // Local API (cached server-side) — external fetches fail intermittently in OBS browser sources
+      mapData = await fetch(`${API}/api/maps`).then(r => r.json()).catch(() => []);
+      if (!Array.isArray(mapData)) mapData = [];
     }
 
     function getMapScreenshot(mapName, faceitImage) {
-      if (!mapName) return faceitImage || '';
+      if (!mapName) return proxyImg(faceitImage);
       const normalized = mapName.toLowerCase().trim();
       const match = mapData.find(m =>
         m.name.toLowerCase() === normalized ||
         m.key === normalized.replace(/[^a-z0-9]+/g, '-')
       );
-      return match ? match.screenshot : (faceitImage || '');
+      return proxyImg(match ? match.screenshot : faceitImage);
     }
 
     function getHeroPortrait(key) {
-      const hero = heroData.find(h => h.key === key);
+      const hero = findHeroEntry(heroData, key);
       return hero ? hero.portrait : '';
     }
 
-    const nameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
     function heroNameToKey(name) {
-      if (!name) return '';
-      if (nameOverrides[name]) return nameOverrides[name];
-      return name.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+      const hero = findHeroEntry(heroData, name);
+      return hero ? hero.key : '';
     }
 
     var lastRenderKey = '';
@@ -243,7 +243,7 @@
         if (m.winner) {
           const wt = m.winner === 'team1' ? t1 : t2;
           if (wt.logo) {
-            winnerLogo = `<div class="winner-logo-wrap"><img src="${wt.logo}" alt="${wt.name}"></div>`;
+            winnerLogo = `<div class="winner-logo-wrap"><img src="${proxyImg(wt.logo)}" alt="${wt.name}"></div>`;
           }
           winnerLogo += `<div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);z-index:5;
             background:${winnerColor}dd;padding:3px 10px;border-radius:4px;font-size:10px;font-weight:700;
@@ -316,7 +316,7 @@
       el.innerHTML = `
         <div class="top-bar">
           <div class="top-team left">
-            ${t1.logo ? `<img class="logo" src="${t1.logo}">` : ''}
+            ${t1.logo ? `<img class="logo" src="${proxyImg(t1.logo)}">` : ''}
             <span class="name">${t1.name || 'TEAM 1'}</span>
             <span class="score" style="color: ${t1Color}">${t1.score || 0}</span>
           </div>
@@ -326,7 +326,7 @@
           <div class="top-team right">
             <span class="score" style="color: ${t2Color}">${t2.score || 0}</span>
             <span class="name">${t2.name || 'TEAM 2'}</span>
-            ${t2.logo ? `<img class="logo" src="${t2.logo}">` : ''}
+            ${t2.logo ? `<img class="logo" src="${proxyImg(t2.logo)}">` : ''}
           </div>
         </div>
         <div class="map-grid">${mapSlotsHtml}</div>
@@ -338,8 +338,19 @@
     // Load heroes first (local, fast), then render immediately
     loadHeroes().then(() => stateSync(function(s) { lastState = s; update(s); }));
 
-    // Load map screenshots in background — re-render when ready
-    loadMaps().then(() => { if (lastState) update(lastState); });
+    // Map screenshots load in the background — retry until available, then
+    // force a re-render (the renderKey cache would otherwise skip it)
+    function loadMapsWithRetry() {
+      loadMaps().then(() => {
+        if (mapData.length > 0) {
+          lastRenderKey = '';
+          if (lastState) update(lastState);
+        } else {
+          setTimeout(loadMapsWithRetry, 5000);
+        }
+      });
+    }
+    loadMapsWithRetry();
   </script>
 </body>
 </html>

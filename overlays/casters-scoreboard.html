@@ -209,18 +209,16 @@
     let heroData = [];
 
     const roleOrder = { 'Tank': 0, 'Damage': 1, 'Support': 2 };
-    const nameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
 
     async function loadHeroes() {
       heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
     }
     function heroNameToKey(name) {
-      if (!name) return '';
-      if (nameOverrides[name]) return nameOverrides[name];
-      return name.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+      const hero = findHeroEntry(heroData, name);
+      return hero ? hero.key : '';
     }
     function getHeroPortrait(key) {
-      const hero = heroData.find(h => h.key === key);
+      const hero = findHeroEntry(heroData, key);
       return hero ? hero.portrait : '';
     }
 
@@ -313,7 +311,7 @@
         return `<div class="team-block" style="border-top:2px solid ${color}">
           <div class="team-heading" style="color:${color}">
             <div class="team-info">
-              ${teamData?.logo ? `<img class="team-logo" src="${teamData.logo}">` : ''}
+              ${teamData?.logo ? `<img class="team-logo" src="${proxyImg(teamData.logo)}">` : ''}
               ${team.name}
             </div>
             ${team.stats.teamWin ? '<span class="win-badge">WIN</span>' : ''}
@@ -365,7 +363,8 @@
         const heroName = typeof ban === 'string' ? ban : ban?.name || '';
         if (!heroName) return '';
         const key = heroNameToKey(heroName);
-        const portrait = getHeroPortrait(key);
+        // Fall back to the FACEIT-provided ban image if the hero isn't in heroData
+        const portrait = getHeroPortrait(key) || proxyImg(typeof ban === 'object' && ban ? ban.image : '');
         return `<div class="ban-icon" style="border:2px solid ${color}">
           ${portrait ? `<img src="${portrait}" alt="${heroName}" title="${heroName}">` : ''}
           <div class="ban-x" style="background:rgba(0,0,0,0.4)">✕</div>

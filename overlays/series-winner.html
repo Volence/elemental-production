@@ -223,7 +223,7 @@
         <div class="bg"></div>
         <div class="content">
           <div class="winner-label">Series Winner</div>
-          ${winner.logo ? `<img class="team-logo" src="${winner.logo}">` : ''}
+          ${winner.logo ? `<img class="team-logo" src="${proxyImg(winner.logo)}">` : ''}
           <div class="team-name" style="color:${teamColor}">${winner.name}</div>
           <div class="divider-line"></div>
           <div class="series-score">

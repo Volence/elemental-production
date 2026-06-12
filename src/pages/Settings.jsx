@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import FolderBrowser from '../components/FolderBrowser'
+import ConfirmModal from '../components/ConfirmModal'
 
 const BUILTIN_FONTS = {
   'Bebas Neue': 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap',
@@ -183,10 +184,10 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
     setConnecting(false);
   };
 
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const resetAll = async () => {
-    if (confirm('Reset all state to defaults? This cannot be undone.')) {
-      await fetch(`${api}/api/state/reset`, { method: 'POST' });
-    }
+    await fetch(`${api}/api/state/reset`, { method: 'POST' });
+    setShowResetConfirm(false);
   };
 
   return (
@@ -713,8 +714,16 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '8px 0 12px' }}>
           Reset all match data, scores, and settings to defaults
         </p>
-        <button className="btn btn-danger" onClick={resetAll}>Reset All State</button>
+        <button className="btn btn-danger" onClick={() => setShowResetConfirm(true)}>Reset All State</button>
       </div>
+
+      <ConfirmModal
+        open={showResetConfirm}
+        message="Reset all state to defaults? This cannot be undone."
+        confirmLabel="Reset All"
+        onConfirm={resetAll}
+        onCancel={() => setShowResetConfirm(false)}
+      />
 
       {/* Folder Browser Modal */}
       {browseTarget && (

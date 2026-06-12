@@ -157,7 +157,7 @@
       el.innerHTML = `
         <div class="intro-card">
           <div class="team-panel left">
-            ${t1.logo ? `<img class="team-logo" src="${t1.logo}">` : `<div style="font-size:32px;font-weight:800;color:#333">${t1.name || 'TEAM 1'}</div>`}
+            ${t1.logo ? `<img class="team-logo" src="${proxyImg(t1.logo)}">` : `<div style="font-size:32px;font-weight:800;color:#333">${t1.name || 'TEAM 1'}</div>`}
             ${t1bans.length > 0 ? `<div class="ban-area">${t1bans.map(k => `<div class="ban-chip"><img src="${getHeroPortrait(k)}"></div>`).join('')}</div>` : ''}
           </div>
 
@@ -172,7 +172,7 @@
           </div>
 
           <div class="team-panel right">
-            ${t2.logo ? `<img class="team-logo" src="${t2.logo}">` : `<div style="font-size:32px;font-weight:800;color:#333">${t2.name || 'TEAM 2'}</div>`}
+            ${t2.logo ? `<img class="team-logo" src="${proxyImg(t2.logo)}">` : `<div style="font-size:32px;font-weight:800;color:#333">${t2.name || 'TEAM 2'}</div>`}
             ${t2bans.length > 0 ? `<div class="ban-area">${t2bans.map(k => `<div class="ban-chip"><img src="${getHeroPortrait(k)}"></div>`).join('')}</div>` : ''}
           </div>
         </div>

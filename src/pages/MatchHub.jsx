@@ -1,4 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import ConfirmModal from '../components/ConfirmModal'
+
+// Accent/punctuation-insensitive hero matching: FACEIT sends "Lucio"/"Torbjorn",
+// OverFast names are "Lúcio"/"Torbjörn", and keys are "lucio"/"soldier-76".
+const normalizeHeroName = (s) => s
+  ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+  : '';
+
+const findHeroByName = (allHeroes, name) => {
+  const n = normalizeHeroName(name);
+  if (!n) return null;
+  return allHeroes.find(h => normalizeHeroName(h.key) === n || normalizeHeroName(h.name) === n) || null;
+};
 
 // OW2 map pool for manual mode
 const OW2_MAPS = [
@@ -25,6 +38,9 @@ export default function MatchHub({ state, updateState, api }) {
   const [banTeam, setBanTeam] = useState('team1');
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [selectedMapIdx, setSelectedMapIdx] = useState(-1); // -1 = auto (current/last)
+  const [showNewMatchConfirm, setShowNewMatchConfirm] = useState(false);
+  const [logoUploadTarget, setLogoUploadTarget] = useState('team1');
+  const logoInputRef = useRef(null);
 
   useEffect(() => {
     fetch(`${api}/api/heroes/grouped`).then(r => r.json()).then(setHeroes).catch(() => {});
@@ -142,6 +158,17 @@ export default function MatchHub({ state, updateState, api }) {
     updateState({ maps });
   };
 
+  // Index of the map that ban edits apply to. Never a completed map: once a
+  // winner is set, new ban edits belong to the NEXT map (even before it's added).
+  const getActiveBanMapIdx = () => {
+    if (selectedMapIdx >= 0) return selectedMapIdx;
+    const maps = state.maps || [];
+    const currentIdx = maps.findIndex(m => m.status === 'current');
+    if (currentIdx >= 0) return currentIdx;
+    if (maps.length > 0 && maps[maps.length - 1].status === 'completed') return maps.length;
+    return Math.max(0, maps.length - 1);
+  };
+
   const toggleBan = (heroKey) => {
     const bans = { ...state.heroBans };
     const teamBans = [...(bans[banTeam] || [])];
@@ -161,10 +188,7 @@ export default function MatchHub({ state, updateState, api }) {
       const h = allHeroes.find(x => x.key === key);
       return h ? { name: h.name, role: h.role, image: h.portrait } : { name: key, role: '', image: '' };
     };
-    const mapIdx = selectedMapIdx >= 0 ? selectedMapIdx
-      : (state.maps?.findIndex(m => m.status === 'current') >= 0
-        ? state.maps.findIndex(m => m.status === 'current')
-        : Math.max(0, (state.maps?.length || 1) - 1));
+    const mapIdx = getActiveBanMapIdx();
     const perMapBans = [...(state.perMapBans || [])];
     while (perMapBans.length <= mapIdx) perMapBans.push({});
     perMapBans[mapIdx] = {
@@ -176,6 +200,29 @@ export default function MatchHub({ state, updateState, api }) {
     };
 
     updateState({ heroBans: bans, perMapBans });
+  };
+
+  // Clear all bans for both teams in one click (looks cleaner on stream)
+  const clearAllBans = () => {
+    const mapIdx = getActiveBanMapIdx();
+    const perMapBans = [...(state.perMapBans || [])];
+    if (perMapBans[mapIdx]) {
+      perMapBans[mapIdx] = { ...perMapBans[mapIdx], team1Ban: null, team2Ban: null, ban1: null, ban2: null };
+    }
+    updateState({ heroBans: { team1: [], team2: [] }, perMapBans });
+  };
+
+  const uploadLogo = async (team, file) => {
+    const res = await fetch(`${api}/api/upload-logo`, {
+      method: 'POST',
+      headers: { 'X-Filename': file.name },
+      body: await file.arrayBuffer(),
+    });
+    const data = await res.json();
+    if (data.success) {
+      overrideField(`teams.${team}.logo`,
+        { teams: { ...state.teams, [team]: { ...state.teams[team], logo: data.url } } });
+    }
   };
 
   const allBans = [...(state.heroBans?.team1 || []), ...(state.heroBans?.team2 || [])];
@@ -203,9 +250,7 @@ export default function MatchHub({ state, updateState, api }) {
           ⇄ {state.swapSides ? 'Sides Swapped' : 'Swap Sides'}
         </button>
         <button className="btn btn-ghost btn-sm" onClick={() => resetMatch(true)}>🔄 Reset Scores</button>
-        <button className="btn btn-ghost btn-sm" onClick={() => {
-          if (confirm('Reset everything including team names?')) resetMatch(false);
-        }}>🗑️ New Match</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => setShowNewMatchConfirm(true)}>🗑️ New Match</button>
         {state.swapSides && <span className="badge badge-warning">Sides are swapped</span>}
       </div>
 
@@ -399,7 +444,34 @@ export default function MatchHub({ state, updateState, api }) {
                 onChange={e => overrideField('teams.team2.score',
                   { teams: { ...state.teams, team2: { ...state.teams.team2, score: Number(e.target.value) } } })} />
             </div>
+            {['team1', 'team2'].map(team => (
+              <div key={team}>
+                <label className="input-label">
+                  {team === 'team1' ? 'Team 1' : 'Team 2'} Logo
+                  {overrides[`teams.${team}.logo`] && (
+                    <span onClick={() => releasOverride(`teams.${team}.logo`)} style={{ cursor: 'pointer', marginLeft: 6, fontSize: '0.7rem', color: 'var(--warning)' }} title="Click to release override">🔒</span>
+                  )}
+                </label>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {state.teams[team].logo && (
+                    <img src={state.teams[team].logo} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                  )}
+                  <input className="input" style={{ flex: 1 }} placeholder="Logo URL or upload →"
+                    value={state.teams[team].logo || ''}
+                    onChange={e => overrideField(`teams.${team}.logo`,
+                      { teams: { ...state.teams, [team]: { ...state.teams[team], logo: e.target.value } } })} />
+                  <button className="btn btn-ghost btn-sm" style={{ whiteSpace: 'nowrap' }}
+                    onClick={() => { setLogoUploadTarget(team); logoInputRef.current?.click(); }}>📁 Upload</button>
+                </div>
+              </div>
+            ))}
           </div>
+          <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => {
+              const file = e.target.files[0];
+              if (file) uploadLogo(logoUploadTarget, file);
+              e.target.value = '';
+            }} />
         </div>
       )}
 
@@ -465,12 +537,12 @@ export default function MatchHub({ state, updateState, api }) {
                     // Update heroBans for this map from perMapBans
                     const mapBans = state.perMapBans?.[i];
                     if (mapBans) {
-                      const faceitNameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
-                      const toKey = (n) => n ? (faceitNameOverrides[n] || n.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '')) : '';
+                      const allHeroes = [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
+                      const toKey = (n) => findHeroByName(allHeroes, n)?.key || '';
                       updateState({
                         heroBans: {
-                          team1: mapBans.team1Ban ? [toKey(mapBans.team1Ban.name)] : [],
-                          team2: mapBans.team2Ban ? [toKey(mapBans.team2Ban.name)] : [],
+                          team1: mapBans.team1Ban ? [toKey(mapBans.team1Ban.name)].filter(Boolean) : [],
+                          team2: mapBans.team2Ban ? [toKey(mapBans.team2Ban.name)].filter(Boolean) : [],
                         }
                       });
                     }
@@ -524,12 +596,9 @@ export default function MatchHub({ state, updateState, api }) {
                     const mapBans = state.perMapBans?.[i];
                     if (!mapBans?.team1Ban && !mapBans?.team2Ban) return null;
                     const allHeroes = [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
-                    const faceitNameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
-                    const toKey = (n) => n ? (faceitNameOverrides[n] || n.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '')) : '';
                     const getPortrait = (ban) => {
                       if (!ban?.name) return null;
-                      const hero = allHeroes.find(h => h.key === toKey(ban.name));
-                      return hero?.portrait;
+                      return findHeroByName(allHeroes, ban.name)?.portrait || ban.image || null;
                     };
                     const t1Color = state.teams.team1.color || '#3b82f6';
                     const t2Color = state.teams.team2.color || '#ef4444';
@@ -625,11 +694,11 @@ export default function MatchHub({ state, updateState, api }) {
                               : (state.maps?.every(mm => mm.status === 'completed') ? state.maps.length - 1 : -1)
                           );
                           if (activeIdx === i) {
-                            const faceitNameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
-                            const toKey = (n) => n ? (faceitNameOverrides[n] || n.toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '')) : '';
+                            const allHeroes = [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
+                            const toKey = (n) => findHeroByName(allHeroes, n)?.key || '';
                             updates.heroBans = {
-                              team1: perMapBans[i].team1Ban ? [toKey(perMapBans[i].team1Ban.name)] : [],
-                              team2: perMapBans[i].team2Ban ? [toKey(perMapBans[i].team2Ban.name)] : [],
+                              team1: perMapBans[i].team1Ban ? [toKey(perMapBans[i].team1Ban.name)].filter(Boolean) : [],
+                              team2: perMapBans[i].team2Ban ? [toKey(perMapBans[i].team2Ban.name)].filter(Boolean) : [],
                             };
                           }
                           updateState(updates);
@@ -682,17 +751,26 @@ export default function MatchHub({ state, updateState, api }) {
       <div className="card">
         <div className="card-header">
           <span className="card-title">🚫 Hero Bans{(() => {
-            const idx = selectedMapIdx >= 0 ? selectedMapIdx : (state.maps?.findIndex(m => m.status === 'current') >= 0 ? state.maps.findIndex(m => m.status === 'current') : (state.maps?.length || 1) - 1);
+            const idx = getActiveBanMapIdx();
             const mapName = state.maps?.[idx]?.name;
-            return mapName ? ` — ${mapName} (Map ${idx + 1})` : '';
+            if (mapName) return ` — ${mapName} (Map ${idx + 1})`;
+            if (idx >= (state.maps?.length || 0) && (state.maps?.length || 0) > 0) return ` — Next Map (Map ${idx + 1})`;
+            return '';
           })()}</span>
-          <div className="mode-toggle">
-            <button className={banTeam === 'team1' ? 'active' : ''} onClick={() => setBanTeam('team1')}>
-              {state.teams.team1.name}
-            </button>
-            <button className={banTeam === 'team2' ? 'active' : ''} onClick={() => setBanTeam('team2')}>
-              {state.teams.team2.name}
-            </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {allBans.length > 0 && (
+              <button className="btn btn-ghost btn-sm" style={{ fontSize: '0.7rem' }} onClick={clearAllBans}>
+                🧹 Clear Bans
+              </button>
+            )}
+            <div className="mode-toggle">
+              <button className={banTeam === 'team1' ? 'active' : ''} onClick={() => setBanTeam('team1')}>
+                {state.teams.team1.name}
+              </button>
+              <button className={banTeam === 'team2' ? 'active' : ''} onClick={() => setBanTeam('team2')}>
+                {state.teams.team2.name}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -850,6 +928,14 @@ export default function MatchHub({ state, updateState, api }) {
           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 8 }}>No matches saved yet</p>
         )}
       </div>
+
+      <ConfirmModal
+        open={showNewMatchConfirm}
+        message="Reset everything including team names?"
+        confirmLabel="New Match"
+        onConfirm={() => { resetMatch(false); setShowNewMatchConfirm(false); }}
+        onCancel={() => setShowNewMatchConfirm(false)}
+      />
     </div>
   );
 }

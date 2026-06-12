@@ -4,32 +4,57 @@ const obs = new OBSWebSocket();
 let connected = false;
 const eventCallbacks = {};
 
+// Single reconnect chain: listeners are registered once (re-registering on
+// every reconnect would stack handlers — N reconnects would fire media-end
+// events N times and spawn N parallel retry loops), and only one retry timer
+// can be pending at a time.
+let listenersRegistered = false;
+let reconnectTimer = null;
+let lastConn = { host: 'localhost', port: 4455, password: '' };
+
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (!connected) connect(lastConn.host, lastConn.port, lastConn.password);
+  }, 5000);
+}
+
+function registerListeners() {
+  if (listenersRegistered) return;
+  listenersRegistered = true;
+
+  obs.on('ConnectionClosed', () => {
+    if (!connected) return; // closed during a failed connect attempt — failure path retries
+    connected = false;
+    console.log('[OBS] Disconnected');
+    scheduleReconnect();
+  });
+
+  // Forward media events for replay auto-cycling
+  obs.on('MediaInputPlaybackEnded', (data) => {
+    if (eventCallbacks.onMediaEnd) eventCallbacks.onMediaEnd(data);
+  });
+}
+
 export async function connect(host = 'localhost', port = 4455, password = '') {
+  lastConn = { host, port, password };
+  // A manual connect supersedes any pending auto-retry
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
   try {
     const url = `ws://${host}:${port}`;
     await obs.connect(url, password || undefined);
     connected = true;
     console.log('[OBS] Connected to', url);
-
-    obs.on('ConnectionClosed', () => {
-      connected = false;
-      console.log('[OBS] Disconnected');
-      // Auto-reconnect after 5s
-      setTimeout(() => connect(host, port, password), 5000);
-    });
-
-    // Forward media events for replay auto-cycling
-    obs.on('MediaInputPlaybackEnded', (data) => {
-      if (eventCallbacks.onMediaEnd) eventCallbacks.onMediaEnd(data);
-    });
-
+    registerListeners();
     return { connected: true };
   } catch (e) {
     connected = false;
     console.warn('[OBS] Connection failed:', e.message);
-    setTimeout(() => {
-      if (!connected) connect(host, port, password);
-    }, 5000);
+    scheduleReconnect();
     return { connected: false, error: e.message };
   }
 }
