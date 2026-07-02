@@ -21,6 +21,7 @@ const SCENE_TO_GROUP = {
 
 export default function ProductionControls({ state, updateState, api }) {
   const [timerMinutes, setTimerMinutes] = useState(5);
+  const [targetTime, setTargetTime] = useState('');
   const [audioSources, setAudioSources] = useState([]);
   const [scenes, setScenes] = useState([]);
   const [currentScene, setCurrentScene] = useState('');
@@ -123,6 +124,21 @@ export default function ProductionControls({ state, updateState, api }) {
     await fetch(`${api}/api/timer/start`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ duration: timerMinutes * 60, label: state.countdown.label }),
+    });
+  };
+
+  // Count down to a wall-clock time (e.g. show starts at 6:10 PM). If the
+  // time has already passed today, assume it means tomorrow.
+  const startTimerUntil = async () => {
+    if (!targetTime) return;
+    const [h, m] = targetTime.split(':').map(Number);
+    const target = new Date();
+    target.setHours(h, m, 0, 0);
+    if (target <= new Date()) target.setDate(target.getDate() + 1);
+    const duration = Math.max(1, Math.round((target - Date.now()) / 1000));
+    await fetch(`${api}/api/timer/start`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duration, label: state.countdown.label }),
     });
   };
 
@@ -596,6 +612,15 @@ export default function ProductionControls({ state, updateState, api }) {
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>min</span>
           {!timerRunning && !timerPaused && (
             <button className="btn btn-success btn-sm" onClick={startTimer}>▶ Start</button>
+          )}
+          {!timerRunning && !timerPaused && (
+            <>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>or until</span>
+              <input className="input" type="time" style={{ width: 110 }} value={targetTime}
+                onChange={e => setTargetTime(e.target.value)} />
+              <button className="btn btn-success btn-sm" onClick={startTimerUntil} disabled={!targetTime}
+                title="Count down to this time of day">▶ Until</button>
+            </>
           )}
           {timerPaused && (
             <button className="btn btn-success btn-sm" onClick={resumeTimer}>▶ Resume</button>

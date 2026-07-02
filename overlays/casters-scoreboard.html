@@ -435,6 +435,10 @@
           </div>
         </div>
       `;
+
+      // Single-cam layout grows the cam slot 240px→330px tall, which can push
+      // the stats panel past the 1080px canvas (bottom gets cut off on stream)
+      fitPanelToCanvas(el.querySelector('.scoreboard-panel'));
     }
 
     window.switchMap = function(idx) {

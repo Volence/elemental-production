@@ -52,6 +52,22 @@ function proxyImg(u) {
   return u;
 }
 
+// Shrink an overlay panel to fit the 1080px canvas — single-cam layouts grow
+// the cam slot above it, which can push the panel past the bottom edge. Uses
+// `zoom` rather than transform: the entrance animation's `forwards` fill owns
+// the panel's transform, and the cam slot itself must not move (the OBS caster
+// source is aligned to it).
+function fitPanelToCanvas(panel, bottomEdge) {
+  if (!panel) return;
+  bottomEdge = bottomEdge || 1060;
+  panel.style.zoom = '';
+  var rect = panel.getBoundingClientRect();
+  var avail = bottomEdge - rect.top;
+  if (rect.height > avail && avail > 0) {
+    panel.style.zoom = Math.max(0.6, avail / rect.height);
+  }
+}
+
 // Accent/punctuation-insensitive hero matching ("Lúcio" ↔ "Lucio" ↔ "lucio")
 function normHeroName(s) {
   if (!s) return '';

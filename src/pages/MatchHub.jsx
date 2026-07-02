@@ -46,6 +46,47 @@ export default function MatchHub({ state, updateState, api }) {
     fetch(`${api}/api/heroes/grouped`).then(r => r.json()).then(setHeroes).catch(() => {});
   }, [api]);
 
+  // Keep local map selection in sync with server state (dashboard reloads,
+  // FACEIT match loads resetting it to -1, etc.)
+  useEffect(() => {
+    const idx = state.selectedMapIdx ?? -1;
+    setSelectedMapIdx(prev => (prev === idx ? prev : idx));
+  }, [state.selectedMapIdx]);
+
+  const allHeroList = () => [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
+
+  // Route external logo URLs through the local proxy for dashboard previews —
+  // hosts like liquipedia reject hotlinked <img> requests
+  const previewUrl = (u) => u && /^https?:\/\//i.test(u) && !u.includes('localhost') && !u.includes('127.0.0.1')
+    ? `${api}/api/proxy-image?url=${encodeURIComponent(u)}`
+    : u;
+
+  // heroBans payload for a map's stored bans (what the overlays display).
+  // Returns null while the hero list hasn't loaded yet — writing then would
+  // wipe the on-air ban icons because names can't resolve to keys.
+  const heroBansForMap = (idx, perMapBansArr = state.perMapBans) => {
+    const mapBans = perMapBansArr?.[idx];
+    const list = allHeroList();
+    if (!list.length && (mapBans?.team1Ban || mapBans?.team2Ban)) return null;
+    const toKey = (n) => findHeroByName(list, n)?.key || '';
+    return {
+      team1: mapBans?.team1Ban ? [toKey(mapBans.team1Ban.name)].filter(Boolean) : [],
+      team2: mapBans?.team2Ban ? [toKey(mapBans.team2Ban.name)].filter(Boolean) : [],
+    };
+  };
+
+  // Which map the overlays display bans for when no map is manually selected:
+  // live map → next upcoming map → last map (mirrors server getActiveBanIdx)
+  const autoActiveIdx = () => {
+    const maps = state.maps || [];
+    const cur = maps.findIndex(m => m.status === 'current');
+    if (cur >= 0) return cur;
+    const up = maps.findIndex(m => m.status === 'upcoming');
+    if (up >= 0) return up;
+    return maps.length - 1;
+  };
+  const getDisplayMapIdx = () => (selectedMapIdx >= 0 ? selectedMapIdx : autoActiveIdx());
+
   const overrides = state.overrides || {};
   const hasOverrides = Object.keys(overrides).length > 0;
 
@@ -114,6 +155,9 @@ export default function MatchHub({ state, updateState, api }) {
         playerStats: [],
         heroBans: { team1: [], team2: [] },
         perMapBans: [],
+        banSwaps: [],
+        mapPickers: [],
+        selectedMapIdx: -1,
       });
     } else if (mode === 'scrim') {
       updateState({
@@ -125,6 +169,9 @@ export default function MatchHub({ state, updateState, api }) {
         playerStats: [],
         heroBans: { team1: [], team2: [] },
         perMapBans: [],
+        banSwaps: [],
+        mapPickers: [],
+        selectedMapIdx: -1,
         bestOf: 1,
       });
     }
@@ -182,6 +229,11 @@ export default function MatchHub({ state, updateState, api }) {
     }
     bans[banTeam] = teamBans;
 
+    // In FACEIT mode a manual ban edit is a correction of FACEIT's data —
+    // lock it so the next auto-sync tick doesn't overwrite it on-air.
+    // (Visible in the overrides banner; release it to hand control back.)
+    if (state.mode === 'faceit' && state.faceitMatchId) setOverride('heroBans');
+
     // Also sync to perMapBans for the current/selected map so overlays can display them
     const allHeroes = [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
     const toHeroObj = (key) => {
@@ -204,6 +256,7 @@ export default function MatchHub({ state, updateState, api }) {
 
   // Clear all bans for both teams in one click (looks cleaner on stream)
   const clearAllBans = () => {
+    if (state.mode === 'faceit' && state.faceitMatchId) setOverride('heroBans');
     const mapIdx = getActiveBanMapIdx();
     const perMapBans = [...(state.perMapBans || [])];
     if (perMapBans[mapIdx]) {
@@ -454,7 +507,7 @@ export default function MatchHub({ state, updateState, api }) {
                 </label>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   {state.teams[team].logo && (
-                    <img src={state.teams[team].logo} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                    <img src={previewUrl(state.teams[team].logo)} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                   )}
                   <input className="input" style={{ flex: 1 }} placeholder="Logo URL or upload →"
                     value={state.teams[team].logo || ''}
@@ -479,7 +532,7 @@ export default function MatchHub({ state, updateState, api }) {
       {state.mode !== 'scrim' && (
         <div className="team-header">
           <div className="team-card team1">
-            {state.teams.team1.logo && <img className="team-logo" src={state.teams.team1.logo} alt="" />}
+            {state.teams.team1.logo && <img className="team-logo" src={previewUrl(state.teams.team1.logo)} alt="" />}
             <div className="team-name">{state.teams.team1.name}</div>
           </div>
           <div className="vs-divider">
@@ -487,7 +540,7 @@ export default function MatchHub({ state, updateState, api }) {
             <div className="vs">BO{state.mode === 'scrim' ? (state.maps?.length || 0) : state.bestOf}</div>
           </div>
           <div className="team-card team2">
-            {state.teams.team2.logo && <img className="team-logo" src={state.teams.team2.logo} alt="" />}
+            {state.teams.team2.logo && <img className="team-logo" src={previewUrl(state.teams.team2.logo)} alt="" />}
             <div className="team-name">{state.teams.team2.name}</div>
           </div>
         </div>
@@ -500,7 +553,12 @@ export default function MatchHub({ state, updateState, api }) {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {selectedMapIdx >= 0 && (
               <button className="btn btn-sm" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)', fontSize: '0.7rem' }}
-                onClick={() => { setSelectedMapIdx(-1); updateState({ selectedMapIdx: -1 }); }}>📍 Go to Live Map</button>
+                onClick={() => {
+                  setSelectedMapIdx(-1);
+                  // Also point the displayed bans back at the live map
+                  const hb = heroBansForMap(autoActiveIdx());
+                  updateState({ selectedMapIdx: -1, ...(hb ? { heroBans: hb } : {}) });
+                }}>📍 Go to Live Map</button>
             )}
             {state.mode !== 'scrim' && (<>
               {overrides['bestOf'] && (
@@ -533,19 +591,9 @@ export default function MatchHub({ state, updateState, api }) {
                   className={`map-slot ${m.status} ${m.winner ? `${m.winner}-win` : ''}`}
                   onClick={() => {
                     setSelectedMapIdx(i);
-                    updateState({ selectedMapIdx: i });
-                    // Update heroBans for this map from perMapBans
-                    const mapBans = state.perMapBans?.[i];
-                    if (mapBans) {
-                      const allHeroes = [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
-                      const toKey = (n) => findHeroByName(allHeroes, n)?.key || '';
-                      updateState({
-                        heroBans: {
-                          team1: mapBans.team1Ban ? [toKey(mapBans.team1Ban.name)].filter(Boolean) : [],
-                          team2: mapBans.team2Ban ? [toKey(mapBans.team2Ban.name)].filter(Boolean) : [],
-                        }
-                      });
-                    }
+                    // Show this map's bans (cleared if it has none yet)
+                    const hb = heroBansForMap(i);
+                    updateState({ selectedMapIdx: i, ...(hb ? { heroBans: hb } : {}) });
                   }}
                   style={{
                     cursor: 'pointer',
@@ -680,29 +728,24 @@ export default function MatchHub({ state, updateState, api }) {
                     )}
                     {/* Swap hero bans between teams for this map */}
                     {state.perMapBans?.[i]?.team1Ban && state.perMapBans?.[i]?.team2Ban && (
-                      <button className="btn btn-ghost btn-sm" style={{ fontSize: '0.6rem' }}
-                        title="Swap hero ban assignments between teams"
+                      <button className="btn btn-ghost btn-sm"
+                        style={{ fontSize: '0.6rem', ...(state.banSwaps?.[i] ? { background: 'rgba(249,115,22,0.15)', color: 'var(--warning)', border: '1px solid rgba(249,115,22,0.3)' } : {}) }}
+                        title={state.banSwaps?.[i] ? 'Ban sides swapped from FACEIT data — click to restore' : 'Swap hero ban assignments between teams'}
                         onClick={(e) => {
                           e.stopPropagation();
                           const perMapBans = [...(state.perMapBans || [])];
                           const old = perMapBans[i];
                           perMapBans[i] = { ...old, team1Ban: old.team2Ban, team2Ban: old.team1Ban };
-                          const updates = { perMapBans };
-                          const activeIdx = selectedMapIdx >= 0 ? selectedMapIdx : (
-                            state.maps?.findIndex(mm => mm.status === 'current') >= 0
-                              ? state.maps.findIndex(mm => mm.status === 'current')
-                              : (state.maps?.every(mm => mm.status === 'completed') ? state.maps.length - 1 : -1)
-                          );
-                          if (activeIdx === i) {
-                            const allHeroes = [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
-                            const toKey = (n) => findHeroByName(allHeroes, n)?.key || '';
-                            updates.heroBans = {
-                              team1: perMapBans[i].team1Ban ? [toKey(perMapBans[i].team1Ban.name)].filter(Boolean) : [],
-                              team2: perMapBans[i].team2Ban ? [toKey(perMapBans[i].team2Ban.name)].filter(Boolean) : [],
-                            };
+                          // Persist the correction so FACEIT auto-sync re-applies
+                          // it on every tick instead of flipping it back
+                          const banSwaps = [...(state.banSwaps || [])];
+                          while (banSwaps.length <= i) banSwaps.push(false);
+                          banSwaps[i] = !banSwaps[i];
+                          const updates = { perMapBans, banSwaps };
+                          if (getDisplayMapIdx() === i) {
+                            updates.heroBans = heroBansForMap(i, perMapBans);
                           }
                           updateState(updates);
-                          setOverride('heroBans');
                         }}>⇄ Bans</button>
                     )}
                     {/* Map picker toggle — always available */}
@@ -715,8 +758,33 @@ export default function MatchHub({ state, updateState, api }) {
                         const perMapBans = [...(state.perMapBans || [])];
                         while (perMapBans.length <= i) perMapBans.push({});
                         perMapBans[i] = { ...perMapBans[i], picker };
-                        const maps = state.maps.map((mm, ii) => ii === i ? { ...mm, picker } : mm);
-                        updateState({ perMapBans, maps });
+                        const updates = { perMapBans };
+                        // In FACEIT mode the picker decides which chronological
+                        // ban (ban1/ban2) belongs to which team — re-derive the
+                        // sides now (instead of waiting for the next sync tick)
+                        // and drop any ⇄ swap, which was relative to the old sides
+                        if (state.mode === 'faceit' && (perMapBans[i].ban1 || perMapBans[i].ban2)) {
+                          const banPicker = picker || 'team1';
+                          perMapBans[i] = {
+                            ...perMapBans[i],
+                            team1Ban: banPicker === 'team1' ? perMapBans[i].ban1 : perMapBans[i].ban2,
+                            team2Ban: banPicker === 'team2' ? perMapBans[i].ban1 : perMapBans[i].ban2,
+                          };
+                          const banSwaps = [...(state.banSwaps || [])];
+                          if (banSwaps[i]) { banSwaps[i] = false; updates.banSwaps = banSwaps; }
+                          if (getDisplayMapIdx() === i) {
+                            const hb = heroBansForMap(i, perMapBans);
+                            if (hb) updates.heroBans = hb;
+                          }
+                        }
+                        updates.maps = state.maps.map((mm, ii) => ii === i ? { ...mm, picker } : mm);
+                        // Persist the choice so FACEIT auto-sync doesn't revert
+                        // it to the seeding heuristic ('none' = explicit no-pick)
+                        const mapPickers = [...(state.mapPickers || [])];
+                        while (mapPickers.length <= i) mapPickers.push(null);
+                        mapPickers[i] = e.target.value || 'none';
+                        updates.mapPickers = mapPickers;
+                        updateState(updates);
                       }}>
                       <option value="">No pick</option>
                       <option value="team1">{state.teams.team1.name} pick</option>
@@ -773,6 +841,21 @@ export default function MatchHub({ state, updateState, api }) {
             </div>
           </div>
         </div>
+
+        {state.mode === 'faceit' && (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', marginBottom: 12,
+            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+            borderRadius: 6, fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.5,
+          }}>
+            <span style={{ fontSize: '0.85rem' }}>⚠️</span>
+            <span>
+              FACEIT's API doesn't report <em>which team</em> banned each hero, so ban sides are a best
+              guess based on map picks and may be flipped. If a ban shows on the wrong team, click
+              <strong> ⇄ Bans</strong> on that map above — the correction sticks through auto-sync.
+            </span>
+          </div>
+        )}
 
         {/* Current bans display */}
         {allBans.length > 0 && (

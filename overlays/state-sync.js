@@ -54,18 +54,32 @@
 
   // ── Entrance animation replay ──
   // When OBS shows this browser source (page becomes visible), replay the
-  // entrance animation on #root so it looks smooth on each scene transition.
+  // entrance animations so each scene switch looks smooth. Covers #root's
+  // inline animation AND descendants animated via CSS classes (e.g. the
+  // slideUp panels) — their `forwards` fill would otherwise hold the final
+  // frame forever after the first play.
   function replayAnimation() {
     var root = document.getElementById('root');
     if (!root) return;
-    var origAnim = root.style.animation || root.getAttribute('data-anim') || '';
-    if (!origAnim) return;
-    // Store original for future replays
-    if (!root.getAttribute('data-anim')) root.setAttribute('data-anim', origAnim);
-    // Force reflow to restart animation
-    root.style.animation = 'none';
-    void root.offsetHeight; // trigger reflow
-    root.style.animation = origAnim;
+    var els = [root].concat(Array.prototype.slice.call(root.querySelectorAll('*')));
+    var animated = [];
+    for (var i = 0; i < els.length; i++) {
+      var cs = getComputedStyle(els[i]);
+      if (cs.animationName && cs.animationName !== 'none') {
+        // Remember the element's own inline animation (if any) so we can
+        // restore it; CSS-class animations restore via the empty string
+        if (!els[i].hasAttribute('data-anim')) {
+          els[i].setAttribute('data-anim', els[i].style.animation || '');
+        }
+        els[i].style.animation = 'none';
+        animated.push(els[i]);
+      }
+    }
+    if (!animated.length) return;
+    void root.offsetHeight; // force reflow so the restart takes
+    for (var j = 0; j < animated.length; j++) {
+      animated[j].style.animation = animated[j].getAttribute('data-anim') || '';
+    }
   }
 
   // OBS browser sources fire visibilitychange when shown/hidden

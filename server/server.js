@@ -384,8 +384,12 @@ function proxyImageUrl(url) {
 }
 
 app.get('/api/proxy-image', async (req, res) => {
-  const url = req.query.url;
+  let url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing url' });
+
+  // Repair truncated MediaWiki thumb URLs (a common liquipedia copy-paste:
+  // ".../thumb/d/d0/Team.png/600" → ".../thumb/d/d0/Team.png/600px-Team.png")
+  url = url.replace(/(\/thumb\/\w\/\w\w\/([^/]+\.(?:png|jpe?g|gif|webp)))\/(\d+)$/i, '$1/$3px-$2');
 
   const hash = crypto.createHash('sha1').update(url).digest('hex');
   const dataPath = path.join(IMG_CACHE_DIR, hash);
@@ -404,9 +408,21 @@ app.get('/api/proxy-image', async (req, res) => {
   if (serveCached()) return;
 
   try {
-    const response = await fetch(url);
+    // Browser-like UA: MediaWiki hosts (liquipedia) and some CDNs reject
+    // requests with no/default fetch User-Agent
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 ElementalProduction/1.3',
+        'Accept': 'image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5',
+      },
+    });
     if (!response.ok) throw new Error(`upstream ${response.status}`);
     const contentType = response.headers.get('content-type') || 'image/png';
+    // Don't cache error/login pages as if they were images (blocklist rather
+    // than whitelist — CDNs serve real images as octet-stream and friends)
+    if (/text\/html|application\/xhtml|application\/json|text\/plain/i.test(contentType)) {
+      throw new Error(`not an image (${contentType})`);
+    }
     const buffer = Buffer.from(await response.arrayBuffer());
     try {
       fs.writeFileSync(dataPath, buffer);
@@ -481,36 +497,17 @@ app.get('/api/obs/scenes', async (req, res) => {
   res.json(result);
 });
 
-const SCENE_TO_BROWSER_SOURCE = {
-  'Starting': 'Starting Soon BS',
-  'Map Pick': 'Map Pick BS',
-  'Map Intro': 'Map Intro BS',
-  'Gameplay': 'Gameplay HUD',
-  'Casters': 'Casters BS',
-  'Casters Lobby': 'Casters Lobby BS',
-  'Casters Scoreboard': 'Casters Scoreboard BS',
-  'Casters Flythrough': 'Casters BS',
-  'Map Score': 'Casters Map Score BS',
-  'Between Matches': 'Between Matches BS',
-  'BRB': 'BRB BS',
-  'Interview': 'Interview BS',
-  'Series Winner': 'Series Winner BS',
-  'Ending': 'End Stream BS',
-};
-
-async function refreshSceneOverlay(sceneName) {
-  const source = SCENE_TO_BROWSER_SOURCE[sceneName];
-  if (source) {
-    await obs.refreshBrowserSource(source).catch(() => {});
-  }
-}
+// NOTE: don't refresh the scene's browser source on switch. Reloading happens
+// on-air: the overlay goes transparent while it loads, unmasking the raw
+// caster cam sources (producer-reported "Caster 2's face flashes" on Map
+// Score). Entrance animations already replay via OBS visibility events in
+// state-sync.js, and content freshness is covered by its 1.5s polling.
 
 app.post('/api/obs/scene', async (req, res) => {
   const { name } = req.body;
   const ok = await obs.setScene(name);
   if (ok) {
     setState({ currentScene: name });
-    refreshSceneOverlay(name);
   }
   broadcast('state', getState());
   res.json({ success: ok });
@@ -521,7 +518,6 @@ app.post('/api/scene/:name', async (req, res) => {
   const ok = await obs.setScene(req.params.name);
   if (ok) {
     setState({ currentScene: req.params.name });
-    refreshSceneOverlay(req.params.name);
   }
   broadcast('state', getState());
   res.json({ success: ok });
@@ -677,6 +673,81 @@ app.post('/api/obs/transform', async (req, res) => {
 
 // ============ FACEIT API ============
 
+// Convert FACEIT hero name to dashboard hero key format
+// FACEIT uses names like "DVa", "Lucio", "Soldier 76", "Torbjorn"
+// Dashboard keys are lowercase: "dva", "lucio", "soldier-76", "torbjorn"
+const FACEIT_HERO_KEY_OVERRIDES = {
+  'DVa': 'dva',
+  'Lucio': 'lucio',
+  'Soldier 76': 'soldier-76',
+  'Torbjorn': 'torbjorn',
+};
+function heroNameToKey(name) {
+  if (!name) return '';
+  if (FACEIT_HERO_KEY_OVERRIDES[name]) return FACEIT_HERO_KEY_OVERRIDES[name];
+  return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+}
+
+/**
+ * Assign FACEIT's chronological bans (ban1/ban2) to teams via the map picker,
+ * then layer producer corrections on top (manual picker choice, \u21c4 ban swap).
+ * Corrections live in state (mapPickers/banSwaps arrays keyed by map index) so
+ * they survive every auto-sync tick instead of flipping back 15s later.
+ */
+function buildPerMapBans(rawBans, maps, banSwaps = [], mapPickers = []) {
+  return (rawBans || []).map((bans, i) => {
+    // Heuristic: map 1 \u2192 higher seed (faction1) picks; later maps \u2192 loser of previous picks
+    let picker = 'team1';
+    if (i > 0) {
+      const prevWinner = maps[i - 1]?.winner;
+      if (prevWinner) picker = prevWinner === 'team1' ? 'team2' : 'team1';
+    }
+    if (mapPickers[i]) picker = mapPickers[i] === 'none' ? null : mapPickers[i];
+    // HEURISTIC, not API data: FACEIT doesn't report which team banned each
+    // hero, only the chronological ban order (ban1/ban2 from entity order).
+    // We assume ban1 belongs to the map picker. When wrong, the producer's
+    // ⇄ Bans correction (banSwaps) fixes it — there's a matching warning in
+    // the dashboard's Hero Bans card.
+    const banPicker = picker || 'team1';
+    const entry = {
+      ...bans,
+      picker,
+      team1Ban: banPicker === 'team1' ? bans.ban1 : bans.ban2,
+      team2Ban: banPicker === 'team2' ? bans.ban1 : bans.ban2,
+    };
+    return banSwaps[i]
+      ? { ...entry, team1Ban: entry.team2Ban, team2Ban: entry.team1Ban }
+      : entry;
+  });
+}
+
+/**
+ * Which map's bans should populate heroBans (what the overlays display):
+ * producer-selected map first, then the live map, then the next upcoming map
+ * (Map Intro is shown between maps, when nothing is 'current' yet), then the
+ * last map (series over).
+ */
+function getActiveBanIdx(maps, selectedMapIdx = -1) {
+  if (Number.isInteger(selectedMapIdx) && selectedMapIdx >= 0 && selectedMapIdx < maps.length) {
+    return selectedMapIdx;
+  }
+  const currentIdx = maps.findIndex(m => m.status === 'current');
+  if (currentIdx >= 0) return currentIdx;
+  const upcomingIdx = maps.findIndex(m => m.status === 'upcoming');
+  if (upcomingIdx >= 0) return upcomingIdx;
+  return maps.length - 1;
+}
+
+function computeHeroBans(perMapBans, maps, selectedMapIdx = -1) {
+  const idx = getActiveBanIdx(maps, selectedMapIdx);
+  const activeBans = idx >= 0 ? perMapBans[idx] : null;
+  return {
+    team1: activeBans?.team1Ban ? [heroNameToKey(activeBans.team1Ban.name)] : [],
+    team2: activeBans?.team2Ban ? [heroNameToKey(activeBans.team2Ban.name)] : [],
+  };
+}
+
 app.post('/api/faceit/match', async (req, res) => {
   try {
     const matchId = faceit.parseMatchUrl(req.body.url || req.body.matchId);
@@ -705,58 +776,17 @@ app.post('/api/faceit/match', async (req, res) => {
       };
     });
 
-    // Determine map picker for each map:
-    // - Map 1: higher seed (faction1) picks
-    // - Subsequent maps: loser of previous map picks
-    // FACEIT convention: non-picker bans first (ban1), picker bans second (ban2)
-    const perMapBans = (details.perMapBans || []).map((bans, i) => {
-      let picker = 'team1'; // Default: faction1 (higher seed) picks map 1
-      if (i > 0) {
-        const prevWinner = maps[i - 1]?.winner;
-        if (prevWinner) {
-          // Loser of previous map picks next
-          picker = prevWinner === 'team1' ? 'team2' : 'team1';
-        }
-      }
-      return {
-        ...bans,
-        picker,
-        // ban1 = picker's ban, ban2 = non-picker's ban (per faceit.js entity order)
-        team1Ban: picker === 'team1' ? bans.ban1 : bans.ban2,
-        team2Ban: picker === 'team2' ? bans.ban1 : bans.ban2,
-      };
-    });
-
-    // Convert FACEIT hero name to dashboard hero key format
-    // FACEIT uses names like "DVa", "Lucio", "Soldier 76", "Torbjorn"
-    // Dashboard keys are lowercase: "dva", "lucio", "soldier-76", "torbjorn"
-    const faceitNameOverrides = {
-      'DVa': 'dva',
-      'Lucio': 'lucio',
-      'Soldier 76': 'soldier-76',
-      'Torbjorn': 'torbjorn',
-    };
-    const heroNameToKey = (name) => {
-      if (!name) return '';
-      if (faceitNameOverrides[name]) return faceitNameOverrides[name];
-      return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
-    };
-
-    // Find current map and auto-populate heroBans for it
-    const currentMapIdx = maps.findIndex(m => m.status === 'current');
-    const activeIdx = currentMapIdx >= 0 ? currentMapIdx : maps.length - 1; // fall back to last map
-    const activeBans = perMapBans[activeIdx];
-    const heroBans = {
-      team1: activeBans?.team1Ban ? [heroNameToKey(activeBans.team1Ban.name)] : [],
-      team2: activeBans?.team2Ban ? [heroNameToKey(activeBans.team2Ban.name)] : [],
-    };
+    // Fresh match load: producer corrections from the previous match don't apply
+    const perMapBans = buildPerMapBans(details.perMapBans, maps);
+    const heroBans = computeHeroBans(perMapBans, maps);
 
     // Build update object, skipping overridden fields
     const update = {
       mode: 'faceit',
       faceitMatchId: matchId,
       selectedMapIdx: -1,
+      banSwaps: [],
+      mapPickers: [],
       faceitLastSync: Date.now(),
       faceitLastSyncError: null,
     };
@@ -851,10 +881,17 @@ app.post('/api/faceit/refresh', async (req, res) => {
       };
     });
 
+    const perMapBans = buildPerMapBans(details.perMapBans, maps,
+      currentState.banSwaps || [], currentState.mapPickers || []);
+
     const update = {};
+    update.perMapBans = perMapBans;
+    if (!isOverridden('heroBans')) {
+      update.heroBans = computeHeroBans(perMapBans, maps, currentState.selectedMapIdx);
+    }
     if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
     if (!isOverridden('maps')) {
-      update.maps = maps.map((m, i) => ({ ...m, picker: currentState.perMapBans?.[i]?.picker || null }));
+      update.maps = maps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null }));
     }
     if (!isOverridden('players')) {
       update.players = { team1: faction1.roster, team2: faction2.roster };
@@ -944,35 +981,11 @@ async function faceitPollTick() {
       };
     });
 
-    // Parse per-map bans (same logic as /api/faceit/match)
-    // FACEIT convention: non-picker bans first (ban1), picker bans second (ban2)
-    const perMapBans = (details.perMapBans || []).map((bans, i) => {
-      let picker = 'team1';
-      if (i > 0) {
-        const prevWinner = maps[i - 1]?.winner;
-        if (prevWinner) picker = prevWinner === 'team1' ? 'team2' : 'team1';
-      }
-      return { ...bans, picker,
-        team1Ban: picker === 'team1' ? bans.ban1 : bans.ban2,
-        team2Ban: picker === 'team2' ? bans.ban1 : bans.ban2,
-      };
-    });
-
-    const faceitNameOverrides = { 'DVa': 'dva', 'Lucio': 'lucio', 'Soldier 76': 'soldier-76', 'Torbjorn': 'torbjorn' };
-    const heroNameToKey = (name) => {
-      if (!name) return '';
-      if (faceitNameOverrides[name]) return faceitNameOverrides[name];
-      return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
-    };
-
-    const currentMapIdx = maps.findIndex(m => m.status === 'current');
-    const activeIdx = currentMapIdx >= 0 ? currentMapIdx : maps.length - 1;
-    const activeBans = perMapBans[activeIdx];
-    const heroBans = {
-      team1: activeBans?.team1Ban ? [heroNameToKey(activeBans.team1Ban.name)] : [],
-      team2: activeBans?.team2Ban ? [heroNameToKey(activeBans.team2Ban.name)] : [],
-    };
+    // Parse per-map bans, re-applying producer corrections (\u21c4 swap, manual
+    // picker) so an auto-sync tick never reverts them
+    const perMapBans = buildPerMapBans(details.perMapBans, maps,
+      currentState.banSwaps || [], currentState.mapPickers || []);
+    const heroBans = computeHeroBans(perMapBans, maps, currentState.selectedMapIdx);
 
     // Build update, respecting overrides (maps always update — forward-only logic prevents regressions)
     const update = {};
@@ -1695,6 +1708,8 @@ app.post('/api/reset', (req, res) => {
     heroBans: { team1: [], team2: [] },
     playerStats: [],
     perMapBans: [],
+    banSwaps: [],
+    mapPickers: [],
     selectedMapIdx: -1,
     faceitMatchId: '',
     players: { team1: [], team2: [] },

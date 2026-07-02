@@ -128,7 +128,7 @@
     }
 
     function getHeroPortrait(key) {
-      const hero = heroData.find(h => h.key === key);
+      const hero = findHeroEntry(heroData, key);
       return hero ? hero.portrait : '';
     }
 

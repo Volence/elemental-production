@@ -121,7 +121,7 @@
 
       container.classList.remove('hidden');
       const makeIcons = (bans) => bans.map(key => {
-        const hero = heroData.find(h => h.key === key);
+        const hero = findHeroEntry(heroData, key);
         return hero ? `<div class="ban-icon"><img src="${hero.portrait}" alt="${hero.name}"></div>` : '';
       }).join('');
 
