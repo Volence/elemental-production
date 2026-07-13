@@ -79,10 +79,12 @@ app.get('/overlays/:file', async (req, res) => {
   const filePath = path.join(overlaysDir, req.params.file);
   if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
 
-  // For non-HTML files, serve directly
+  // For non-HTML files, serve directly. Pass { root } so `send` resolves the
+  // dotfile check against the relative name, not the absolute path — AppImages
+  // mount under /tmp/.mount_* (a dot-dir), which otherwise 404s every asset.
   if (!req.params.file.endsWith('.html')) {
     noCacheHeaders(res);
-    return res.sendFile(filePath);
+    return res.sendFile(req.params.file, { root: overlaysDir });
   }
 
   // For HTML overlays, inline all local image references as base64 data URIs
@@ -1123,9 +1125,10 @@ function setupFlythroughsRoute() {
 app.get('/flythroughs/:file', (req, res) => {
   const dir = getState().flythroughsDir;
   if (!dir) return res.status(404).send('No flythroughs directory configured');
-  const filePath = path.join(dir, decodeURIComponent(req.params.file));
-  if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
-  res.sendFile(filePath);
+  const fileName = decodeURIComponent(req.params.file);
+  if (!fs.existsSync(path.join(dir, fileName))) return res.status(404).send('Not found');
+  // { root } so the AppImage mount's dot-dir doesn't trip send's dotfile 404
+  res.sendFile(fileName, { root: dir });
 });
 
 /** Get available flythroughs index */
@@ -1449,12 +1452,13 @@ app.get('/api/browse', (req, res) => {
 app.get('/api/obs/scene-collection', (req, res) => {
   const isWindows = req.query.platform === 'windows';
   const fileName = isWindows ? 'obs-scene-collection-windows.json' : 'obs-scene-collection.json';
-  const filePath = path.join(__dirname, '..', 'data', fileName);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Scene collection file not found' });
+  const sceneDir = path.join(__dirname, '..', 'data');
+  if (!fs.existsSync(path.join(sceneDir, fileName))) return res.status(404).json({ error: 'Scene collection file not found' });
   const downloadName = isWindows ? 'elemental-obs-scenes-windows.json' : 'elemental-obs-scenes.json';
   res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
   res.setHeader('Content-Type', 'application/json');
-  res.sendFile(filePath);
+  // { root } so the AppImage mount's dot-dir doesn't trip send's dotfile 404
+  res.sendFile(fileName, { root: sceneDir });
 });
 
 // ============ BACKGROUND MUSIC API ============
@@ -2130,7 +2134,8 @@ setupMapMusicRoute();
 // In production, serve index.html for any unmatched route (React Router)
 if (fs.existsSync(distDir)) {
   app.get('{*path}', (req, res) => {
-    res.sendFile(path.join(distDir, 'index.html'));
+    // { root } so the AppImage mount's dot-dir doesn't trip send's dotfile 404
+    res.sendFile('index.html', { root: distDir });
   });
 }
 
