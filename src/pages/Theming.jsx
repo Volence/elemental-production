@@ -36,9 +36,11 @@ export default function Theming({ state, updateState, api, customFonts }) {
   const [local, setLocal] = useState({ ...DEFAULT_THEME, ...theme });
   const [dirty, setDirty] = useState(false);
   useEffect(() => {
+    // Broadcasts arrive every few seconds (FACEIT poll, other producers).
+    // Never clobber unsaved local edits — resync only when the form is clean.
+    if (dirty) return;
     setLocal({ ...DEFAULT_THEME, ...state.theme });
-    setDirty(false);
-  }, [state.theme]);
+  }, [state.theme, dirty]);
 
   const update = (key, value) => {
     setLocal(prev => ({ ...prev, [key]: value }));
