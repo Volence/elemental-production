@@ -47,6 +47,12 @@ export default function Theming({ state, updateState, api, customFonts }) {
     setDirty(true);
   };
 
+  // Programmatic updates (logo color extraction) — change the form without
+  // marking it dirty, so background extraction never blocks broadcast resyncs.
+  const updateSilent = (key, value) => {
+    setLocal(prev => ({ ...prev, [key]: value }));
+  };
+
   const saveTheme = async () => {
     const updates = { theme: local };
     if (local.team1Color || local.team2Color) {
@@ -178,6 +184,7 @@ export default function Theming({ state, updateState, api, customFonts }) {
             logoUrl={state.teams?.team1?.logo}
             api={api}
             onColorChange={v => update('team1Color', v)}
+            onExtractedColor={v => updateSilent('team1Color', v)}
             onAutoChange={v => update('team1ColorAuto', v)}
           />
           <TeamColorSection
@@ -187,6 +194,7 @@ export default function Theming({ state, updateState, api, customFonts }) {
             logoUrl={state.teams?.team2?.logo}
             api={api}
             onColorChange={v => update('team2Color', v)}
+            onExtractedColor={v => updateSilent('team2Color', v)}
             onAutoChange={v => update('team2ColorAuto', v)}
           />
         </div>
@@ -271,7 +279,7 @@ function GradientField({ label, value, onChange }) {
   );
 }
 
-function TeamColorSection({ label, color, auto, logoUrl, api, onColorChange, onAutoChange }) {
+function TeamColorSection({ label, color, auto, logoUrl, api, onColorChange, onExtractedColor, onAutoChange }) {
   const [extractedColor, setExtractedColor] = useState(null);
 
   useEffect(() => {
@@ -320,15 +328,15 @@ function TeamColorSection({ label, color, auto, logoUrl, api, onColorChange, onA
         const b = Math.round(best.b / best.count);
         const hex = '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
         setExtractedColor(hex);
-        onColorChange(hex);
+        onExtractedColor(hex);
       } else {
         setExtractedColor('#6b7280');
-        onColorChange('#6b7280');
+        onExtractedColor('#6b7280');
       }
     };
     img.onerror = () => {
       setExtractedColor('#6b7280');
-      onColorChange('#6b7280');
+      onExtractedColor('#6b7280');
     };
     img.src = needsProxy ? `${api}/api/proxy-image?url=${encodeURIComponent(logoUrl)}` : logoUrl;
   }, [auto, logoUrl]);
