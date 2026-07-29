@@ -53,7 +53,9 @@ export default function MatchHub({ state, updateState, api }) {
     fetch(`${api}/api/maps`).then(r => r.json()).then(list => {
       const byName = {};
       (Array.isArray(list) ? list : []).forEach(m => {
-        if (m.name) byName[m.name.toLowerCase()] = m.screenshot || m.image || '';
+        // normalizeHeroName strips accents/punctuation — needed for maps too:
+        // our pool has "King's Row" (U+0027), OverFast returns "King’s Row" (U+2019).
+        if (m.name) byName[normalizeHeroName(m.name)] = m.screenshot || m.image || '';
       });
       setMapImages(byName);
     }).catch(() => {});
@@ -205,7 +207,7 @@ export default function MatchHub({ state, updateState, api }) {
   const addMap = (map) => {
     const maps = [...(state.maps || []), {
       ...map,
-      image: mapImages[(map.name || '').toLowerCase()] || '',
+      image: mapImages[normalizeHeroName(map.name)] || '',
       status: 'upcoming', winner: null,
     }];
     const updates = { maps };
