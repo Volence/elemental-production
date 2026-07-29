@@ -24,6 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
+import { buildTeamsUpdate, buildMapsUpdate } from './faceit-merge.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -989,10 +990,15 @@ async function faceitPollTick() {
       currentState.banSwaps || [], currentState.mapPickers || []);
     const heroBans = computeHeroBans(perMapBans, maps, currentState.selectedMapIdx);
 
-    // Build update, respecting overrides (maps always update — forward-only logic prevents regressions)
+    // Build update, respecting overrides (same rules as the one-shot loader)
     const update = {};
     if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
-    update.maps = maps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null }));
+    update.maps = buildMapsUpdate({
+      currentMaps: currentState.maps,
+      faceitMaps: maps,
+      perMapBans,
+      mapsOverridden: isOverridden('maps'),
+    });
     if (!isOverridden('players')) {
       update.players = { team1: faction1.roster, team2: faction2.roster };
     }
@@ -1004,15 +1010,12 @@ async function faceitPollTick() {
     const computedScore1 = maps.filter(m => m.winner === 'team1').length;
     const computedScore2 = maps.filter(m => m.winner === 'team2').length;
 
-    const t1 = { color: '#3b82f6', faceitId: faction1.id };
-    if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
-    if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
-    t1.score = computedScore1;
-    const t2 = { color: '#ef4444', faceitId: faction2.id };
-    if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
-    if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
-    t2.score = computedScore2;
-    update.teams = { team1: t1, team2: t2 };
+    update.teams = buildTeamsUpdate({
+      currentTeams: currentState.teams,
+      faction1, faction2,
+      score1: computedScore1, score2: computedScore2,
+      isOverridden,
+    });
     update.faceitLastSync = Date.now();
 
     const updated = setState(update);
