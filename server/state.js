@@ -13,6 +13,7 @@ const STATE_FILE = process.env.ELEMENTAL_USER_DATA
 const defaultState = {
   mode: 'manual', // 'faceit' or 'manual'
   faceitMatchId: '',
+  faceitMatchUrl: '',
   bestOf: 5,
   teams: {
     team1: { name: 'Team 1', logo: '', color: '#3b82f6', score: 0 },

@@ -1720,6 +1720,7 @@ app.post('/api/reset', (req, res) => {
     mapPickers: [],
     selectedMapIdx: -1,
     faceitMatchId: '',
+    faceitMatchUrl: '',
     players: { team1: [], team2: [] },
     maps: (s.maps || []).map(m => ({ ...m, status: 'upcoming', winner: null, roundScore: '' })),
   };
