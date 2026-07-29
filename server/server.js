@@ -826,7 +826,7 @@ app.post('/api/faceit/match', async (req, res) => {
     if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
     if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
     if (!isOverridden('teams.team1.score')) t1.score = computedScore1;
-    t1.color = '#3b82f6';
+    if (!isOverridden('teams.team1.color')) t1.color = '#3b82f6';
     t1.faceitId = faction1.id;
 
     // Team 2 fields
@@ -834,7 +834,7 @@ app.post('/api/faceit/match', async (req, res) => {
     if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
     if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
     if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
-    t2.color = '#ef4444';
+    if (!isOverridden('teams.team2.color')) t2.color = '#ef4444';
     t2.faceitId = faction2.id;
 
     update.teams = { team1: t1, team2: t2 };
@@ -990,7 +990,7 @@ async function faceitPollTick() {
       currentState.banSwaps || [], currentState.mapPickers || []);
     const heroBans = computeHeroBans(perMapBans, maps, currentState.selectedMapIdx);
 
-    // Build update, respecting overrides (same rules as the one-shot loader)
+    // Build update, respecting overrides; unlike the one-shot loader, colors are preserved and overridden maps still advance progress
     const update = {};
     if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
     update.maps = buildMapsUpdate({
