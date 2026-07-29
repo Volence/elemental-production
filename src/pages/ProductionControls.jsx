@@ -138,7 +138,7 @@ export default function ProductionControls({ state, updateState, api }) {
     const duration = Math.max(1, Math.round((target - Date.now()) / 1000));
     await fetch(`${api}/api/timer/start`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ duration, label: state.countdown.label }),
+      body: JSON.stringify({ duration, label: state.countdown.label, target: targetTime }),
     });
   };
 
@@ -603,6 +603,11 @@ export default function ProductionControls({ state, updateState, api }) {
           {state.countdown.label}
           {timerRunning && <span className="badge badge-success" style={{ marginLeft: 8 }}>LIVE</span>}
           {timerPaused && <span className="badge" style={{ marginLeft: 8, background: '#b8860b', color: '#fff' }}>PAUSED</span>}
+          {state.countdown.target && (timerRunning || timerPaused) && (
+            <span className="badge" style={{ marginLeft: 8, background: 'rgba(59,130,246,0.2)', color: '#93c5fd' }}>
+              → {state.countdown.target}
+            </span>
+          )}
         </div>
         <div className="countdown-controls">
           <input className="input" style={{ width: 120 }} placeholder="Label" value={state.countdown.label}
@@ -613,7 +618,7 @@ export default function ProductionControls({ state, updateState, api }) {
           {!timerRunning && !timerPaused && (
             <button className="btn btn-success btn-sm" onClick={startTimer}>▶ Start</button>
           )}
-          {!timerRunning && !timerPaused && (
+          {!timerRunning && (
             <>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>or until</span>
               <input className="input" type="time" style={{ width: 110 }} value={targetTime}

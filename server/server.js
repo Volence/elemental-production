@@ -1597,7 +1597,7 @@ app.get('/api/heroes/grouped', async (req, res) => {
 // ============ COUNTDOWN API ============
 
 app.post('/api/timer/start', (req, res) => {
-  const { duration, label } = req.body;
+  const { duration, label, target } = req.body;
   const d = duration || getState().countdown.duration;
   setState({
     countdown: {
@@ -1607,6 +1607,7 @@ app.post('/api/timer/start', (req, res) => {
       running: true,
       startedAt: Date.now(),
       label: label || 'Starting Soon',
+      target: target || null, // 'HH:MM' when counting down to a wall-clock time
     },
   });
   startCountdown();
@@ -1618,7 +1619,7 @@ app.post('/api/timer/stop', (req, res) => {
   stopCountdownInterval();
   const s = getState();
   setState({
-    countdown: { ...s.countdown, remaining: s.countdown.duration, running: false, startedAt: null },
+    countdown: { ...s.countdown, remaining: s.countdown.duration, running: false, startedAt: null, target: null },
   });
   broadcast('state', getState());
   res.json({ success: true });
