@@ -279,6 +279,8 @@ function GradientField({ label, value, onChange }) {
   );
 }
 
+// onColorChange = user edits (dirties the form); onExtractedColor = programmatic
+// logo extraction (must NOT dirty — a dirty form blocks broadcast resyncs).
 function TeamColorSection({ label, color, auto, logoUrl, api, onColorChange, onExtractedColor, onAutoChange }) {
   const [extractedColor, setExtractedColor] = useState(null);
 
