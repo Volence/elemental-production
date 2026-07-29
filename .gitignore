@@ -27,3 +27,4 @@ release
 .env
 data/cache/
 data/state.json
+.superpowers/
