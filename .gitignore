@@ -28,3 +28,4 @@ release
 data/cache/
 data/state.json
 .superpowers/
+.worktrees/
