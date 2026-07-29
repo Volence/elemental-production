@@ -787,6 +787,7 @@ app.post('/api/faceit/match', async (req, res) => {
     const update = {
       mode: 'faceit',
       faceitMatchId: matchId,
+      faceitMatchUrl: req.body.url || req.body.matchId || matchId,
       selectedMapIdx: -1,
       banSwaps: [],
       mapPickers: [],

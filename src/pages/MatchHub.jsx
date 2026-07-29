@@ -31,7 +31,7 @@ const OW2_MAPS = [
 ];
 
 export default function MatchHub({ state, updateState, api }) {
-  const [matchUrl, setMatchUrl] = useState('');
+  const [matchUrl, setMatchUrl] = useState(state.faceitMatchUrl || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [heroes, setHeroes] = useState({ tank: [], damage: [], support: [] });
@@ -52,6 +52,12 @@ export default function MatchHub({ state, updateState, api }) {
     const idx = state.selectedMapIdx ?? -1;
     setSelectedMapIdx(prev => (prev === idx ? prev : idx));
   }, [state.selectedMapIdx]);
+
+  // Restore the loaded match URL after tab switches (this component unmounts).
+  // Only fill an empty input — never stomp something the producer is typing.
+  useEffect(() => {
+    if (state.faceitMatchUrl && !matchUrl) setMatchUrl(state.faceitMatchUrl);
+  }, [state.faceitMatchUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allHeroList = () => [...(heroes.tank || []), ...(heroes.damage || []), ...(heroes.support || [])];
 
