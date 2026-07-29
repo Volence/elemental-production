@@ -312,8 +312,8 @@
       const leftBans = swap ? (state.heroBans?.team2 || []) : (state.heroBans?.team1 || []);
       const rightBans = swap ? (state.heroBans?.team1 || []) : (state.heroBans?.team2 || []);
       const maps = state.maps || [];
-      const currentMapIdx = maps.findIndex(m => m.status === 'current');
-      const currentMap = currentMapIdx >= 0 ? maps[currentMapIdx] : maps[0];
+      const currentMapIdx = findCurrentMapIndex(maps);
+      const currentMap = maps[currentMapIdx] || {};
       const fontFamily = state.font?.family || 'Oswald';
       const bestOf = state.bestOf || maps.length || 5;
 

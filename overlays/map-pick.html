@@ -221,7 +221,7 @@
 
       const mapSlotsHtml = slots.map((m, i) => {
         const statusClass = m.status || 'upcoming';
-        const isCurrent = i === maps.findIndex(mp => mp.status === 'current');
+        const isCurrent = i === findCurrentMapIndex(maps);
         const mapImg = getMapScreenshot(m.name, m.image);
         const mapBans = perMapBans[i];
         const winnerColor = m.winner === 'team1' ? t1Color : m.winner === 'team2' ? t2Color : null;

@@ -90,3 +90,33 @@ function hexToAlpha(hex, alpha) {
   var b = parseInt(hex.slice(5, 7), 16);
   return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
 }
+
+// Which map should overlays treat as "the map right now"?
+// live map -> next upcoming map -> last played map. Never blindly maps[0]:
+// that's the bug where the map intro showed map 1's name all series.
+function findCurrentMapIndex(maps) {
+  maps = maps || [];
+  for (var i = 0; i < maps.length; i++) if (maps[i].status === 'current') return i;
+  for (var j = 0; j < maps.length; j++) if (maps[j].status === 'upcoming') return j;
+  return maps.length - 1;
+}
+
+function findCurrentMap(maps) {
+  var idx = findCurrentMapIndex(maps);
+  return (idx >= 0 && maps[idx]) || {};
+}
+
+// Ticker underline class for a series map slot. Colors follow the WINNING
+// team's color var — never flipped by swapSides (CSS vars don't flip either;
+// that mismatch was the "underscore colors aren't correct" bug).
+function mapStripClass(map, index, currentIdx) {
+  if (map.status === 'completed' && map.winner === 'team1') return 'won-t1';
+  if (map.status === 'completed' && map.winner === 'team2') return 'won-t2';
+  return index === currentIdx ? 'current' : '';
+}
+
+// CJS export guard so Node/Vitest can import these for tests; harmless in the
+// browser since `module` is undefined there and this block never executes.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { findCurrentMapIndex: findCurrentMapIndex, findCurrentMap: findCurrentMap, mapStripClass: mapStripClass };
+}
