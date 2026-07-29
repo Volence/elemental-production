@@ -1657,7 +1657,7 @@ app.post('/api/timer/reset', (req, res) => {
   stopCountdownInterval();
   const s = getState();
   setState({
-    countdown: { ...s.countdown, remaining: s.countdown.duration, running: false, startedAt: null },
+    countdown: { ...s.countdown, remaining: s.countdown.duration, running: false, startedAt: null, target: null },
   });
   broadcast('state', getState());
   res.json({ success: true });
