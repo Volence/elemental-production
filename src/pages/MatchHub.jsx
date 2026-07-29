@@ -35,6 +35,7 @@ export default function MatchHub({ state, updateState, api }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [heroes, setHeroes] = useState({ tank: [], damage: [], support: [] });
+  const [mapImages, setMapImages] = useState({});
   const [banTeam, setBanTeam] = useState('team1');
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [selectedMapIdx, setSelectedMapIdx] = useState(-1); // -1 = auto (current/last)
@@ -44,6 +45,18 @@ export default function MatchHub({ state, updateState, api }) {
 
   useEffect(() => {
     fetch(`${api}/api/heroes/grouped`).then(r => r.json()).then(setHeroes).catch(() => {});
+  }, [api]);
+
+  // Map name -> screenshot from the server's OverFast-backed catalog, so
+  // manually added maps get images like FACEIT-loaded ones do.
+  useEffect(() => {
+    fetch(`${api}/api/maps`).then(r => r.json()).then(list => {
+      const byName = {};
+      (Array.isArray(list) ? list : []).forEach(m => {
+        if (m.name) byName[m.name.toLowerCase()] = m.screenshot || m.image || '';
+      });
+      setMapImages(byName);
+    }).catch(() => {});
   }, [api]);
 
   // Keep local map selection in sync with server state (dashboard reloads,
@@ -190,7 +203,11 @@ export default function MatchHub({ state, updateState, api }) {
   });
 
   const addMap = (map) => {
-    const maps = [...(state.maps || []), { ...map, image: '', status: 'upcoming', winner: null }];
+    const maps = [...(state.maps || []), {
+      ...map,
+      image: mapImages[(map.name || '').toLowerCase()] || '',
+      status: 'upcoming', winner: null,
+    }];
     const updates = { maps };
     if (state.mode === 'scrim') updates.bestOf = maps.length;
     updateState(updates);
