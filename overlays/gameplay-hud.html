@@ -324,17 +324,9 @@
 
       // Series map slots for unified top strip
       const seriesHtml = maps.map((m, i) => {
-        let cls = '';
-        if (m.status === 'completed' && m.winner === 'team1') {
-          cls = swap ? 'won-t2' : 'won-t1';
-        } else if (m.status === 'completed' && m.winner === 'team2') {
-          cls = swap ? 'won-t1' : 'won-t2';
-        } else if (i === currentMapIdx) {
-          cls = 'current';
-        }
-
+        const cls = mapStripClass(m, i, currentMapIdx);
         const scoreLabel = m.status === 'completed' && m.roundScore ? m.roundScore : '';
-        const showIcon = m.image ? `<img class="sm-icon" src="${m.image}">` : '';
+        const showIcon = m.image ? `<img class="sm-icon" src="${proxyImg(m.image)}">` : '';
 
         return `
           <div class="strip-map ${cls}">
