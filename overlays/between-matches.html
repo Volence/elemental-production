@@ -39,6 +39,12 @@
       font-family: var(--font-title, 'Bebas Neue', sans-serif);
       font-size: 14px; letter-spacing: 2px;
       color: rgba(255,255,255,0.5);
+      /* Branding column ends where .cam-area starts (left:200px, we sit at
+         left:40px) — wrap long event names instead of running under the cam. */
+      max-width: 150px;
+      text-align: center;
+      line-height: 1.3;
+      overflow-wrap: break-word;
     }
 
     /* Webcam area (large center) */
