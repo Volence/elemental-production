@@ -2,137 +2,376 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Hero Bans Overlay</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap">
+  <title>Ban Reveal Overlay</title>
+  <!-- Broadcast v2: same stack as gameplay-hud.html/map-pick.html — no Google
+       Fonts (Geist via @font-face in fonts-v2.css); theme-v2.css/fonts-v2.css/
+       animations.css own tokens + shared component-internal styles; this
+       file's own <style> owns scene-local layout. Full-screen (petal texture),
+       not the old transparent corner strip. -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: transparent; overflow: hidden; width: 1920px; height: 1080px; }
-
-    .bans-container {
-      position: absolute;
-      top: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 40px;
-      opacity: 0;
-      animation: fadeIn 0.4s ease 0.1s forwards;
+    body {
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
     }
+    #root { position: relative; width: 1920px; height: 1080px; }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+    /* Both-teams-empty state (same visibility semantics as the old scene's
+       `.hidden` on its single container): render() toggles this on #root
+       itself since shell now builds SEVERAL id'd children (washes, heading,
+       panels) — hiding just one of them would leave the others visible. */
+    #root.hb-empty { display: none; }
+
+    /* overlay-core appends its volatile render container as #root's LAST
+       child (after everything shell builds). This scene never uses it —
+       render() writes into each wrapper's persistent .slot-content instead
+       (the render-vs-reflow split, same as gameplay-hud.html/map-pick.html)
+       — so the trailing, id-less container is hidden. Every shell wrapper
+       below has an id, so this only matches that container. */
+    #root > div:not([id]) { display: none; }
+
+    /* ── Team washes (shell chrome, built ONCE) ──────────────────────────
+       .v2-wash-left/.v2-wash-right (theme-v2.css) already do the gradient-
+       from-edge look via a --wash-color custom property; stretched to full
+       screen here (inset:0) rather than theme-v2's small-panel usage. Colors
+       are DATA (team colors can change), but these two divs are NEVER
+       rebuilt — render() only calls .style.setProperty('--wash-color', ...)
+       on the same persistent nodes, which repaints the gradient without
+       touching innerHTML. That's the point: if a team's color changed while
+       this scene stayed mounted, the wash must NOT replay its fade-in (that
+       would be the same "chrome re-animates on every data tick" bug the HUD's
+       shell/render split fixes) — only a genuine shell rebuild (page
+       load/OBS scene switch, via state-sync's replayAnimation) replays it. */
+    .hb-wash { position: absolute; inset: 0; pointer-events: none; }
+
+    /* ── Heading block (shell wrapper, entrance-animated) ────────────────
+       Crest + "HERO BANS" + map-context chip are all DATA (pinwheel colors,
+       chip text) so they're written into .slot-content by render(), same
+       split as gameplay-hud's #hud-center — only the wrapper's entrance
+       animation is shell-owned and never replays on a data tick. */
+    #hb-heading { position: absolute; top: 3.5%; left: 0; right: 0; text-align: center; z-index: 3; }
+    .hb-medallion { display: flex; justify-content: center; }
+    .hb-heading-text {
+      margin-top: 8px; font-size: 44px; font-weight: 800; color: #fff;
+      letter-spacing: 4px; text-shadow: 0 1px 6px rgba(0,0,0,0.7);
     }
-
-    .team-bans {
-      text-align: center;
-    }
-
-    .team-bans-label {
-      font-family: 'Inter', sans-serif;
-      font-size: 11px;
-      font-weight: 700;
+    .hb-heading-underline { width: 150px; margin: 8px auto 0; }
+    .hb-map-chip {
+      margin-top: 10px; display: inline-block; color: rgba(255,255,255,0.55);
+      font-weight: 700; font-size: 22px; letter-spacing: 0.5px;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
-      margin-bottom: 8px;
-      padding: 3px 12px;
-      border-radius: 4px;
     }
 
-    .team1-label { color: var(--team1-color, #3b82f6); background: var(--ban-team1-bg, rgba(59, 130, 246, 0.15)); }
-    .team2-label { color: var(--team2-color, #ef4444); background: var(--ban-team2-bg, rgba(239, 68, 68, 0.15)); }
+    /* ── Panels area (shell wrapper — plain positioned box, NO entrance
+       animation of its own). Unlike the heading/washes above, this wrapper's
+       CHILDREN (the ban panels) are the animated elements, and they ARE
+       rebuilt by render() every time — see the big comment on panelHtml()
+       below for why that's intentional here, in contrast to the HUD's
+       "chrome never replays" rule. */
+    #hb-panels { position: absolute; inset: 0; z-index: 2; }
 
-    .ban-icons {
-      display: flex;
-      gap: 6px;
+    .hb-side { position: absolute; top: 24%; bottom: 9%; width: 37%; display: flex; flex-direction: column; }
+    .hb-side-left { left: 6%; }
+    .hb-side-right { right: 6%; }
+    .hb-side-label { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex: 0 0 auto; }
+    .hb-side-right .hb-side-label { flex-direction: row-reverse; }
+    .hb-side-swatch { width: 26px; height: 26px; border-radius: var(--panel-radius); flex: none; }
+    .hb-side-name {
+      color: #fff; font-weight: 800; font-size: 26px; text-transform: uppercase;
+      letter-spacing: 1px; text-shadow: 0 1px 4px rgba(0,0,0,0.7);
     }
 
-    .ban-icon {
-      width: 52px;
-      height: 52px;
-      border-radius: 8px;
-      overflow: hidden;
-      position: relative;
-      border: 2px solid rgba(239, 68, 68, 0.6);
-      box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
-    }
+    .hb-columns { display: flex; gap: 16px; flex: 1 1 auto; min-height: 0; }
 
-    .ban-icon img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      filter: grayscale(60%);
+    /* ── One ban panel ────────────────────────────────────────────────── */
+    .hb-panel {
+      position: relative; flex: 1 1 0; min-width: 0; overflow: hidden;
+      background: #141821; border: 1px solid; border-radius: var(--panel-radius);
+      box-sizing: border-box;
     }
-
-    .ban-icon::after {
-      content: '✕';
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(239, 68, 68, 0.4);
-      color: white;
-      font-size: 20px;
-      font-weight: 900;
+    .hb-panel-art { position: absolute; inset: 0; }
+    /* Full-body render path: a transparent-cutout PNG/WebP, contained (not
+       cropped) and anchored to the panel's bottom so feet sit on the floor
+       of the panel rather than centering awkwardly in empty space. */
+    .hb-panel-render-img {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: contain; object-position: bottom center;
     }
-
-    .hidden { display: none; }
+    /* Portrait-fallback path (no local render dropped in yet): dark gradient
+       backdrop + an oversized centered bust from the same square portrait
+       the ban tiles use elsewhere — reads as "hero silhouette", not a raw UI
+       thumbnail, at this scale. */
+    .hb-panel-fallback-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, #262c39 0%, #171a22 100%);
+    }
+    .hb-panel-fallback-portrait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    .hb-panel-fallback-img {
+      width: 180px; height: 180px; border-radius: 50%; object-fit: cover;
+      border: 4px solid rgba(255,255,255,0.18); box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+    .hb-panel-wash { position: absolute; inset: 0; pointer-events: none; }
+    /* Red slash: same visual family as banTile's .v2-ban-slash (universal
+       "denied" red, not team color). Here it SWEEPS in via a delayed
+       animation (see panelHtml()'s inline animation-delay) instead of
+       banTile's static overlay — this panel is a reveal moment, the small
+       ban tile elsewhere isn't. */
+    .hb-panel-slash {
+      position: absolute; inset: 0; pointer-events: none; opacity: 0;
+      background-image: linear-gradient(45deg, transparent 46%, rgba(255,0,0,0.85) 49%, rgba(255,0,0,0.85) 51%, transparent 54%);
+      /* animation set inline (full shorthand) by render — see slashHtml */
+    }
+    @keyframes hbSlashSweep {
+      0%   { opacity: 0; transform: translateX(-55%) scaleX(1.35); }
+      60%  { opacity: 1; }
+      100% { opacity: 1; transform: translateX(0) scaleX(1); }
+    }
+    .hb-panel-banned-chip {
+      position: absolute; top: 0; left: 0; font-weight: 800; font-size: 22px;
+      letter-spacing: 1.5px; padding: 7px 20px; color: #fff;
+    }
+    .hb-panel-foot {
+      position: absolute; left: 0; right: 0; bottom: 0; background: rgba(8,10,15,0.92);
+      padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+    }
+    .hb-panel-role {
+      flex: none; font-weight: 800; font-size: 22px; letter-spacing: 1px; text-transform: uppercase;
+    }
+    .hb-panel-name {
+      color: #fff; font-weight: 800; font-size: 36px; text-transform: uppercase;
+      letter-spacing: 0.5px; text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div id="bans" class="bans-container hidden"></div>
+  <div id="root"></div>
 
+  <!-- Script order matters: helpers + SVG + component builders + bg helper
+       must all be global before overlay-core wires the render loop. NO ?./??
+       in the inline script (OBS Chromium 103 floor); template literals/const/
+       arrow are fine, but this file follows the existing var/function/string-
+       concat style for consistency with the other v2 scenes. -->
   <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./bg-helper.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
-    const API = 'http://localhost:3001';
-    let heroData = [];
+    var API = 'http://localhost:3001';
+    var heroData = [];
 
-    async function loadHeroes() {
-      heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+    // Dep (overlay-core loads it before the first render).
+    function loadHeroes() {
+      if (window.__HERO_DATA__) { heroData = window.__HERO_DATA__; return Promise.resolve(); }
+      return fetch(API + '/api/heroes')
+        .then(function (r) { return r.json(); })
+        .then(function (d) { heroData = d || []; })
+        .catch(function () { heroData = []; });
     }
 
-    var lastRenderKey = '';
-    function update(state) {
-      var renderKey = JSON.stringify([
-        state.teams, state.heroBans, state.theme
-      ]);
-      if (renderKey === lastRenderKey) return;
-      lastRenderKey = renderKey;
-      applyTheme(state);
-      const container = document.getElementById('bans');
-      const t1bans = state.heroBans?.team1 || [];
-      const t2bans = state.heroBans?.team2 || [];
+    // Role -> chip label + color. Text-only chip (no icon glyph — safer than
+    // relying on emoji rendering inside OBS's embedded Chromium); the label
+    // itself carries the info, color is a bonus, not a requirement (mobile
+    // legibility floor: info must be readable by more than hue alone).
+    function roleMeta(role) {
+      if (role === 'tank') return { label: 'TANK', color: 'var(--elmt-blue)' };
+      if (role === 'damage') return { label: 'DAMAGE', color: 'var(--elmt-red)' };
+      if (role === 'support') return { label: 'SUPPORT', color: 'var(--elmt-green)' };
+      return { label: '', color: 'rgba(255,255,255,0.5)' };
+    }
 
-      if (t1bans.length === 0 && t2bans.length === 0) {
-        container.classList.add('hidden');
-        return;
+    // One ban panel. `side` picks the slam-in direction (team1's side slams
+    // from the left via slideRight, team2's from the right via slideLeft —
+    // same left/right -> animation-name mapping gameplay-hud's shell uses for
+    // its wrapper slots). `delay` (seconds, already staggered per-column by
+    // the caller) drives both the slam-in and the slash sweep that follows it.
+    //
+    // IMPORTANT — deviation from the HUD/map-pick chrome rule, sanctioned by
+    // the plan: everywhere else in the v2 package, shell wrappers hold the
+    // ONLY entrance animations and render() never puts an `animation` on
+    // anything it writes, specifically so a data tick (score change, ban
+    // wing update) can't replay chrome. Here it's the opposite on purpose —
+    // these panels ARE render() output (rebuilt fresh every time heroBans
+    // changes) and DO carry their own inline animation, so a NEW ban slams in
+    // and sweeps again exactly like the first reveal. That's correct for this
+    // scene: a ban changing IS a fresh reveal moment, not an incidental data
+    // tick to be hidden from the viewer.
+    function panelHtml(heroKey, teamColor, side, delay) {
+      var hero = findHeroEntry(heroData, heroKey);
+      var heroName = hero ? hero.name : heroKey;
+      var role = hero ? hero.role : '';
+      var renderUrl = hero ? hero.render : null;
+      var portrait = hero ? hero.portrait : '';
+
+      var slamAnim = side === 'left' ? 'slideRight' : 'slideLeft';
+      var panelStyle = 'border-color:' + hexToAlpha(teamColor, 0.6) + ';' +
+        'animation:' + slamAnim + ' 0.5s ease-out ' + delay.toFixed(2) + 's both;';
+
+      var artHtml;
+      if (renderUrl) {
+        artHtml = '<div class="hb-panel-art">' +
+          safeImg(renderUrl, { 'class': 'hb-panel-render-img', alt: heroName }) +
+          '</div>';
+      } else {
+        var portraitHtml = portrait ? safeImg(portrait, { 'class': 'hb-panel-fallback-img', alt: heroName }) : '';
+        artHtml = '<div class="hb-panel-art">' +
+          '<div class="hb-panel-fallback-bg"></div>' +
+          '<div class="hb-panel-fallback-portrait">' + portraitHtml + '</div>' +
+          '</div>';
       }
 
-      container.classList.remove('hidden');
-      const makeIcons = (bans) => bans.map(key => {
-        const hero = findHeroEntry(heroData, key);
-        return hero ? `<div class="ban-icon"><img src="${hero.portrait}" alt="${hero.name}"></div>` : '';
-      }).join('');
+      var washHtml = '<div class="hb-panel-wash" style="background-image:linear-gradient(180deg, transparent 50%, ' +
+        hexToAlpha(teamColor, 0.5) + ')"></div>';
 
-      container.innerHTML = `
-        <div class="team-bans">
-          <div class="team-bans-label team1-label">${state.teams.team1.name} BANS</div>
-          <div class="ban-icons">${makeIcons(t1bans)}</div>
-        </div>
-        <div class="team-bans">
-          <div class="team-bans-label team2-label">${state.teams.team2.name} BANS</div>
-          <div class="ban-icons">${makeIcons(t2bans)}</div>
-        </div>
-      `;
+      // Sweep starts once the slam-in has mostly settled (delay + ~0.35s).
+      // Render-output animations must set the FULL animation shorthand inline
+      // (not bare animation-delay): state-sync's replayAnimation stashes and
+      // restores style.animation, which reads '' when only the delay longhand
+      // is set — a bare delay would be dropped on OBS visibility replay and
+      // every slash would sweep simultaneously.
+      var slashDelay = (delay + 0.35).toFixed(2);
+      var slashHtml = '<div class="hb-panel-slash" style="animation:hbSlashSweep 0.5s ease-out ' + slashDelay + 's both"></div>';
+
+      var chipHtml = '<div class="hb-panel-banned-chip" style="background:' + escapeHtml(teamColor) + '">BANNED</div>';
+
+      var roleInfo = roleMeta(role);
+      var roleHtml = roleInfo.label
+        ? '<span class="hb-panel-role" style="color:' + roleInfo.color + '">' + roleInfo.label + '</span>'
+        : '';
+      var footHtml = '<div class="hb-panel-foot">' + roleHtml +
+        '<span class="hb-panel-name">' + escapeHtml(heroName) + '</span>' +
+        '</div>';
+
+      return '<div class="hb-panel" style="' + panelStyle + '">' + artHtml + washHtml + slashHtml + chipHtml + footHtml + '</div>';
     }
 
-    loadHeroes().then(() => stateSync(update));
+    // One team's side: label row + N-wide column of panels. Base case (one
+    // ban) is a single flex child that fills the whole side — the "two large
+    // face-off panels" default from the mockup falls straight out of flexbox
+    // rather than needing a special case. `startDelay` staggers this side
+    // relative to the other (set by render()); each panel within a side
+    // staggers further by its column index.
+    function sideHtml(side, team, teamColor, bans, startDelay) {
+      var labelHtml = '<div class="hb-side-label">' +
+        '<div class="hb-side-swatch" style="background:' + escapeHtml(teamColor) + '"></div>' +
+        '<div class="hb-side-name">' + escapeHtml(team.name || '') + '</div>' +
+        '</div>';
+
+      var panelsHtml = '';
+      for (var i = 0; i < bans.length; i++) {
+        panelsHtml += panelHtml(bans[i], teamColor, side, startDelay + i * 0.08);
+      }
+
+      return labelHtml + '<div class="hb-columns">' + panelsHtml + '</div>';
+    }
+
+    // ── shell: builds the persistent chrome exactly ONCE ────────────────────
+    // Petal texture, the two team washes, and the heading wrapper are all
+    // built here and never rebuilt; render() only ever touches their
+    // .slot-content (heading) or a CSS custom property (washes). #hb-panels
+    // itself is also shell-built (a plain positioned box, no animation of its
+    // own — see the big comment above panelHtml() for why its CHILDREN
+    // deliberately break the "chrome never replays" rule instead of it).
+    // data-shell-marker proves the shell ran once, same convention as the
+    // other v2 scenes.
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'hero-bans-v2');
+      applyTextureBg(root);
+      root.innerHTML =
+        '<div id="hb-wash-left" class="hb-wash v2-wash-left" style="animation: fadeIn 0.6s ease-out 0.05s both;"></div>' +
+        '<div id="hb-wash-right" class="hb-wash v2-wash-right" style="animation: fadeIn 0.6s ease-out 0.05s both;"></div>' +
+        '<div id="hb-heading" style="animation: scaleIn 0.5s ease-out 0.10s both;"><div class="slot-content"></div></div>' +
+        '<div id="hb-panels"><div class="slot-content"></div></div>';
+    }
+
+    // ── key: EXACTLY the state leaves render reads ──────────────────────────
+    // Tightened from the old scene, which keyed state.teams and state.theme
+    // wholesale (template style per the other v2 scenes: only the leaves
+    // render() actually consumes). maps is reduced to [status, name] per
+    // entry — that's all findCurrentMapIndex/findCurrentMap + the chip read.
+    function key(state) {
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var hb = state.heroBans || {};
+      var maps = (state.maps || []).map(function (m) {
+        return [m.status, m.name];
+      });
+      return [
+        t1.name, t1.color,
+        t2.name, t2.color,
+        hb.team1, hb.team2,
+        maps,
+        theme.team1Color, theme.team2Color
+      ];
+    }
+
+    function render(state) {
+      applyTheme(state);
+
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var t1color = theme.team1Color || t1.color || '#3b82f6';
+      var t2color = theme.team2Color || t2.color || '#ef4444';
+
+      var heroBans = state.heroBans || {};
+      var t1bans = heroBans.team1 || [];
+      var t2bans = heroBans.team2 || [];
+
+      var root = document.getElementById('root');
+      var empty = t1bans.length === 0 && t2bans.length === 0;
+      root.classList.toggle('hb-empty', empty);
+      if (empty) return; // whole scene is display:none; nothing else to paint
+
+      // Washes are persistent nodes (built once by shell) — setting the CSS
+      // custom property repaints the gradient without touching innerHTML, so
+      // this never replays their shell entrance fade (see the CSS comment).
+      document.getElementById('hb-wash-left').style.setProperty('--wash-color', hexToAlpha(t1color, 0.18));
+      document.getElementById('hb-wash-right').style.setProperty('--wash-color', hexToAlpha(t2color, 0.18));
+
+      // Heading: crest + map-context chip are DATA, written into the shell
+      // wrapper's .slot-content every render (the wrapper's own entrance
+      // animation is untouched by this — see shell()).
+      var maps = state.maps || [];
+      var chipHtml = '';
+      if (maps.length > 0) {
+        var mapIdx = findCurrentMapIndex(maps);
+        var currentMap = findCurrentMap(maps);
+        if (currentMap.name) {
+          chipHtml = '<div class="hb-map-chip">MAP ' + (mapIdx + 1) + ' · ' + escapeHtml(currentMap.name) + '</div>';
+        }
+      }
+      document.querySelector('#hb-heading .slot-content').innerHTML =
+        '<div class="hb-medallion"><div class="v2-medallion">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 46 }) + '</div></div>' +
+        '<div class="hb-heading-text">HERO BANS</div>' +
+        '<div class="v2-underline hb-heading-underline"></div>' +
+        chipHtml;
+
+      // Panels: team1 always left / team2 always right (no swapSides — same
+      // as the pre-v2 scene; this is a bans-identity reveal, not a screen-side
+      // presentation, and swapSides isn't in this scene's key).
+      var leftHtml = sideHtml('left', t1, t1color, t1bans, 0.15);
+      var rightHtml = sideHtml('right', t2, t2color, t2bans, 0.15);
+      document.querySelector('#hb-panels .slot-content').innerHTML =
+        '<div class="hb-side hb-side-left">' + leftHtml + '</div>' +
+        '<div class="hb-side hb-side-right">' + rightHtml + '</div>';
+    }
+
+    defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render,
+      deps: [loadHeroes]
+    });
   </script>
 </body>
 </html>
