@@ -73,44 +73,13 @@
   <div class="container" id="root" style="animation: fadeIn 0.8s ease-out both;"></div>
 
   <script src="./theme-helpers.js"></script>
+  <script src="./countdown.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     const API = 'http://localhost:3001';
-    let countdownDuration = 0;
-    let countdownStartedAt = null;
-    let countdownRunning = false;
     let countdownVisible = true;
-    let lastDisplayed = -1;
-    let rafId = null;
     let lastBuildKey = '';
-
-    function getRemaining() {
-      if (!countdownRunning || !countdownStartedAt) return countdownDuration;
-      var elapsed = (Date.now() - countdownStartedAt) / 1000;
-      return Math.max(0, Math.ceil(countdownDuration - elapsed));
-    }
-
-    function formatTime(sec) {
-      if (!sec || sec <= 0) return '';
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-    }
-
-    function tick() {
-      rafId = requestAnimationFrame(tick);
-      if (!countdownRunning || !countdownVisible) return;
-      var r = getRemaining();
-      if (r === lastDisplayed) return;
-      lastDisplayed = r;
-      var t = document.getElementById('brb-timer-text');
-      if (t) t.textContent = formatTime(r);
-    }
-
-    function startLocalTick() {
-      if (rafId) return;
-      tick();
-    }
+    let latestCountdown = null;
 
     function buildKey(state) {
       var vis = state.countdown?.visible !== false ? '1' : '0';
@@ -121,36 +90,26 @@
       applyTheme(state);
       const el = document.getElementById('root');
 
-      countdownDuration = state.countdown?.duration || 0;
-      countdownStartedAt = state.countdown?.startedAt || null;
-      countdownRunning = !!(state.countdown?.running);
-      if (!countdownRunning) {
-        countdownDuration = state.countdown?.remaining || 0;
-        countdownStartedAt = null;
-      }
+      latestCountdown = state.countdown || null;
       countdownVisible = state.countdown?.visible !== false;
-      startLocalTick();
+      startLocalTick(function () { return document.getElementById('brb-timer-text'); }, function () { return latestCountdown; });
 
       var currentKey = buildKey(state);
       if (currentKey === lastBuildKey) {
         var t = document.getElementById('brb-timer-text');
-        if (t) {
-          var val = (countdownRunning || countdownDuration > 0) ? formatTime(getRemaining()) : '';
-          t.textContent = val;
-        }
+        if (t) t.textContent = formatTime(getRemaining(latestCountdown, Date.now()));
         return;
       }
       lastBuildKey = currentKey;
 
       var eventName = state.eventName || 'FACEIT SEASON 8';
-      lastDisplayed = -1;
 
       el.innerHTML = `
         <div class="rainbow-bar"></div>
         <img class="org-logo" src="./org.png">
         <div class="brb-text">WE'LL BE RIGHT BACK</div>
         <div class="brb-sub">Please stand by</div>
-        ${countdownVisible ? `<div class="brb-timer"><span id="brb-timer-text">${formatTime(getRemaining())}</span></div>` : ''}
+        ${countdownVisible ? `<div class="brb-timer"><span id="brb-timer-text">${formatTime(getRemaining(latestCountdown, Date.now()))}</span></div>` : ''}
         <div class="event-label">${eventName}</div>
       `;
     }

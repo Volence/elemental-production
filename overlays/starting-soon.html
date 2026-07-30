@@ -146,43 +146,12 @@
   <div class="container" id="root" style="animation: fadeIn 0.8s ease-out both;"></div>
 
   <script src="./theme-helpers.js"></script>
+  <script src="./countdown.js"></script>
   <script src="./state-sync.js"></script>
   <script>
     const API = 'http://localhost:3001';
     let lastBuiltKey = '';
-
-    let countdownDuration = 0;
-    let countdownStartedAt = null;
-    let countdownRunning = false;
-    let lastDisplayed = -1;
-    let rafId = null;
-
-    function getRemaining() {
-      if (!countdownRunning || !countdownStartedAt) return countdownDuration;
-      var elapsed = (Date.now() - countdownStartedAt) / 1000;
-      return Math.max(0, Math.ceil(countdownDuration - elapsed));
-    }
-
-    function tick() {
-      rafId = requestAnimationFrame(tick);
-      if (!countdownRunning) return;
-      var r = getRemaining();
-      if (r === lastDisplayed) return;
-      lastDisplayed = r;
-      var t = document.getElementById('countdown-timer');
-      if (t) t.textContent = formatTime(r);
-    }
-
-    function startLocalTick() {
-      if (rafId) return;
-      tick();
-    }
-
-    function formatTime(sec) {
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-    }
+    let latestCountdown = null;
 
     function buildKey(state) {
       const schedule = state.schedule || [];
@@ -198,25 +167,18 @@
       applyTheme(state);
       const el = document.getElementById('root');
 
-      countdownDuration = state.countdown?.duration || 0;
-      countdownStartedAt = state.countdown?.startedAt || null;
-      countdownRunning = !!(state.countdown?.running);
-      if (!countdownRunning) {
-        countdownDuration = state.countdown?.remaining || 0;
-        countdownStartedAt = null;
-      }
-      startLocalTick();
+      latestCountdown = state.countdown || null;
+      startLocalTick(function () { return document.getElementById('countdown-timer'); }, function () { return latestCountdown; });
 
       const currentKey = buildKey(state);
 
       if (currentKey === lastBuiltKey) {
         var timerEl = document.getElementById('countdown-timer');
-        if (timerEl) timerEl.textContent = formatTime(getRemaining());
+        if (timerEl) timerEl.textContent = formatTime(getRemaining(latestCountdown, Date.now()));
         return;
       }
 
       lastBuiltKey = currentKey;
-      lastDisplayed = -1;
       const schedule = state.schedule || [];
       const label = state.countdown?.label || 'STARTING SOON';
 
@@ -266,7 +228,7 @@
           <div class="hero-title"><span>STARTING SOON</span></div>
           ${state.countdown?.visible !== false ? `
           <div class="countdown-center" id="countdown-section">
-            <div class="countdown-time" id="countdown-timer">${formatTime(getRemaining())}</div>
+            <div class="countdown-time" id="countdown-timer">${formatTime(getRemaining(latestCountdown, Date.now()))}</div>
           </div>` : ''}
           ${eventTitle ? `<div class="event-bar">${eventTitle}</div>` : ''}
         </div>
