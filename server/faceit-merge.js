@@ -74,3 +74,55 @@ export function getActiveBanIdx(maps, selectedMapIdx = -1, perMapBans = []) {
   }
   return maps.length - 1;
 }
+
+// FACEIT uses names like "DVa", "Lucio", "Soldier 76", "Torbjorn"
+// Dashboard keys are lowercase: "dva", "lucio", "soldier-76", "torbjorn"
+const FACEIT_HERO_KEY_OVERRIDES = {
+  'DVa': 'dva',
+  'Lucio': 'lucio',
+  'Soldier 76': 'soldier-76',
+  'Torbjorn': 'torbjorn',
+};
+export function heroNameToKey(name) {
+  if (!name) return '';
+  if (FACEIT_HERO_KEY_OVERRIDES[name]) return FACEIT_HERO_KEY_OVERRIDES[name];
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
+}
+
+/**
+ * DERIVE heroBans (the {team1:[key],team2:[key]} the HUD wings + Ban Reveal read)
+ * from (perMapBans, maps, selectedMapIdx). This is the single source of truth for
+ * heroBans — every producer/sync path funnels through it so heroBans can never
+ * drift out of sync with perMapBans (which the scoreboard reads directly).
+ */
+export function computeHeroBans(perMapBans, maps, selectedMapIdx = -1) {
+  perMapBans = perMapBans || [];
+  const idx = getActiveBanIdx(maps, selectedMapIdx, perMapBans);
+  const activeBans = idx >= 0 ? perMapBans[idx] : null;
+  return {
+    team1: activeBans?.team1Ban ? [heroNameToKey(activeBans.team1Ban.name)] : [],
+    team2: activeBans?.team2Ban ? [heroNameToKey(activeBans.team2Ban.name)] : [],
+  };
+}
+
+function sameHeroBans(a, b) {
+  const arrEq = (x = [], y = []) => x.length === y.length && x.every((v, i) => v === y[i]);
+  return arrEq(a?.team1, b?.team1) && arrEq(a?.team2, b?.team2);
+}
+
+/**
+ * DERIVED-CONSISTENCY reconcile for heroBans against a *fully-merged* state
+ * object. Returns a fresh heroBans to write, or null to leave state untouched
+ * (either the producer holds the heroBans override, or the derived value already
+ * matches). Used at server boot (persisted state may carry stale/empty heroBans
+ * while perMapBans is populated) and after any PATCH that touches
+ * maps/perMapBans/selectedMapIdx/banSwaps. Mirrors the sync paths' override gate
+ * exactly — never clobbers a producer heroBans override.
+ */
+export function deriveHeroBansUpdate(state, isOverridden) {
+  if (isOverridden && isOverridden('heroBans')) return null;
+  const next = computeHeroBans(state.perMapBans, state.maps, state.selectedMapIdx);
+  if (sameHeroBans(next, state.heroBans)) return null;
+  return next;
+}

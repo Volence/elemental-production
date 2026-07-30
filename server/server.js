@@ -24,7 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
-import { buildTeamsUpdate, buildMapsUpdate, getActiveBanIdx } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, computeHeroBans, deriveHeroBansUpdate } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
 
@@ -410,7 +410,15 @@ app.patch('/api/state', (req, res) => {
   const body = Array.isArray(req.body.maps)
     ? { ...req.body, maps: withLocalMapImagesForState(req.body.maps) }
     : req.body;
-  const updated = setState(body);
+  setState(body);
+  // heroBans is derived from (perMapBans, maps, selectedMapIdx). If this PATCH
+  // touched any of those but did NOT set heroBans itself, re-derive so the HUD
+  // wings + Ban Reveal stay in sync with the scoreboard. When the body already
+  // carries heroBans (the dashboard sends its own value with ban edits) we defer
+  // to it; reconcileHeroBans additionally honors the heroBans override.
+  const derivedInputs = ['maps', 'perMapBans', 'selectedMapIdx', 'banSwaps'];
+  if (!('heroBans' in body) && derivedInputs.some(k => k in body)) reconcileHeroBans();
+  const updated = getState();
   broadcast('state', updated);
   syncToOBS(updated);
   res.json(updated);
@@ -727,20 +735,8 @@ app.post('/api/obs/transform', async (req, res) => {
 // ============ FACEIT API ============
 
 // Convert FACEIT hero name to dashboard hero key format
-// FACEIT uses names like "DVa", "Lucio", "Soldier 76", "Torbjorn"
-// Dashboard keys are lowercase: "dva", "lucio", "soldier-76", "torbjorn"
-const FACEIT_HERO_KEY_OVERRIDES = {
-  'DVa': 'dva',
-  'Lucio': 'lucio',
-  'Soldier 76': 'soldier-76',
-  'Torbjorn': 'torbjorn',
-};
-function heroNameToKey(name) {
-  if (!name) return '';
-  if (FACEIT_HERO_KEY_OVERRIDES[name]) return FACEIT_HERO_KEY_OVERRIDES[name];
-  return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase().replace(/\s+/g, '-').replace(/[.']/g, '');
-}
+// heroNameToKey now lives in faceit-merge.js alongside computeHeroBans (the
+// single derive), so the FACEIT name\u2192dashboard-key mapping has one home.
 
 /**
  * Assign FACEIT's chronological bans (ban1/ban2) to teams via the map picker,
@@ -775,16 +771,24 @@ function buildPerMapBans(rawBans, maps, banSwaps = [], mapPickers = []) {
   });
 }
 
-// getActiveBanIdx now lives in faceit-merge.js (pure + unit-tested). It
-// resolves selected → current → next-upcoming-with-bans → last-played, so a
-// finished/decided series still exposes its final map's bans.
-function computeHeroBans(perMapBans, maps, selectedMapIdx = -1) {
-  const idx = getActiveBanIdx(maps, selectedMapIdx, perMapBans);
-  const activeBans = idx >= 0 ? perMapBans[idx] : null;
-  return {
-    team1: activeBans?.team1Ban ? [heroNameToKey(activeBans.team1Ban.name)] : [],
-    team2: activeBans?.team2Ban ? [heroNameToKey(activeBans.team2Ban.name)] : [],
-  };
+// computeHeroBans + getActiveBanIdx now live in faceit-merge.js (pure +
+// unit-tested). getActiveBanIdx resolves selected → current →
+// next-upcoming-with-bans → last-played, so a finished/decided series still
+// exposes its final map's bans.
+
+/**
+ * Keep heroBans DERIVED-CONSISTENT with (perMapBans, maps, selectedMapIdx) on the
+ * live state. heroBans is derived state: the scoreboard reads perMapBans directly,
+ * but the HUD wings + Ban Reveal read heroBans — if it goes stale (server restart
+ * against a persisted file, a PATCH that only moved map status, a match loaded
+ * before this fix) those scenes go empty while the scoreboard still shows bans.
+ * Call after any state change that can move the active ban map. Respects the
+ * heroBans override exactly like the sync paths (never clobbers a producer value).
+ */
+function reconcileHeroBans() {
+  const heroBans = deriveHeroBansUpdate(getState(), isOverridden);
+  if (heroBans) setState({ heroBans });
+  return heroBans;
 }
 
 app.post('/api/faceit/match', async (req, res) => {
@@ -2163,6 +2167,12 @@ app.post('/api/fonts/upload', express.raw({ type: '*/*', limit: '10mb' }), (req,
 // ============ START ============
 
 loadState();
+
+// heroBans is derived state: a persisted state.json can carry stale/empty
+// heroBans while perMapBans is populated (match loaded before this fix, or a
+// restart between maps). Re-derive at boot so the HUD wings + Ban Reveal are
+// correct on first paint — no PATCH/sync required. Honors the heroBans override.
+reconcileHeroBans();
 
 // If a FACEIT match was mid-sync when the server last stopped, resume polling
 // so the persisted "Auto Sync ON" state is actually true again.

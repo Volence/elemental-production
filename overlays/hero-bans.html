@@ -19,11 +19,11 @@
     }
     #root { position: relative; width: 1920px; height: 1080px; }
 
-    /* Both-teams-empty state (same visibility semantics as the old scene's
-       `.hidden` on its single container): render() toggles this on #root
-       itself since shell now builds SEVERAL id'd children (washes, heading,
-       panels) — hiding just one of them would leave the others visible. */
-    #root.hb-empty { display: none; }
+    /* Empty state is NO LONGER hidden. As a dedicated OBS scene, an all-black
+       Ban Reveal reads as dead air; the producer's scene-switch is what decides
+       visibility now. When both ban lists are empty we keep texture + washes +
+       crest + "HERO BANS" heading and show a dimmed AWAITING BANS chip where the
+       panels would be (see .hb-awaiting below). */
 
     /* overlay-core appends its volatile render container as #root's LAST
        child (after everything shell builds). This scene never uses it —
@@ -85,6 +85,19 @@
     }
 
     .hb-columns { display: flex; gap: 16px; flex: 1 1 auto; min-height: 0; }
+
+    /* ── AWAITING BANS placeholder (empty-state, shown in the panels area) ──
+       Dimmed chip so the scene reads as "waiting" rather than dead-air black.
+       ≥28px per plan; render() output, so its fadeIn is fine (only appears when
+       heroBans is empty and render only re-runs when the key changes). */
+    .hb-awaiting { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    .hb-awaiting-chip {
+      font-weight: 800; font-size: 34px; letter-spacing: 4px; text-transform: uppercase;
+      color: rgba(255,255,255,0.34); background: rgba(8,10,15,0.35);
+      border: 2px solid rgba(255,255,255,0.14); border-radius: var(--panel-radius);
+      padding: 18px 44px; text-shadow: 0 1px 6px rgba(0,0,0,0.6);
+      animation: fadeIn 0.6s ease-out 0.15s both;
+    }
 
     /* ── One ban panel ────────────────────────────────────────────────── */
     /* Layout only — background/border/border-radius/box-sizing/overflow/
@@ -287,14 +300,17 @@
       var t1bans = heroBans.team1 || [];
       var t2bans = heroBans.team2 || [];
 
-      var root = document.getElementById('root');
+      // Empty state is NOT hidden anymore — texture, washes, crest and heading
+      // stay up and the panels area shows a dimmed AWAITING BANS chip, so a
+      // dedicated Ban Reveal scene never reads as dead-air black. Visibility is
+      // the producer's scene-switch decision now.
       var empty = t1bans.length === 0 && t2bans.length === 0;
-      root.classList.toggle('hb-empty', empty);
-      if (empty) return; // whole scene is display:none; nothing else to paint
 
       // Washes are persistent nodes (built once by shell) — setting the CSS
       // custom property repaints the gradient without touching innerHTML, so
       // this never replays their shell entrance fade (see the CSS comment).
+      // Team colors fall back to the blue/red defaults above, so the washes
+      // still give the scene life even with no teams loaded yet.
       document.getElementById('hb-wash-left').style.setProperty('--wash-color', hexToAlpha(t1color, 0.18));
       document.getElementById('hb-wash-right').style.setProperty('--wash-color', hexToAlpha(t2color, 0.18));
 
@@ -318,7 +334,13 @@
 
       // Panels: team1 always left / team2 always right (no swapSides — same
       // as the pre-v2 scene; this is a bans-identity reveal, not a screen-side
-      // presentation, and swapSides isn't in this scene's key).
+      // presentation, and swapSides isn't in this scene's key). When empty, the
+      // panels area holds the dimmed AWAITING BANS chip instead.
+      if (empty) {
+        document.querySelector('#hb-panels .slot-content').innerHTML =
+          '<div class="hb-awaiting"><div class="hb-awaiting-chip">AWAITING BANS</div></div>';
+        return;
+      }
       var leftHtml = sideHtml('left', t1, t1color, t1bans, 0.15);
       var rightHtml = sideHtml('right', t2, t2color, t2bans, 0.15);
       document.querySelector('#hb-panels .slot-content').innerHTML =

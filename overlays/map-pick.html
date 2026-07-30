@@ -150,11 +150,17 @@
     }
     .mp-pick-pill-neutral { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); }
 
-    /* Live-column hero bans (map-pick-bans.html, variant A — recommended):
-       only the live column shows bans, at the 84px mobile-floor size. */
-    .mp-col-bans { display: flex; justify-content: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
-    /* Name width at 84px tiles comes from banTile's size option (inline
-       max-width) — no scene override needed. */
+    /* Per-column hero bans. EVERY played column shows its two ban tiles now
+       (completed maps included), so this row lives in every footer, not just
+       the live one. The footer is flex:0 0 auto and the art above is
+       flex:1 1 auto/min-height:0, so a taller footer shrinks the art rather
+       than overflowing the column (overflow:hidden) — the single consistent
+       rule that keeps 56px tiles + map name + pick pill fitting in every
+       column. Tiles are nameless (hideName), so no name-plate height to budget
+       for. margin-top kept tight (10px) so completed columns' smaller art still
+       reads. banColIdx's column uses 84px tiles, the rest 56px (set inline via
+       banTile's size option). */
+    .mp-col-bans { display: flex; justify-content: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -303,9 +309,10 @@
     }
 
     // One map column. `ctx`: { t1, t2, t1color, t2color, bestOf, mapBans, banColIdx }.
-    // States (v4 mockup + map-pick-bans.html variant A):
+    // Any column with revealed bans shows them (nameless); banColIdx sizes the
+    // active column's tiles larger (84px vs 56px). States (v4 mockup):
     //  - completed: team-color border/wash + circled winner logo + roundScore
-    //  - current (live): white glow border, LIVE chip, name >=40px, hero bans
+    //  - current (live): white glow border, LIVE chip, name >=40px
     //  - decider: LAST column, still unplayed (not completed/current) — dimmed
     //    + "IF NEEDED" watermark. A plain "upcoming, not last" column (will
     //    definitely be played) gets none of the completed/current/decider
@@ -361,10 +368,11 @@
 
       var artHtml = '<div class="mp-col-art">' + artInner + winnerHtml + ifNeededHtml + chipHtml + liveChipHtml + '</div>';
 
-      // Footer: name + picker pill (+ bans on the current-or-last-played
-      // column, ctx.banColIdx). Only rendered once
-      // the slot actually has a map name — an unconfigured trailing slot
-      // (bestOf > maps.length) gets the bare placeholder art and no footer.
+      // Footer: name + picker pill + bans (on every played column that has
+      // them; ctx.banColIdx just picks the 84px vs 56px tile size). Only
+      // rendered once the slot actually has a map name — an unconfigured
+      // trailing slot (bestOf > maps.length) gets the bare placeholder art and
+      // no footer.
       var footHtml = '';
       if (map.name) {
         var mapBans = ctx.mapBans || {};
@@ -385,22 +393,27 @@
           pickPillHtml = '';
         }
 
+        // Bans on EVERY played column that has them (completed maps included),
+        // not just the live/last one. The current-or-last-played column
+        // (ctx.banColIdx) shows them at 84px; other columns at 56px so the
+        // board reads "here's what got banned across the whole series". NO name
+        // captions on any board tile (hideName) — owner: "we don't need the
+        // names"; the portrait + slash carry the identity.
         var bansHtml = '';
-        if (i === ctx.banColIdx) {
-          var b1 = mapBans.team1Ban;
-          var b2 = mapBans.team2Ban;
-          if (b1 || b2) {
-            bansHtml = '<div class="mp-col-bans">';
-            if (b1) {
-              var r1 = resolveBanPortrait(b1);
-              bansHtml += banTile({ portrait: r1.portrait, heroName: r1.heroName, teamColor: ctx.t1color, size: 84 });
-            }
-            if (b2) {
-              var r2 = resolveBanPortrait(b2);
-              bansHtml += banTile({ portrait: r2.portrait, heroName: r2.heroName, teamColor: ctx.t2color, size: 84 });
-            }
-            bansHtml += '</div>';
+        var b1 = mapBans.team1Ban;
+        var b2 = mapBans.team2Ban;
+        if (b1 || b2) {
+          var banSize = (i === ctx.banColIdx) ? 84 : 56;
+          bansHtml = '<div class="mp-col-bans">';
+          if (b1) {
+            var r1 = resolveBanPortrait(b1);
+            bansHtml += banTile({ portrait: r1.portrait, heroName: r1.heroName, teamColor: ctx.t1color, size: banSize, hideName: true });
           }
+          if (b2) {
+            var r2 = resolveBanPortrait(b2);
+            bansHtml += banTile({ portrait: r2.portrait, heroName: r2.heroName, teamColor: ctx.t2color, size: banSize, hideName: true });
+          }
+          bansHtml += '</div>';
         }
 
         footHtml = '<div class="mp-col-foot">' +

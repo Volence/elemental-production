@@ -90,6 +90,11 @@ function banTile(opts) {
   var heroName = opts.heroName || '';
   var teamColor = opts.teamColor || '';
   var size = opts.size;
+  // hideName keeps the portrait + slash but drops the name caption (heroName
+  // still drives the portrait render + alt text). Used by the map board, whose
+  // tiny per-column ban tiles read cleaner without name plates (owner: "we
+  // don't need the names"). Default false — every other caller keeps its name.
+  var hideName = !!opts.hideName;
 
   // Default tile is 56px via .v2-ban-tile in theme-v2.css (mobile legibility
   // floor). `opts.size` is an inline override for contexts that need a
@@ -117,7 +122,7 @@ function banTile(opts) {
     tileInner +
     '</div>';
 
-  if (heroName) {
+  if (heroName && !hideName) {
     html += '<div class="v2-ban-tile-name"' + nameStyle + '>' + escapeHtml(heroName) + '</div>';
   }
 

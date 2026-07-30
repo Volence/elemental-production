@@ -19,6 +19,13 @@ describe('banTile', () => {
     const html = banTile({ portrait: 'http://localhost:3001/cache/x.png', heroName: 'Genji', teamColor: '#f00' });
     expect(html).toContain('v2-ban-slash');
   });
+  it('hideName keeps the portrait + slash but drops the name plate (map board tiles)', () => {
+    const html = banTile({ portrait: 'http://localhost:3001/cache/x.png', heroName: 'Genji', teamColor: '#f00', size: 56, hideName: true });
+    expect(html).toContain('<img'); // portrait still renders
+    expect(html).toContain('v2-ban-slash'); // slash still renders
+    expect(html).not.toContain('v2-ban-tile-name'); // no caption plate
+    expect(html).toContain('alt="Genji"'); // heroName still drives alt text
+  });
 });
 
 describe('teamPlate', () => {
