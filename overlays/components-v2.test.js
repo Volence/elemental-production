@@ -163,6 +163,13 @@ describe('topFrame color semantics under swapSides', () => {
     // even though team1 is now rendering on the right.
     expect(html).toContain('background:#ff0000');
   });
+  it('medallion petals keep TRUE team identity under swapSides (p-group = team1)', () => {
+    const html = topFrame({ ...optsFull, swapSides: true });
+    // pinwheelSVG's p-group strokes take color1 — which must be team1's true
+    // color even when team1 renders on the right (matches gameplay-hud).
+    expect((html.match(/stroke="#ff0000"/g) || []).length).toBe(4);
+    expect((html.match(/stroke="#0000ff"/g) || []).length).toBe(4);
+  });
 });
 
 describe('banTile size option', () => {

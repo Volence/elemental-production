@@ -286,7 +286,7 @@ function _banWing(bans, teamColor) {
 //   bestOf, maps, banWings ({team1:[], team2:[]} or null/absent),
 //   hubText, swapSides, currentMapName }
 //
-// leftColor/rightColor and hubText are interpolated RAW into pinwheelSVG's
+// team1.color/team2.color and hubText are interpolated RAW into pinwheelSVG's
 // output (fill/stroke/filter attributes and the hub <text> respectively) —
 // topFrame does not escape or otherwise sanitize them, per pinwheelSVG's
 // own documented contract that callers must pass trusted, pre-sanitized
@@ -342,7 +342,11 @@ function topFrame(opts) {
   }
 
   var eventPill = eventHeader({ eventName: opts.eventName, subtitle: bestOf ? ('BO' + bestOf) : '' });
-  var medallion = '<div class="v2-medallion">' + _pinwheel({ color1: leftColor, color2: rightColor, size: 62, hubText: hubText }) + '</div>';
+  // Pinwheel petals map to TRUE team identity (p-group = team 1, s-group =
+  // team 2 — pinwheel.js contract / design spec §2), NOT to screen side.
+  // Plates and wings flip with swapSides; the medallion, like mapPips, does
+  // not. Keeps the medallion consistent with gameplay-hud's.
+  var medallion = '<div class="v2-medallion">' + _pinwheel({ color1: team1.color, color2: team2.color, size: 62, hubText: hubText }) + '</div>';
   var mapPill = '<div class="v2-map-pill">' + escapeHtml(currentMapName) + '</div>';
   var pipsRow = mapPips({ maps: maps, bestOf: bestOf, team1Color: team1.color, team2Color: team2.color });
 
