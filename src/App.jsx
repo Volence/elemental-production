@@ -5,6 +5,7 @@ import Theming from './pages/Theming'
 import Settings from './pages/Settings'
 import StatusBar from './components/StatusBar'
 import ConfirmModal from './components/ConfirmModal'
+import { pickBestBucket, ELMT_ACCENT_FALLBACK } from './lib/color-extract.js'
 
 function extractColorFromLogo(logoUrl, proxyBase) {
   return new Promise((resolve) => {
@@ -32,22 +33,10 @@ function extractColorFromLogo(logoUrl, proxyBase) {
           buckets[key].r += r; buckets[key].g += g; buckets[key].b += b;
           buckets[key].count++; buckets[key].satScore += s;
         }
-        let best = null, bestScore = 0;
-        for (const b of Object.values(buckets)) {
-          const score = b.satScore * Math.sqrt(b.count);
-          if (score > bestScore) { bestScore = score; best = b; }
-        }
-        if (best && best.count > 0) {
-          const r = Math.round(best.r / best.count);
-          const g = Math.round(best.g / best.count);
-          const b = Math.round(best.b / best.count);
-          resolve('#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join(''));
-        } else {
-          resolve('#6b7280');
-        }
-      } catch { resolve('#6b7280'); }
+        resolve(pickBestBucket(buckets));
+      } catch { resolve(ELMT_ACCENT_FALLBACK); }
     };
-    img.onerror = () => resolve('#6b7280');
+    img.onerror = () => resolve(ELMT_ACCENT_FALLBACK);
     const needsProxy = logoUrl.startsWith('http') && !logoUrl.startsWith(proxyBase);
     img.src = needsProxy ? `${proxyBase}/api/proxy-image?url=${encodeURIComponent(logoUrl)}` : logoUrl;
   });
