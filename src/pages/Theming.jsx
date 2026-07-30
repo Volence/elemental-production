@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { pickBestBucket, ELMT_ACCENT_FALLBACK } from '../lib/color-extract.js';
+import { sampleBuckets, pickBestBucket, ELMT_ACCENT_FALLBACK } from '../lib/color-extract.js';
 
 const BUILTIN_FONTS = [
   'Bebas Neue', 'Oswald', 'Inter', 'Roboto', 'Montserrat',
@@ -311,24 +311,7 @@ function TeamColorSection({ label, color, auto, logoUrl, api, onColorChange, onE
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, size, size);
       const data = ctx.getImageData(0, 0, size, size).data;
-
-      const buckets = {};
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
-        if (a < 128) continue;
-        const max = Math.max(r, g, b), min = Math.min(r, g, b);
-        const l = (max + min) / 2 / 255;
-        if (l > 0.85 || l < 0.15) continue;
-        const s = max === min ? 0 : (max - min) / (1 - Math.abs(2 * l - 1)) / 255;
-        const key = `${Math.round(r / 16) * 16},${Math.round(g / 16) * 16},${Math.round(b / 16) * 16}`;
-        if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, count: 0, satScore: 0 };
-        buckets[key].r += r;
-        buckets[key].g += g;
-        buckets[key].b += b;
-        buckets[key].count++;
-        buckets[key].satScore += s;
-      }
-
+      const buckets = sampleBuckets(data);
       const hex = pickBestBucket(buckets);
       setExtractedColor(hex);
       onExtractedColor(hex);
