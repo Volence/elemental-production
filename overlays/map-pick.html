@@ -3,354 +3,464 @@
 <head>
   <meta charset="UTF-8">
   <title>Map Pick Overlay</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&display=swap">
+  <!-- Broadcast v2: same stack as gameplay-hud.html (Task 4) + bg-helper.js —
+       this scene is full-screen (petal texture, no plain black voids) rather
+       than a transparent HUD strip. theme-v2.css/fonts-v2.css/animations.css
+       own tokens + shared component-internal styles; this file's own <style>
+       owns scene-local layout (header chips, map columns, column states). -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: transparent; overflow: hidden; width: 1920px; height: 1080px;
-      font-family: var(--font-body, 'Oswald', sans-serif); color: white;
+      font-family: var(--font-v2); color: #fff;
     }
+    #root { position: relative; width: 1920px; height: 1080px; }
 
-    .container {
-      position: relative; width: 1920px; height: 1080px;
-      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
-    }
+    /* ── Two positioned wrapper slots (built ONCE by shell) ─────────────── */
+    .mp-slot { position: absolute; }
+    #mp-header { top: 20px; left: 0; right: 0; }
+    #mp-grid   { top: 210px; left: 40px; right: 40px; bottom: 40px; }
+    /* #mp-grid resolves a definite height from its absolute top+bottom, but
+       .slot-content (the plain div the shell wraps render's output in) is
+       otherwise auto-height — without this, .mp-columns's height:100% below
+       has nothing definite to resolve against and every column collapses to
+       fit its content instead of filling the grid area down to the footer. */
+    #mp-grid .slot-content { height: 100%; }
 
-    /* Top scoreboard bar */
-    .top-bar {
-      position: absolute; top: 0; left: 0; right: 0;
-      display: flex; align-items: center; justify-content: center;
-      height: 64px; background: rgba(10,10,20,0.92);
-      border-bottom: 2px solid rgba(255,255,255,0.08);
-    }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    /* overlay-core appends its volatile render container as #root's LAST
+       child (after the shell wrappers). This scene never uses it directly —
+       render() writes into each wrapper's persistent .slot-content instead
+       (the render-vs-reflow split, same as gameplay-hud.html) — so the
+       trailing, id-less container is hidden. Every shell wrapper has an id,
+       so this only matches that container. */
+    #root > div:not([id]) { display: none; }
 
-    .top-team {
-      display: flex; align-items: center; gap: 10px; padding: 0 20px;
-      min-width: 300px;
+    /* ── Header row: team chips flanking the pinwheel crest ─────────────── */
+    .mp-header-row { display: flex; align-items: center; justify-content: center; gap: 60px; }
+    .mp-chip { display: flex; align-items: center; gap: 14px; }
+    .mp-chip-right { flex-direction: row-reverse; }
+    .mp-chip-logo {
+      width: 44px; height: 44px; border-radius: var(--panel-radius);
+      object-fit: cover; border: 1px solid rgba(255,255,255,0.15); flex: none;
     }
-    .top-team.left { justify-content: flex-start; }
-    .top-team.right { justify-content: flex-end; }
-    .top-team .logo { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
-    .top-team .name { font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-    .top-team .score { font-size: 32px; font-weight: 700; }
+    .mp-chip-name {
+      font-size: 26px; font-weight: 800; color: #fff; text-transform: uppercase;
+      letter-spacing: 0.5px; text-shadow: 0 1px 4px rgba(0,0,0,0.7); white-space: nowrap;
+    }
+    .mp-chip-score {
+      font-size: 28px; font-weight: 800; color: #fff; padding: 4px 16px;
+      border-radius: var(--panel-radius); line-height: 1;
+    }
+    /* Crest: pinwheel medallion with the event title + gradient underline
+       hanging below it (absolute, so it doesn't grow the header row's
+       height or shift the chips off the shared center line — v4 mockup). */
+    .mp-crest { position: relative; flex: none; }
+    .mp-event-block {
+      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      margin-top: 10px; text-align: center; white-space: nowrap;
+    }
+    .mp-event-title {
+      font-size: 22px; font-weight: 800; color: #fff; text-transform: uppercase;
+      letter-spacing: 1px; text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+    }
+    .mp-event-underline { width: 150px; margin: 6px auto 0; }
 
-    .top-center {
-      display: flex; flex-direction: column; align-items: center;
-      padding: 0 24px;
+    /* ── Map columns ──────────────────────────────────────────────────── */
+    .mp-columns { display: flex; gap: 10px; height: 100%; }
+    .mp-col {
+      position: relative; flex: 1 1 0; min-width: 0; box-sizing: border-box;
+      display: flex; flex-direction: column; overflow: hidden;
+      background: rgba(8,10,15,0.9); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--panel-radius);
     }
-    .top-center .org-link {
-      font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4);
+    /* Live column reads a hair wider than its neighbors (v4 mockup) — a
+       white glow border carries "now" the same way .v2-pip-live does. */
+    .mp-col-current { flex: 1.15 1 0; border: 2px solid #fff; box-shadow: 0 0 24px rgba(255,255,255,0.28); }
+    .mp-col-decider { opacity: 0.75; }
+    .mp-col-completed .mp-col-art-bg { filter: brightness(0.5) saturate(0.55); }
+
+    .mp-col-art { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+    /* Dedicated class (NOT a bare `.mp-col-art img` descendant selector) — the
+       winner logo <img> also lives inside .mp-col-art, and a descendant `img`
+       selector would win over `.mp-winner-logo`'s own sizing (equal-looking
+       but higher specificity: one class + one type vs. one class) and force
+       it to position:absolute;inset:0;100%x100%, collapsing it into whatever
+       box its remaining in-flow sibling (the score text) shrink-to-fit to.
+       Scoping this rule to the background art image only avoids that collision
+       structurally, for this image and any future one added inside the card. */
+    .mp-col-art-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .mp-col-art-placeholder {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #2e3440, #1b1f28); padding: 20px; text-align: center;
+    }
+    .mp-col-art-placeholder-text {
+      font-size: 28px; font-weight: 800; color: rgba(255,255,255,0.35);
       text-transform: uppercase; letter-spacing: 2px;
     }
+    .mp-col-wash { position: absolute; inset: 0; pointer-events: none; }
 
-    /* Map grid — fixed height, no overflow issues */
-    .map-grid {
-      position: absolute; top: 80px; left: 40px; right: 40px;
-      height: 960px; /* 1080 - 80 top - 40 bottom */
-      display: flex; gap: 4px;
-      
+    .mp-col-chip {
+      position: absolute; top: 10px; left: 10px; background: rgba(8,10,15,0.85);
+      color: rgba(255,255,255,0.8); font-size: 22px; font-weight: 800;
+      letter-spacing: 1px; padding: 5px 12px; border-radius: var(--panel-radius);
+      text-transform: uppercase;
     }
-    @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+    .mp-col-current .mp-col-chip { background: #fff; color: #0a0c11; }
+    .mp-col-live-chip {
+      position: absolute; top: 10px; right: 10px; display: flex; align-items: center; gap: 8px;
+      background: rgba(8,10,15,0.85); padding: 5px 14px; border-radius: var(--panel-radius);
+    }
+    .mp-live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--elmt-red); }
+    .mp-live-text { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 1px; }
 
-    .map-slot {
-      flex: 1; position: relative;
-      background: rgba(10,10,20,0.9);
-      border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
-      display: flex; flex-direction: column;
-      overflow: hidden;
+    .mp-winner-wrap { position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%); text-align: center; }
+    .mp-winner-logo {
+      width: 92px; height: 92px; border-radius: 50%; object-fit: cover;
+      border: 3px solid #fff; display: block; margin: 0 auto;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
     }
-
-    .map-slot .map-header {
-      font-size: 15px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 2px; padding: 10px 14px;
-      background: rgba(255,255,255,0.04);
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 6px; flex-shrink: 0;
-    }
-    .map-header-left { display: flex; flex-direction: column; }
-    .map-header .header-label { font-size: 15px; font-weight: 700; letter-spacing: 2px; }
-    .map-header .picker-label { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.4); letter-spacing: 1px; }
-    .map-header .round-score {
-      font-size: 18px; font-weight: 700; color: rgba(255,255,255,0.6);
-      font-family: var(--font-body, 'Oswald', sans-serif);
+    .mp-winner-score {
+      margin-top: 8px; font-size: 32px; font-weight: 800; color: #fff;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.7);
     }
 
-    /* Map image fills available space */
-    .map-slot .map-image {
-      flex: 1; position: relative; overflow: hidden; min-height: 0;
-    }
-    .map-slot .map-image img {
-      position: absolute; top: 0; left: 0;
-      width: 100%; height: 100%; object-fit: cover;
-      opacity: 0.9;
-    }
-    .map-slot.completed .map-image img {
-      filter: brightness(0.45) saturate(0.5);
+    .mp-if-needed {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.4); font-weight: 800; font-size: 20px;
+      letter-spacing: 3px; text-transform: uppercase; text-align: center;
     }
 
-    /* Team color overlay */
-    .win-overlay {
-      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    .mp-col-foot { padding: 12px 8px 16px; text-align: center; flex: 0 0 auto; }
+    .mp-col-name {
+      font-size: 34px; font-weight: 800; color: #fff; text-transform: uppercase;
+      letter-spacing: 0.5px; text-shadow: 0 1px 4px rgba(0,0,0,0.7);
     }
+    .mp-col-current .mp-col-name { font-size: 40px; }
 
-    /* Winner logo — positioned on .map-slot, above everything */
-    .winner-logo-wrap {
-      position: absolute; top: 45%; left: 50%;
-      transform: translate(-50%, -50%); z-index: 10;
-      width: 90px; height: 90px;
-      pointer-events: none;
+    .mp-pick-pill {
+      display: inline-block; font-size: 22px; font-weight: 800; letter-spacing: 0.8px;
+      padding: 5px 16px; border-radius: var(--panel-radius); margin-top: 8px;
+      text-transform: uppercase;
     }
-    .winner-logo-wrap img {
-      width: 90px; height: 90px;
-      border-radius: 12px; object-fit: cover;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-    }
+    .mp-pick-pill-neutral { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); }
 
-    /* Current map accent */
-    .map-slot.current .map-header {
-      background: rgba(249,115,22,0.15);
-      border-bottom: 2px solid #f97316;
-    }
-
-    /* Map name label — sits below image */
-    .map-name-label {
-      font-size: 14px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1px; background: rgba(0,0,0,0.75);
-      padding: 6px 10px; text-align: center; flex-shrink: 0;
-    }
-    .mode-label {
-      font-size: 9px; color: rgba(255,255,255,0.4);
-      text-transform: uppercase; letter-spacing: 1px; display: block;
-    }
-
-    /* Hero bans row — sits below map name */
-    .map-bans {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 6px; background: rgba(0,0,0,0.6);
-      border-top: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;
-    }
-    .ban-group { display: flex; align-items: center; gap: 6px; }
-    .ban-hero {
-      width: 40px; height: 40px; border-radius: 8px; overflow: hidden;
-      position: relative;
-    }
-    .ban-hero img { width: 100%; height: 100%; object-fit: cover; }
-    .ban-hero .ban-tag {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      font-size: 6px; font-weight: 800; text-align: center;
-      padding: 1px; letter-spacing: 1px; color: white;
-    }
-    .ban-divider {
-      width: 2px; height: 28px; background: rgba(255,255,255,0.15); margin: 0 2px;
-    }
-
-    /* Upcoming empty slots */
-    .map-slot .map-status {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      font-size: 12px; color: rgba(255,255,255,0.25); letter-spacing: 2px;
-    }
+    /* Live-column hero bans (map-pick-bans.html, variant A — recommended):
+       only the live column shows bans, at the 84px mobile-floor size. */
+    .mp-col-bans { display: flex; justify-content: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+    /* banTile()'s .v2-ban-tile-name (theme-v2.css) hardcodes max-width:56px to
+       match its own default tile size — the `size` option it exposes only
+       scales the tile/font, not this width, so a longer hero name (e.g.
+       "SOMBRA") truncates at this scene's 84px tiles ("SOM…"). Fixing that at
+       the component is out of this task's file scope (theme-v2.css's default
+       is shared by every 56px consumer); scoped override here since map-pick
+       is the only non-default (84px) consumer today. */
+    .mp-col-bans .v2-ban-tile-name { max-width: 84px; }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="container" id="root" style="animation: scaleIn 0.6s ease-out both;"></div>
+  <div id="root"></div>
 
+  <!-- Script order matters: helpers + SVG + component builders + bg helper
+       must all be global before overlay-core wires the render loop. NO ?./??
+       in the inline script (OBS Chromium 103 floor); template literals/const/
+       arrow are fine. -->
   <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./bg-helper.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
-    const API = 'http://localhost:3001';
-    let heroData = [];
-    let mapData = [];
+    var API = 'http://localhost:3001';
+    var heroData = [];
+    var mapData = [];
 
-    async function loadHeroes() {
-      heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+    // Deps (overlay-core loads both before the first render).
+    function loadHeroes() {
+      if (window.__HERO_DATA__) { heroData = window.__HERO_DATA__; return Promise.resolve(); }
+      return fetch(API + '/api/heroes')
+        .then(function (r) { return r.json(); })
+        .then(function (d) { heroData = d || []; })
+        .catch(function () { heroData = []; });
     }
 
-    async function loadMaps() {
-      // Local API (cached server-side) — external fetches fail intermittently in OBS browser sources
-      mapData = await fetch(`${API}/api/maps`).then(r => r.json()).catch(() => []);
-      if (!Array.isArray(mapData)) mapData = [];
+    function loadMaps() {
+      return fetch(API + '/api/maps')
+        .then(function (r) { return r.json(); })
+        .then(function (d) { mapData = Array.isArray(d) ? d : []; })
+        .catch(function () { mapData = []; });
     }
 
+    // Local API (cached server-side, local-first pack) match against a map
+    // name — scene-local matching logic kept verbatim from the pre-v2 scene.
     function getMapScreenshot(mapName, faceitImage) {
       if (!mapName) return proxyImg(faceitImage);
-      const normalized = mapName.toLowerCase().trim();
-      const match = mapData.find(m =>
-        m.name.toLowerCase() === normalized ||
-        m.key === normalized.replace(/[^a-z0-9]+/g, '-')
-      );
+      var normalized = mapName.toLowerCase().trim();
+      var slug = normalized.replace(/[^a-z0-9]+/g, '-');
+      var match = null;
+      for (var i = 0; i < mapData.length; i++) {
+        var m = mapData[i];
+        if (!m || !m.name) continue;
+        if (m.name.toLowerCase() === normalized || m.key === slug) { match = m; break; }
+      }
       return proxyImg(match ? match.screenshot : faceitImage);
     }
 
-    function getHeroPortrait(key) {
-      const hero = findHeroEntry(heroData, key);
-      return hero ? hero.portrait : '';
+    function scoreOf(team) {
+      return (team.score === undefined || team.score === null) ? 0 : team.score;
     }
 
-    function heroNameToKey(name) {
-      const hero = findHeroEntry(heroData, name);
-      return hero ? hero.key : '';
+    // Resolves a locked ban ({name, role, image}) to a portrait + label.
+    // findHeroEntry's pre-proxied portrait wins when the ban's hero name
+    // matches the roster; otherwise fall back to the ban's own .image
+    // through proxyImg so an unrecognized/renamed hero still shows *something*.
+    function resolveBanPortrait(ban) {
+      var hero = findHeroEntry(heroData, ban.name);
+      if (hero) return { portrait: hero.portrait, heroName: hero.name };
+      return { portrait: proxyImg(ban.image || ''), heroName: ban.name || '' };
     }
 
-    var lastRenderKey = '';
-    function update(state) {
-      var renderKey = JSON.stringify([
-        state.teams, state.maps, state.perMapBans, state.heroBans,
-        state.bestOf, state.eventName, state.theme
-      ]);
-      if (renderKey === lastRenderKey) return;
-      lastRenderKey = renderKey;
-      applyTheme(state);
-      const el = document.getElementById('root');
-      const t1 = state.teams?.team1 || {};
-      const t2 = state.teams?.team2 || {};
-      const maps = state.maps || [];
-      const bestOf = state.bestOf || 5;
-      const perMapBans = state.perMapBans || [];
-      const t1Color = t1.color || '#3b82f6';
-      const t2Color = t2.color || '#ef4444';
+    // ── shell: builds the two entrance-animated wrappers exactly ONCE ────────
+    // Same inline-animation-string mechanism as gameplay-hud.html: state-sync's
+    // replayAnimation() re-runs these on OBS show/hide. render() only ever
+    // rewrites the inner .slot-content divs, so these wrapper animations NEVER
+    // replay on a data change (score tick, ban lock, map completing) — that's
+    // the fix for the "chrome re-slides on every update" bug class. This is
+    // also why NO element render() writes gets an animation of its own: a
+    // fresh .slot-content innerHTML always creates brand-new DOM nodes, so a
+    // CSS-class animation on those nodes would replay on every single render,
+    // not just on scene entry. .map-grid's entrance is staggered a beat after
+    // the header (0.20s vs 0.10s delay) — both wrappers, not per-column.
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'map-pick-v2');
+      applyTextureBg(root);
+      root.innerHTML =
+        '<div id="mp-header" class="mp-slot" style="animation: scaleIn 0.5s ease-out 0.10s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="mp-grid" class="mp-slot" style="animation: slideUp 0.5s ease-out 0.20s both;">' +
+          '<div class="slot-content"></div></div>';
+    }
 
-      const slots = [];
-      for (let i = 0; i < bestOf; i++) {
-        slots.push(maps[i] || { name: null, mode: null, status: 'upcoming', image: null, winner: null });
+    // ── key: EXACTLY the state leaves render reads ──────────────────────────
+    // heroBans is intentionally NOT keyed (and NOT read by render): the old
+    // scene fell back to heroBans.team{1,2}[0] for the current map's bans when
+    // perMapBans was empty. perMapBans is populated by the same producer
+    // action that sets heroBans, so that fallback was dead weight, not a real
+    // resilience path — dropped here rather than kept+keyed. swapSides is also
+    // not keyed: this scene (like the pre-v2 version) doesn't honor it — teams
+    // stay in their true team1/team2 screen positions; the pinwheel crest
+    // colors are TRUE team colors regardless, same invariant as the HUD.
+    function key(state) {
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var maps = (state.maps || []).map(function (m) {
+        return [m.name, m.mode, m.status, m.image, m.winner, m.roundScore];
+      });
+      var perMapBans = (state.perMapBans || []).map(function (pb) {
+        pb = pb || {};
+        return [pb.picker, pb.team1Ban, pb.team2Ban];
+      });
+      return [
+        t1.name, t1.logo, t1.score, t1.color,
+        t2.name, t2.logo, t2.score, t2.color,
+        maps, perMapBans,
+        state.bestOf, state.eventName,
+        theme.team1Color, theme.team2Color
+      ];
+    }
+
+    // One team chip: logo | name | score. `side==='right'` mirrors the row
+    // (score-adjacent-to-crest, logo on the outer edge — v4 mockup) via
+    // .mp-chip-right's flex-direction reverse.
+    function chip(team, color, side) {
+      var sideClass = side === 'right' ? ' mp-chip-right' : '';
+      var logoHtml = team.logo ? safeImg(team.logo, { 'class': 'mp-chip-logo', alt: team.name || '' }) : '';
+      return '<div class="mp-chip' + sideClass + '">' +
+        logoHtml +
+        '<div class="mp-chip-name">' + escapeHtml(team.name || '') + '</div>' +
+        '<div class="mp-chip-score" style="background:' + escapeHtml(color) + '">' + escapeHtml(String(scoreOf(team))) + '</div>' +
+        '</div>';
+    }
+
+    // Header row: chips flank a plain pinwheel medallion (no hub text — this
+    // is a series-identity crest, not a score hub like the HUD's); the event
+    // title + gradient underline hang below it via .mp-event-block (absolute,
+    // so they don't grow the row and de-center the chips from the crest).
+    function headerHtml(t1, t2, t1color, t2color, eventName) {
+      return '<div class="mp-header-row">' +
+        chip(t1, t1color, 'left') +
+        '<div class="mp-crest">' +
+          '<div class="v2-medallion">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 100 }) + '</div>' +
+          '<div class="mp-event-block">' +
+            '<div class="mp-event-title">' + escapeHtml(eventName || 'MATCH') + '</div>' +
+            '<div class="v2-underline mp-event-underline"></div>' +
+          '</div>' +
+        '</div>' +
+        chip(t2, t2color, 'right') +
+        '</div>';
+    }
+
+    // One map column. `ctx`: { t1, t2, t1color, t2color, bestOf, mapBans }.
+    // States (v4 mockup + map-pick-bans.html variant A):
+    //  - completed: team-color border/wash + circled winner logo + roundScore
+    //  - current (live): white glow border, LIVE chip, name >=40px, hero bans
+    //  - decider: LAST column, still unplayed (not completed/current) — dimmed
+    //    + "IF NEEDED" watermark. A plain "upcoming, not last" column (will
+    //    definitely be played) gets none of the completed/current/decider
+    //    treatment — just the base panel + its picker pill.
+    function mapColumn(i, map, ctx) {
+      map = map || {};
+      var status = map.status || 'upcoming';
+      var isCompleted = status === 'completed';
+      var isCurrent = status === 'current';
+      var isLast = i === ctx.bestOf - 1;
+      var isDecider = isLast && !isCompleted && !isCurrent;
+
+      var winnerColor = '';
+      if (isCompleted && map.winner) {
+        winnerColor = map.winner === 'team1' ? ctx.t1color : (map.winner === 'team2' ? ctx.t2color : '');
       }
 
-      const mapSlotsHtml = slots.map((m, i) => {
-        const statusClass = m.status || 'upcoming';
-        const isCurrent = i === findCurrentMapIndex(maps);
-        const mapImg = getMapScreenshot(m.name, m.image);
-        const mapBans = perMapBans[i];
-        const winnerColor = m.winner === 'team1' ? t1Color : m.winner === 'team2' ? t2Color : null;
+      var colClasses = 'mp-col';
+      if (isCompleted) colClasses += ' mp-col-completed';
+      if (isCurrent) colClasses += ' mp-col-current';
+      if (isDecider) colClasses += ' mp-col-decider';
+      var colStyle = winnerColor ? (' style="border-color:' + escapeHtml(hexToAlpha(winnerColor, 0.6)) + '"') : '';
 
-        // Header with team color accent
-        let headerStyle = '';
-        if (statusClass === 'completed' && winnerColor) {
-          headerStyle = `style="background: ${winnerColor}20; border-bottom: 2px solid ${winnerColor}55;"`;
-        }
-        let pickerText = '';
-        if (mapBans?.picker) {
-          const pName = mapBans.picker === 'team1' ? t1.name : t2.name;
-          pickerText = `<span class="picker-label">${pName} PICK</span>`;
-        }
-        let roundScore = m.roundScore ? `<span class="round-score">${m.roundScore}</span>` : '';
+      var chipHtml = '<div class="mp-col-chip">MAP ' + (i + 1) + (map.mode ? ' · ' + escapeHtml(map.mode) : '') + '</div>';
+      var liveChipHtml = isCurrent
+        ? '<div class="mp-col-live-chip"><div class="mp-live-dot"></div><div class="mp-live-text">LIVE</div></div>'
+        : '';
 
-        // Winner display — logo and name badge
-        let winnerLogo = '';
-        if (m.winner) {
-          const wt = m.winner === 'team1' ? t1 : t2;
-          if (wt.logo) {
-            winnerLogo = `<div class="winner-logo-wrap"><img src="${proxyImg(wt.logo)}" alt="${wt.name}"></div>`;
-          }
-          winnerLogo += `<div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);z-index:5;
-            background:${winnerColor}dd;padding:3px 10px;border-radius:4px;font-size:10px;font-weight:700;
-            text-transform:uppercase;letter-spacing:1px;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.5)">${wt.name}</div>`;
+      var imgSrc = getMapScreenshot(map.name, map.image);
+      var artInner;
+      if (imgSrc) {
+        artInner = '<img class="mp-col-art-bg" src="' + escapeHtml(imgSrc) + '" alt="' + escapeHtml(map.name || '') + '">';
+        if (winnerColor) {
+          artInner += '<div class="mp-col-wash" style="background:linear-gradient(180deg, transparent 40%, ' +
+            escapeHtml(hexToAlpha(winnerColor, 0.35)) + ' 100%)"></div>';
         }
+      } else {
+        artInner = '<div class="mp-col-art-placeholder"><div class="mp-col-art-placeholder-text">' +
+          escapeHtml(map.name || '—') + '</div></div>';
+      }
 
-        // Map image + color overlay
-        let imageContent = '';
-        let nameLabel = '';
-        if (mapImg) {
-          let colorOverlay = '';
-          if (m.winner && winnerColor) {
-            colorOverlay = `<div class="win-overlay" style="background: linear-gradient(135deg, ${winnerColor}40 0%, ${winnerColor}15 100%);"></div>`;
-          }
-          imageContent = `<div class="map-image">
-            <img src="${mapImg}">
-            ${colorOverlay}
-          </div>`;
-          nameLabel = `<div class="map-name-label">${m.name}<span class="mode-label">${m.mode || ''}</span></div>`;
-        } else if (m.name) {
-          imageContent = `<div class="map-image" style="display:flex;align-items:center;justify-content:center">
-            <div style="text-align:center;padding:20px;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:1px">${m.name}<br><span style="font-size:9px;color:rgba(255,255,255,0.4)">${m.mode || ''}</span></div>
-          </div>`;
+      var winnerHtml = '';
+      if (isCompleted && map.winner) {
+        var wteam = map.winner === 'team1' ? ctx.t1 : ctx.t2;
+        var wlogoHtml = wteam.logo
+          ? safeImg(wteam.logo, { 'class': 'mp-winner-logo', alt: wteam.name || '' })
+          : '<div class="mp-winner-logo" style="background:' + escapeHtml(winnerColor) + '"></div>';
+        var scoreHtml = map.roundScore ? '<div class="mp-winner-score">' + escapeHtml(map.roundScore) + '</div>' : '';
+        winnerHtml = '<div class="mp-winner-wrap">' + wlogoHtml + scoreHtml + '</div>';
+      }
+
+      var ifNeededHtml = isDecider ? '<div class="mp-if-needed">IF NEEDED</div>' : '';
+
+      var artHtml = '<div class="mp-col-art">' + artInner + winnerHtml + ifNeededHtml + chipHtml + liveChipHtml + '</div>';
+
+      // Footer: name + picker pill (+ live-column bans). Only rendered once
+      // the slot actually has a map name — an unconfigured trailing slot
+      // (bestOf > maps.length) gets the bare placeholder art and no footer.
+      var footHtml = '';
+      if (map.name) {
+        var mapBans = ctx.mapBans || {};
+        var picker = mapBans.picker;
+        var pickPillHtml;
+        if (picker) {
+          var pickerTeam = picker === 'team1' ? ctx.t1 : ctx.t2;
+          var pickerColor = picker === 'team1' ? ctx.t1color : ctx.t2color;
+          var pillText = escapeHtml(pickerTeam.name || 'TEAM') + ' PICK';
+          if (isCompleted && map.winner === picker) pillText += ' · WON';
+          pickPillHtml = '<div class="mp-pick-pill" style="background:' + escapeHtml(hexToAlpha(pickerColor, 0.22)) +
+            ';border:1px solid ' + escapeHtml(hexToAlpha(pickerColor, 0.55)) +
+            ';color:' + escapeHtml(pickerColor) + '">' + pillText + '</div>';
         } else {
-          imageContent = `<div class="map-image"><span class="map-status">—</span></div>`;
+          pickPillHtml = '<div class="mp-pick-pill mp-pick-pill-neutral">DECIDER</div>';
         }
 
-        // Per-map hero bans (fall back to heroBans for current map if perMapBans empty)
-        let bansHtml = '';
-        let b1Key = '', b2Key = '';
-        if (mapBans && (mapBans.ban1 || mapBans.ban2 || mapBans.team1Ban || mapBans.team2Ban)) {
-          b1Key = mapBans.team1Ban ? heroNameToKey(mapBans.team1Ban.name) : '';
-          b2Key = mapBans.team2Ban ? heroNameToKey(mapBans.team2Ban.name) : '';
-        } else if (isCurrent || (m.status === 'current')) {
-          const hb = state.heroBans || {};
-          b1Key = (hb.team1 || [])[0] || '';
-          b2Key = (hb.team2 || [])[0] || '';
-        }
-        if (b1Key || b2Key) {
-          const b1Port = b1Key ? getHeroPortrait(b1Key) : '';
-          const b2Port = b2Key ? getHeroPortrait(b2Key) : '';
-
-          const b1Html = b1Port ? `<div class="ban-hero" style="border: 2px solid ${t1Color}cc"><img src="${b1Port}"><div class="ban-tag" style="background: ${t1Color}dd">BAN</div></div>` : '';
-          const b2Html = b2Port ? `<div class="ban-hero" style="border: 2px solid ${t2Color}cc"><img src="${b2Port}"><div class="ban-tag" style="background: ${t2Color}dd">BAN</div></div>` : '';
-
-          bansHtml = `<div class="map-bans">
-            <div class="ban-group">${b1Html}</div>
-            <div class="ban-divider"></div>
-            <div class="ban-group">${b2Html}</div>
-          </div>`;
+        var bansHtml = '';
+        if (isCurrent) {
+          var b1 = mapBans.team1Ban;
+          var b2 = mapBans.team2Ban;
+          if (b1 || b2) {
+            bansHtml = '<div class="mp-col-bans">';
+            if (b1) {
+              var r1 = resolveBanPortrait(b1);
+              bansHtml += banTile({ portrait: r1.portrait, heroName: r1.heroName, teamColor: ctx.t1color, size: 84 });
+            }
+            if (b2) {
+              var r2 = resolveBanPortrait(b2);
+              bansHtml += banTile({ portrait: r2.portrait, heroName: r2.heroName, teamColor: ctx.t2color, size: 84 });
+            }
+            bansHtml += '</div>';
+          }
         }
 
-        const slotBorder = m.winner && winnerColor ? `border-bottom: 3px solid ${winnerColor}aa;` : '';
+        footHtml = '<div class="mp-col-foot">' +
+          '<div class="mp-col-name">' + escapeHtml(map.name) + '</div>' +
+          pickPillHtml +
+          bansHtml +
+          '</div>';
+      }
 
-        return `<div class="map-slot ${statusClass} ${isCurrent ? 'current' : ''}" style="${slotBorder}">
-          ${winnerLogo}
-          <div class="map-header" ${headerStyle}>
-            <div class="map-header-left">
-              <span class="header-label">MAP ${i + 1}</span>
-              ${pickerText}
-            </div>
-            ${roundScore}
-          </div>
-          ${imageContent}
-          ${nameLabel}
-          ${bansHtml}
-        </div>`;
-      }).join('');
-
-      el.innerHTML = `
-        <div class="top-bar">
-          <div class="top-team left">
-            ${t1.logo ? `<img class="logo" src="${proxyImg(t1.logo)}">` : ''}
-            <span class="name">${t1.name || 'TEAM 1'}</span>
-            <span class="score" style="color: ${t1Color}">${t1.score || 0}</span>
-          </div>
-          <div class="top-center">
-            <span class="org-link">${state.eventName || 'FACEIT SEASON 8'}</span>
-          </div>
-          <div class="top-team right">
-            <span class="score" style="color: ${t2Color}">${t2.score || 0}</span>
-            <span class="name">${t2.name || 'TEAM 2'}</span>
-            ${t2.logo ? `<img class="logo" src="${proxyImg(t2.logo)}">` : ''}
-          </div>
-        </div>
-        <div class="map-grid">${mapSlotsHtml}</div>
-      `;
+      return '<div class="' + colClasses + '"' + colStyle + '>' + artHtml + footHtml + '</div>';
     }
 
-    let lastState = null;
+    function render(state) {
+      applyTheme(state);
 
-    // Load heroes first (local, fast), then render immediately
-    loadHeroes().then(() => stateSync(function(s) { lastState = s; update(s); }));
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var t1color = theme.team1Color || t1.color || '#3b82f6';
+      var t2color = theme.team2Color || t2.color || '#ef4444';
 
-    // Map screenshots load in the background — retry until available, then
-    // force a re-render (the renderKey cache would otherwise skip it)
-    function loadMapsWithRetry() {
-      loadMaps().then(() => {
+      var maps = state.maps || [];
+      var bestOf = state.bestOf || maps.length || 5;
+      var perMapBans = state.perMapBans || [];
+
+      document.querySelector('#mp-header .slot-content').innerHTML = headerHtml(t1, t2, t1color, t2color, state.eventName);
+
+      var ctx = { t1: t1, t2: t2, t1color: t1color, t2color: t2color, bestOf: bestOf };
+      var colsHtml = '';
+      for (var i = 0; i < bestOf; i++) {
+        ctx.mapBans = perMapBans[i];
+        colsHtml += mapColumn(i, maps[i], ctx);
+      }
+      document.querySelector('#mp-grid .slot-content').innerHTML = '<div class="mp-columns">' + colsHtml + '</div>';
+    }
+
+    var handle = defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render,
+      deps: [loadHeroes, loadMaps]
+    });
+
+    // Map screenshots load in the background (loadMaps is also a `deps` entry,
+    // so this only ever does work when that first attempt came back empty —
+    // e.g. OverFast was down and there's no stale cache yet). Runtime escape
+    // hatch: retry every 5s while mapData is empty, call forceRender() on the
+    // first success (the key wouldn't otherwise change — map images aren't
+    // keyed, matching/screenshot resolution happens at render time off
+    // mapData), then stop. Replaces the old hand-rolled lastRenderKey reset.
+    var mapsRetryTimer = setInterval(function () {
+      if (mapData.length > 0) { clearInterval(mapsRetryTimer); return; }
+      loadMaps().then(function () {
         if (mapData.length > 0) {
-          lastRenderKey = '';
-          if (lastState) update(lastState);
-        } else {
-          setTimeout(loadMapsWithRetry, 5000);
+          clearInterval(mapsRetryTimer);
+          handle.forceRender();
         }
       });
-    }
-    loadMapsWithRetry();
+    }, 5000);
   </script>
 </body>
 </html>
