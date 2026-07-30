@@ -116,6 +116,21 @@ Third round of owner feedback on the v2 package:
   freezing bans empty while `perMapBans` held real FACEIT data — cleared
   in-session; the derived resolver immediately surfaced the real bans
   (Ban Reveal, Map Intro bookends, map-board tiles all confirmed live).
+- **Full-body hero renders, full roster.** `data/hero-renders/` now holds
+  official OW2 full-body standing renders for all 52 heroes (WebP with
+  alpha, sourced from the Overwatch wiki's Blizzard render set — filenames
+  follow the existing `<hero-key>` drop-in contract, so `/api/heroes`
+  picked them up with zero code changes). Ban Reveal and Map Intro's ban
+  tiles show standing characters instead of portrait medallions.
+- **Character idle sway.** New `v2-idle-sway` idle-motion utility (slow
+  bob + sub-degree tilt, 7 s) applied to the ban art leaf at reveal scale —
+  Ban Reveal's banned heroes gently idle while the scene holds. Deck-scale
+  tiles (Map Intro bookends) deliberately stay still.
+- **Ban Reveal carries caster audio.** The Ban Reveal scene now includes
+  `Caster 1`, `Caster 2`, and `Casters Background Music`, copied from Map
+  Pick's items (same offscreen-tiny-scale audio trick, same transforms) —
+  added to the live collection via obs-websocket (no re-import needed) and
+  to the generator as an idempotent ensure step (RawNum-safe deep copy).
 
 ### Owner QA batch 2
 

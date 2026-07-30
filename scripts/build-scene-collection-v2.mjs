@@ -331,6 +331,57 @@ function ensureBanRevealScene(obj) {
   return { status: 'ban-reveal-created' };
 }
 
+// Ensure the Ban Reveal scene carries caster audio (owner QA batch 3): the
+// producer calls the pick/ban phase live, so the scene needs 'Caster 1',
+// 'Caster 2' and 'Casters Background Music' just like Map Pick has. Items are
+// DEEP-COPIED from the Map Pick scene's own items (same source_uuid, same
+// transform) — Map Pick's caster items use the negative-tiny-scale trick that
+// renders the cam offscreen while keeping its audio active, and copying the
+// exact transform preserves that behaviour without re-deriving it. Idempotent:
+// an item already present (by name) is never duplicated.
+const BAN_REVEAL_AUDIO_ITEMS = ['Caster 1', 'Caster 2', 'Casters Background Music'];
+
+function ensureBanRevealAudio(obj) {
+  const sources = obj.sources || [];
+  const banScene = sources.find((s) => s && s.id === 'scene' && s.name === BAN_REVEAL.sceneName);
+  const pickScene = sources.find((s) => s && s.id === 'scene' && s.name === 'Map Pick');
+  if (!banScene || !pickScene) return { status: 'ban-reveal-audio-scenes-missing' };
+
+  const banItems = banScene.settings.items || (banScene.settings.items = []);
+  const pickItems = pickScene.settings.items || [];
+
+  // Both helpers must respect the lossless-JSON RawNum wrappers: a naive
+  // JSON round-trip deep copy would flatten RawNum instances into plain
+  // {"raw": "..."} objects, and arithmetic on a wrapped counter would
+  // string-concatenate. (Both happened; hence the explicit handling.)
+  const deepCopyLossless = (v) => {
+    if (v instanceof RawNum) return new RawNum(v.raw);
+    if (Array.isArray(v)) return v.map(deepCopyLossless);
+    if (v && typeof v === 'object') {
+      const out = {};
+      for (const k of Object.keys(v)) out[k] = deepCopyLossless(v[k]);
+      return out;
+    }
+    return v;
+  };
+  const numOf = (v) => (v instanceof RawNum ? parseInt(v.raw, 10) : (typeof v === 'number' ? v : 0));
+
+  let counter = numOf(banScene.settings.id_counter);
+  const added = [];
+  for (const name of BAN_REVEAL_AUDIO_ITEMS) {
+    if (banItems.some((it) => it && it.name === name)) continue;
+    const src = pickItems.find((it) => it && it.name === name);
+    if (!src) { added.push(`${name}: absent-in-map-pick`); continue; }
+    const copy = deepCopyLossless(src);
+    counter += 1;
+    copy.id = new RawNum(String(counter));
+    banItems.push(copy);
+    added.push(name);
+  }
+  banScene.settings.id_counter = new RawNum(String(counter));
+  return { status: added.length ? `ban-reveal-audio-added: ${added.join(', ')}` : 'ban-reveal-audio-present' };
+}
+
 // True if a carry value is worth copying. Strings must be non-blank; arrays
 // (playlist) must be non-empty; booleans (is_local_file) always count as
 // present. Anything else (null/undefined) is skipped.
@@ -373,6 +424,8 @@ function processCollection(obj) {
   // sees a complete collection). Idempotent.
   const banReveal = ensureBanRevealScene(obj);
   changes.push({ scene: BAN_REVEAL.sceneName, cam: null, status: banReveal.status });
+  const banRevealAudio = ensureBanRevealAudio(obj);
+  changes.push({ scene: BAN_REVEAL.sceneName, cam: null, status: banRevealAudio.status });
 
   const scenes = (obj.sources || []).filter((s) => s && s.id === 'scene');
   const byName = new Map(scenes.map((s) => [s.name, s]));

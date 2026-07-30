@@ -277,14 +277,21 @@ function banArtTile(opts) {
   var bustStyle = 'width:' + bustSize + 'px;height:' + bustSize + 'px;border-width:' + bustBorder + 'px;' +
     (size ? 'box-shadow:none;' : '');
 
+  // Reveal-scale tiles (no `size` — hero-bans' full-screen panels) get the
+  // character-idle sway on the art LEAF (render img / fallback portrait img
+  // — neither carries any animation of its own, so this is safe under the
+  // idle-motion rules). Deck-scale tiles (map-intro bookends) stay still —
+  // eight small swaying cards would read as noise, not life.
+  var idleClass = size ? '' : ' v2-idle-sway';
+
   var artHtml;
   if (renderUrl) {
     artHtml = '<div class="v2-ban-art">' +
-      safeImg(renderUrl, { 'class': 'v2-ban-art-render-img', alt: heroName }) +
+      safeImg(renderUrl, { 'class': 'v2-ban-art-render-img' + idleClass, alt: heroName }) +
       '</div>';
   } else {
     var portraitHtml = portrait
-      ? safeImg(portrait, { 'class': 'v2-ban-art-fallback-img', alt: heroName, style: bustStyle })
+      ? safeImg(portrait, { 'class': 'v2-ban-art-fallback-img' + idleClass, alt: heroName, style: bustStyle })
       : '';
     artHtml = '<div class="v2-ban-art">' +
       '<div class="v2-ban-art-fallback-bg"></div>' +

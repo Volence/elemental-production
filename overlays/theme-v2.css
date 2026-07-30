@@ -101,6 +101,17 @@
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+/* Character-idle sway: a slow breathe-like bob with a hint of tilt, for
+   full-body hero renders (Ban Reveal panels — owner QA batch 3 "slight
+   animation of them idling"). Transform-based: same leaf-only rules as
+   v2-idle-breathe (rule 1 above). Amplitude is deliberately small — this
+   must read as "alive", not "floating". */
+@keyframes v2IdleSway {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30%      { transform: translateY(-7px) rotate(-0.7deg); }
+  70%      { transform: translateY(3px) rotate(0.5deg); }
+}
+.v2-idle-sway { animation: v2IdleSway 7s ease-in-out infinite; }
 .v2-idle-breathe { animation: v2IdleBreathe 4s ease-in-out infinite; }
 .v2-idle-glow    { animation: v2IdleGlow 5s ease-in-out infinite; }
 .v2-idle-spin    { animation: v2IdleSpin 45s linear infinite; }
