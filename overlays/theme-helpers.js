@@ -91,6 +91,41 @@ function hexToAlpha(hex, alpha) {
   return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
 }
 
+// Legibility floor for team-colored TEXT on the package's near-black ground
+// (owner QA batch 3: an auto-extracted navy like #140251 is a fine FILL but
+// unreadable as text). Lifts the color's HSL lightness up to `minL` (0..1)
+// while keeping hue/saturation, so the team still reads as "their color",
+// just bright enough to see. Colors already at/above the floor pass through
+// unchanged; non-#rrggbb input (hsl()/rgba() theme strings) passes through
+// untouched. Use ONLY where the color paints text or thin strokes — fills,
+// washes and swatches should keep the true team color.
+function legibleColor(hex, minL) {
+  var m = /^#([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+  if (!m) return hex;
+  var n = parseInt(m[1], 16);
+  var r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  var max = Math.max(r, g, b), min = Math.min(r, g, b);
+  var l = (max + min) / 2;
+  if (l >= minL) return hex;
+  var h = 0, s = 0, d = max - min;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  l = minL;
+  var c = (1 - Math.abs(2 * l - 1)) * s;
+  var x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  var m2 = l - c / 2;
+  var rgb = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] :
+            h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  var to255 = function (v) { return Math.round((v + m2) * 255); };
+  var toHex2 = function (v) { var s2 = to255(v).toString(16); return s2.length === 1 ? '0' + s2 : s2; };
+  return '#' + toHex2(rgb[0]) + toHex2(rgb[1]) + toHex2(rgb[2]);
+}
+
 // Which map should overlays treat as "the map right now"?
 // live map -> next upcoming map -> last played map. Never blindly maps[0]:
 // that's the bug where the map intro showed map 1's name all series.
@@ -123,6 +158,7 @@ if (typeof module !== 'undefined' && module.exports) {
     findCurrentMap: findCurrentMap,
     mapStripClass: mapStripClass,
     hexToAlpha: hexToAlpha,
+    legibleColor: legibleColor,
     proxyImg: proxyImg
   };
 }

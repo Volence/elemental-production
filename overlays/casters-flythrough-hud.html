@@ -215,11 +215,13 @@
       // Scores flip WITH the team names beside them (this strip is the only
       // score display here — same review finding as map-intro's hub); the
       // pinwheel petals alone keep true team identity.
+      // legibleColor: score TEXT gets the 0.45 lightness floor so a dark
+      // auto-extracted team color stays readable (owner QA batch 3).
       var hubHtml =
         '<div class="cd-hub">' +
-          '<div class="cd-score" style="color:' + escapeHtml(leftColor) + '">' + scoreOf(leftTeam) + '</div>' +
+          '<div class="cd-score" style="color:' + escapeHtml(legibleColor(leftColor, 0.45)) + '">' + scoreOf(leftTeam) + '</div>' +
           '<div class="v2-medallion">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 52 }) + '</div>' +
-          '<div class="cd-score" style="color:' + escapeHtml(rightColor) + '">' + scoreOf(rightTeam) + '</div>' +
+          '<div class="cd-score" style="color:' + escapeHtml(legibleColor(rightColor, 0.45)) + '">' + scoreOf(rightTeam) + '</div>' +
         '</div>';
 
       var pipsHtml = '<div class="cd-pips">' +

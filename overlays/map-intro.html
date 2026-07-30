@@ -257,8 +257,11 @@
       var logoHtml = team.logo
         ? safeImg(team.logo, { 'class': 'mi-logo v2-idle-breathe', alt: team.name || '' })
         : '<div class="mi-swatch" style="background:' + escapeHtml(color) + '"></div>';
+      // legibleColor: team-colored TEXT gets the 0.45 lightness floor so a
+      // dark auto-extracted color stays readable over the video (fills like
+      // the swatch keep the true color).
       var tagHtml = tag
-        ? '<div class="mi-tag" style="color:' + escapeHtml(color) + '">' + escapeHtml(tag) + '</div>'
+        ? '<div class="mi-tag" style="color:' + escapeHtml(legibleColor(color, 0.45)) + '">' + escapeHtml(tag) + '</div>'
         : '';
       return '<div class="mi-team' + sideClass + '">' + logoHtml +
         '<div class="mi-team-text"><div class="mi-team-name">' + escapeHtml(team.name || '') + '</div>' +
@@ -403,9 +406,9 @@
       // true team identity (the package invariant for identity marks).
       var hubHtml =
         '<div class="mi-hub">' +
-          '<div class="mi-score" style="color:' + escapeHtml(leftColor) + '">' + scoreOf(leftTeam) + '</div>' +
+          '<div class="mi-score" style="color:' + escapeHtml(legibleColor(leftColor, 0.45)) + '">' + scoreOf(leftTeam) + '</div>' +
           '<div class="v2-medallion">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 72 }) + '</div>' +
-          '<div class="mi-score" style="color:' + escapeHtml(rightColor) + '">' + scoreOf(rightTeam) + '</div>' +
+          '<div class="mi-score" style="color:' + escapeHtml(legibleColor(rightColor, 0.45)) + '">' + scoreOf(rightTeam) + '</div>' +
         '</div>';
 
       html += '<div class="mi-match" style="animation: slideUp 0.55s cubic-bezier(0.16,1,0.3,1) 0.46s both;">' +

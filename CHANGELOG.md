@@ -218,6 +218,13 @@ Third round of owner feedback on the v2 package:
 - **`.mov` flythroughs recognized.** The flythrough directory scan accepts
   `.mov`/`.m4v` alongside `.mp4`/`.webm` (the producer's recorder outputs
   QuickTime; OBS's ffmpeg source plays it natively).
+- **Legibility floor for team-colored text.** New `legibleColor()` helper
+  (theme-helpers) lifts a color's HSL lightness to a floor while keeping its
+  hue — dark auto-extracted colors (a navy like `#140251`) stay "their
+  color" but become readable on the near-black ground. Applied where team
+  colors paint TEXT: series-winner name/score/champion chip (plus a gentler
+  floor on the big petals), map-intro tags + hub scores, flythrough hub
+  scores. Fills, washes and swatches keep the true team color.
 - **Two-color logo extraction.** The color extractor now also picks the
   logo's SECOND most prominent distinct color (`pickTwoColors` — same
   vibrant-beats-big-but-gray scoring, with a minimum RGB distance so a

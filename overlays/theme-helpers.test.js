@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findCurrentMapIndex, findCurrentMap, mapStripClass, hexToAlpha, proxyImg } from './theme-helpers.js';
+import { findCurrentMapIndex, findCurrentMap, mapStripClass, hexToAlpha, legibleColor, proxyImg } from './theme-helpers.js';
 
 describe('findCurrentMapIndex', () => {
   it('prefers the live map', () => {
@@ -58,5 +58,33 @@ describe('proxyImg', () => {
   });
   it('passes a localhost URL through unchanged', () => {
     expect(proxyImg('http://localhost:3001/cache/x.png')).toBe('http://localhost:3001/cache/x.png');
+  });
+});
+
+describe('legibleColor', () => {
+  it('lifts a too-dark color to the lightness floor, keeping its hue', () => {
+    const out = legibleColor('#140251', 0.45); // near-black navy (real extraction)
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(out.slice(i, i + 2), 16));
+    const l = (Math.max(r, g, b) + Math.min(r, g, b)) / 2 / 255;
+    expect(l).toBeGreaterThanOrEqual(0.44);
+    expect(b).toBeGreaterThan(r); // still blue-family
+    expect(b).toBeGreaterThan(g);
+  });
+
+  it('passes a bright color through unchanged', () => {
+    expect(legibleColor('#5f22fd', 0.45)).toBe('#5f22fd');
+  });
+
+  it('passes non-hex theme strings through untouched', () => {
+    expect(legibleColor('hsl(200 90% 55%)', 0.45)).toBe('hsl(200 90% 55%)');
+    expect(legibleColor('', 0.45)).toBe('');
+  });
+
+  it('lifts pure black to a neutral gray at the floor (no hue invented)', () => {
+    const out = legibleColor('#000000', 0.45);
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(out.slice(i, i + 2), 16));
+    expect(r).toBe(g);
+    expect(g).toBe(b);
+    expect(r).toBeGreaterThan(100);
   });
 });
