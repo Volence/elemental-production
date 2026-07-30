@@ -47,7 +47,10 @@
     #cd-deck { position: absolute; top: 610px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
 
     /* ── Lobby deck panel ──────────────────────────────────────────────── */
-    .lb-panel { width: 1240px; padding: 14px 26px; }
+    /* Owner QA batch 2 (3a): +200px (~16%) — same centering/no-collision
+       reasoning as casters-scoreboard.html's .sb-panel; fitPanelToCanvas
+       still guards vertical overflow unchanged. */
+    .lb-panel { width: 1440px; padding: 14px 26px; }
 
     /* Match header: team | VS | team */
     .lb-match-header {
@@ -381,8 +384,12 @@
       };
       var mapsHtml = slots.map(function (m, idx) { return mapCardHtml(m, idx, ctx); }).join('');
 
-      var t1Logo = t1.logo ? safeImg(t1.logo, { 'class': 'lb-logo', alt: t1.name || '' }) : '';
-      var t2Logo = t2.logo ? safeImg(t2.logo, { 'class': 'lb-logo', alt: t2.name || '' }) : '';
+      // v2-idle-breathe (Owner QA batch 2 Task 3b) on the primary match-header
+      // logo only — leaf under #cd-deck's entrance `both` fill (safe). Roster-
+      // header logos are left still: 26px and paired 2-up, same "too small /
+      // too busy" call as between-matches' schedule logos.
+      var t1Logo = t1.logo ? safeImg(t1.logo, { 'class': 'lb-logo v2-idle-breathe', alt: t1.name || '' }) : '';
+      var t2Logo = t2.logo ? safeImg(t2.logo, { 'class': 'lb-logo v2-idle-breathe', alt: t2.name || '' }) : '';
       var r1Logo = t1.logo ? safeImg(t1.logo, { 'class': 'lb-roster-logo', alt: t1.name || '' }) : '';
       var r2Logo = t2.logo ? safeImg(t2.logo, { 'class': 'lb-roster-logo', alt: t2.name || '' }) : '';
 

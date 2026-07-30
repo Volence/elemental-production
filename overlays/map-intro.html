@@ -230,8 +230,11 @@
     // convention as the rest of the package.
     function teamBlockHtml(team, color, tag, side) {
       var sideClass = side === 'right' ? ' mi-team-right' : '';
+      // v2-idle-breathe (Owner QA batch 2 Task 3b): leaf under .mi-match's
+      // own entrance `both` fill (slideUp) — safe, see theme-v2.css's
+      // idle-motion rules.
       var logoHtml = team.logo
-        ? safeImg(team.logo, { 'class': 'mi-logo', alt: team.name || '' })
+        ? safeImg(team.logo, { 'class': 'mi-logo v2-idle-breathe', alt: team.name || '' })
         : '<div class="mi-swatch" style="background:' + escapeHtml(color) + '"></div>';
       var tagHtml = tag
         ? '<div class="mi-tag" style="color:' + escapeHtml(color) + '">' + escapeHtml(tag) + '</div>'

@@ -209,8 +209,16 @@
       root.setAttribute('data-shell-marker', 'starting-soon-v2');
       applyTextureBg(root);
       root.innerHTML =
+        // Idle spin+glow (Owner QA batch 2 Task 3b) nests on two inner spans
+        // around the crest SVG, not on .ss-crest itself — .ss-crest has no
+        // entrance animation of its own here, but nesting keeps the same
+        // wrap-the-leaf pattern used by every other idle-motion crest in this
+        // batch (see theme-v2.css's idle-motion rules) so a future entrance
+        // added to .ss-crest can't collide with the idle spin's transform.
         '<div id="ss-hero" style="animation: scaleIn 0.6s ease-out 0.10s both;">' +
-          '<div class="ss-crest">' + pinwheelSVG({ colors: SS_BRAND, size: 92 }) + '</div>' +
+          '<div class="ss-crest"><span class="v2-idle-glow"><span class="v2-idle-spin" style="display:inline-block;">' +
+            pinwheelSVG({ colors: SS_BRAND, size: 92 }) +
+          '</span></span></div>' +
           '<div class="ss-heading">STARTING SOON</div>' +
           '<div id="ss-cd"><div class="slot-content"></div></div>' +
           '<div id="ss-event"><div class="slot-content"></div></div>' +

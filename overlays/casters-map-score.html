@@ -225,7 +225,9 @@
 
     function teamHeaderHtml(team, color, side) {
       var sideClass = side === 'right' ? ' right' : '';
-      var logoHtml = team.logo ? safeImg(team.logo, { 'class': 'ms-team-logo', alt: team.name || '' }) : '';
+      // v2-idle-breathe (Owner QA batch 2 Task 3b): leaf under the deck's
+      // entrance `both` fill — safe, see theme-v2.css's idle-motion rules.
+      var logoHtml = team.logo ? safeImg(team.logo, { 'class': 'ms-team-logo v2-idle-breathe', alt: team.name || '' }) : '';
       return '<div class="ms-team' + sideClass + '">' + logoHtml +
         '<div class="ms-team-name" style="color:' + escapeHtml(color) + '">' + escapeHtml(team.name || '') + '</div>' +
         '<div class="ms-team-score" style="color:' + escapeHtml(color) + '">' + scoreOf(team) + '</div>' +

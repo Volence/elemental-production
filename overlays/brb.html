@@ -16,22 +16,25 @@
 
        BRAND MARK / BREATHING (spec §6, explicit for this scene): the raster
        ./org.png "breathe" logo (opacity 0.8<->1 CSS-class animation) is
-       replaced by a small pinwheelSVG crest with a "petal-glow" breathing
-       treatment — opacity + filter:brightness keyframes ONLY, deliberately
-       NOT a transform-based animation (no scale/translate pulse). Reason:
-       #brb-crest is a plain flex child of #brb-content (no transform of its
-       own for positioning), but the package-wide convention for any
-       animated wrapper that might ever need transform-based centering is to
-       keep transform off animations applied to persistent page wrappers —
-       see between-matches.html's "centered wrappers" comment for the same
-       underlying gotcha (an animation's transform silently overwrites a
-       positioning transform set elsewhere). Opacity/filter side-steps that
-       class of bug entirely, which is exactly why the plan calls out
-       "opacity/glow keyframes... NO retained transforms" for this element.
-       Crest colors are neutral ELEMENT BRAND accents (--elmt-red/--elmt-
-       gold as literal hsl() strings — pinwheelSVG needs a literal color
-       string, not a var(), since it lands in an SVG fill attribute), not
-       team colors — this is an idle/context-free scene.
+       replaced by a small pinwheelSVG crest. Owner QA batch 2 (Task 3b)
+       upgraded this to the package-wide idle-motion utilities (theme-v2.css):
+       a slow spin + a glow pulse, same treatment as starting-soon/end-of-
+       stream's crests — this file's own bespoke `@keyframes petalBreathe`
+       (opacity + filter:brightness only, no transform) is GONE, consolidated
+       into the shared `.v2-idle-glow`. The spin (`.v2-idle-spin`, transform:
+       rotate) lives on a nested inner <span> around the SVG, NOT on
+       #brb-crest itself: #brb-crest is a plain flex child of #brb-content
+       (no transform of its own for positioning), and the package-wide
+       convention for any animated wrapper that might ever need transform-
+       based centering is to keep transform off animations applied to
+       persistent page wrappers — see between-matches.html's "centered
+       wrappers" comment for the same underlying gotcha (an animation's
+       transform silently overwrites a positioning transform set elsewhere).
+       Wrapping keeps that guarantee for #brb-crest while still letting the
+       SVG itself spin. Crest colors are neutral ELEMENT BRAND accents
+       (--elmt-red/--elmt-gold as literal hsl() strings — pinwheelSVG needs a
+       literal color string, not a var(), since it lands in an SVG fill
+       attribute), not team colors — this is an idle/context-free scene.
 
        STATIC CHROME: the heading ("WE'LL BE RIGHT BACK"), subtitle
        ("Please stand by"), and crest never depend on state, so — unlike the
@@ -85,11 +88,9 @@
        an id, so this only matches that trailing container. */
     #root > div:not([id]) { display: none; }
 
-    /* ── Petal-glow breathing crest (see file-header comment) ──────────── */
-    @keyframes petalBreathe {
-      0%, 100% { opacity: 0.72; filter: brightness(0.9); }
-      50%      { opacity: 1;    filter: brightness(1.25); }
-    }
+    /* Idle spin+glow crest (see file-header comment) — the utilities and their
+       @keyframes now live in theme-v2.css (.v2-idle-spin/.v2-idle-glow),
+       shared with starting-soon.html/end-of-stream.html's crests. */
     #brb-crest { margin-bottom: 26px; }
 
     .brb-heading {
@@ -138,8 +139,10 @@
       applyTextureBg(root);
       root.innerHTML =
         '<div id="brb-content">' +
-          '<div id="brb-crest" style="animation: petalBreathe 3s ease-in-out infinite;">' +
-            pinwheelSVG({ colors: BRB_BRAND, size: 96 }) +
+          '<div id="brb-crest">' +
+            '<span class="v2-idle-glow"><span class="v2-idle-spin" style="display:inline-block;">' +
+              pinwheelSVG({ colors: BRB_BRAND, size: 96 }) +
+            '</span></span>' +
           '</div>' +
           '<div class="brb-heading" style="animation: fadeIn 0.7s ease-out 0.15s both;">WE&#39;LL BE RIGHT BACK</div>' +
           '<div class="brb-sub" style="animation: fadeIn 0.7s ease-out 0.25s both;">Please stand by</div>' +

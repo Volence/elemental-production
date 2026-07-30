@@ -18,13 +18,17 @@
        animation in the pre-v2 scene) is replaced by a small pinwheelSVG
        crest in the same position, for the same package-wide vector-brand
        consistency as starting-soon.html/brb.html (see starting-soon.html's
-       file-header comment). It keeps its NO-animation-beyond-entrance
-       treatment from the original (a light scaleIn on scene load, nothing
-       ongoing) — this scene doesn't call for brb.html's idle-breathing
-       treatment, which the plan reserves for the "please stand by" wait
-       state specifically. Crest colors are neutral ELEMENT BRAND accents
-       (--elmt-red/--elmt-gold as literal hsl() strings — pinwheelSVG needs
-       a literal color string, not a var()).
+       file-header comment). Owner QA batch 2 (Task 3b) gave all three
+       neutral full-screen crests (this scene, starting-soon.html, brb.html)
+       the same idle spin + glow treatment (theme-v2.css's .v2-idle-spin/
+       .v2-idle-glow) — superseding the earlier "no idle motion here" call.
+       The spin+glow lives on nested inner spans around the SVG (see
+       shell() below), not on #eos-crest itself, since #eos-crest already
+       owns its own entrance (scaleIn) and is a #root direct child — the
+       exact case theme-v2.css's idle-motion wrap rule calls out. Crest
+       colors are neutral ELEMENT BRAND accents (--elmt-red/--elmt-gold as
+       literal hsl() strings — pinwheelSVG needs a literal color string,
+       not a var()).
 
        SOCIALS (spec §6 / plan explicit for this scene): the 4 emoji icons
        (📺🎮💬🐦) are replaced with the SAME inline-SVG chip row as
@@ -133,8 +137,15 @@
       root.setAttribute('data-shell-marker', 'end-of-stream-v2');
       applyTextureBg(root);
       root.innerHTML =
+        // #eos-crest is BOTH a #root direct child AND owns its own entrance
+        // (scaleIn, transform-based, both fill) — textbook case for theme-v2.css's
+        // idle-motion wrap rule. The Owner QA batch 2 (Task 3b) spin+glow goes on
+        // nested inner spans around the SVG instead of on #eos-crest itself, so
+        // the entrance keeps sole ownership of #eos-crest's own transform.
         '<div id="eos-crest" style="animation: scaleIn 0.6s ease-out 0.10s both;">' +
-          pinwheelSVG({ colors: EOS_BRAND, size: 72 }) +
+          '<span class="v2-idle-glow"><span class="v2-idle-spin" style="display:inline-block;">' +
+            pinwheelSVG({ colors: EOS_BRAND, size: 72 }) +
+          '</span></span>' +
         '</div>' +
         '<div id="eos-content">' +
           '<div class="eos-heading" style="animation: fadeIn 0.7s ease-out 0.15s both;">SEE YOU<br>NEXT TIME!</div>' +

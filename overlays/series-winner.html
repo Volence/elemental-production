@@ -214,8 +214,16 @@
       // pass the raw logo URL, not a pre-proxied one (double-proxying is
       // idempotent but redundant; this matches every other v2 scene's
       // safeImg() call sites).
+      // v2-idle-breathe (Owner QA batch 2 Task 3b) goes on a dedicated inner
+      // <span>, NOT on .sw-logo itself: .sw-logo sits in the reveal stack
+      // alongside #sw-pinwheel/#sw-glow-burst's own entrance transforms, and
+      // per theme-v2.css's idle-motion rules a leaf that's part of an
+      // entrance stack gets its idle class on a wrapping span so a future
+      // entrance treatment added directly to .sw-logo can't collide with it.
       var logoHtml = winner.logo
-        ? safeImg(winner.logo, { 'class': 'sw-logo' })
+        ? '<span class="v2-idle-breathe" style="display:inline-block;line-height:0;">' +
+            safeImg(winner.logo, { 'class': 'sw-logo' }) +
+          '</span>'
         : '';
       return (
         '<div class="sw-label" style="animation: slideDown 0.5s ease-out 0.05s both;">Series Winner</div>' +

@@ -153,7 +153,10 @@ function teamPlate(opts) {
 
   html += '<div class="v2-plate-content" style="position:relative;">';
   if (logo) {
-    html += safeImg(logo, { 'class': 'v2-plate-logo', alt: name });
+    // v2-idle-breathe (Owner QA batch 2 Task 3b): safe here — the logo <img>
+    // is a leaf several levels below its scene's entrance-animated wrapper
+    // (teamPlate's own root carries no animation of its own), see theme-v2.css.
+    html += safeImg(logo, { 'class': 'v2-plate-logo v2-idle-breathe', alt: name });
   }
   html += '<div class="v2-plate-name">' + escapeHtml(name) + '</div>';
   html += '<div class="v2-plate-score">' + escapeHtml(String(score)) + '</div>';
@@ -373,7 +376,11 @@ function mapPips(opts) {
         style = ' style="background:' + escapeHtml(winnerColor) + '"';
       }
     } else if (map.status === 'current') {
-      cls += ' v2-pip-live';
+      // v2-idle-glow (Owner QA batch 2 Task 3b): the live pip already had a
+      // static glow (box-shadow in theme-v2.css); this makes it pulse. Safe
+      // as a leaf — opacity/filter only, no transform to collide with an
+      // ancestor's entrance animation.
+      cls += ' v2-pip-live v2-idle-glow';
     }
 
     html += '<div class="' + cls + '"' + style + '>' + escapeHtml(abbrev) + '</div>';

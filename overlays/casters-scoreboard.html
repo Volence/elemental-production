@@ -67,7 +67,12 @@
        these own the scoreboard-local layout. Densities are tuned so the full
        10-player table + totals stays under the single-cam vertical budget at
        the fitPanel 0.6 floor (no bottom clipping). */
-    .sb-panel { width: 1360px; padding: 14px 24px; }
+    /* Owner QA batch 2 (3a): +200px (~15%) — measured comfortably inside the
+       1920 canvas since #cd-deck centers via margin:auto/fit-content; the
+       deck sits well below the cam frames (top 610 vs cams' max bottom
+       ~547px) so no horizontal collision either. fitPanelToCanvas still
+       guards vertical overflow unchanged. */
+    .sb-panel { width: 1560px; padding: 14px 24px; }
 
     .sb-header {
       display: flex; justify-content: space-between; align-items: flex-end;
@@ -366,8 +371,10 @@
           '</div>';
       }).join('');
 
+      // v2-idle-breathe (Owner QA batch 2 Task 3b): leaf under #cd-deck's
+      // entrance `both` fill — safe, see theme-v2.css's idle-motion rules.
       var logoHtml = (teamData && teamData.logo)
-        ? safeImg(teamData.logo, { 'class': 'sb-team-logo', alt: team.name || '' }) : '';
+        ? safeImg(teamData.logo, { 'class': 'sb-team-logo v2-idle-breathe', alt: team.name || '' }) : '';
       var winBadge = (team.stats && team.stats.teamWin) ? '<span class="sb-win-badge">Win</span>' : '';
 
       return '<div class="sb-team-block" style="border-top:3px solid ' + escapeHtml(color) + '">' +

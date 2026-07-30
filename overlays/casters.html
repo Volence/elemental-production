@@ -130,8 +130,10 @@
     // components-v2.js's teamPlate()/map-intro's teamBlockHtml().
     function teamBlockHtml(team, color, side) {
       var sideClass = side === 'right' ? ' cd-deck-team-right' : '';
+      // v2-idle-breathe (Owner QA batch 2 Task 3b): leaf under #cd-deck's own
+      // entrance `both` fill — safe, see theme-v2.css's idle-motion rules.
       var logoHtml = team.logo
-        ? safeImg(team.logo, { 'class': 'cd-deck-logo', alt: team.name || '' })
+        ? safeImg(team.logo, { 'class': 'cd-deck-logo v2-idle-breathe', alt: team.name || '' })
         : '<div class="cd-deck-swatch" style="background:' + escapeHtml(color) + '"></div>';
       return '<div class="cd-deck-team' + sideClass + '">' + logoHtml +
         '<div class="cd-deck-name">' + escapeHtml(team.name || '') + '</div></div>';

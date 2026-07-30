@@ -146,8 +146,10 @@
 
     function teamHtml(team, color, side) {
       var sideClass = side === 'right' ? ' cd-team-right' : '';
+      // v2-idle-breathe (Owner QA batch 2 Task 3b): leaf under #cd-band's own
+      // entrance `both` fill — safe, see theme-v2.css's idle-motion rules.
       var logoHtml = team.logo
-        ? safeImg(team.logo, { 'class': 'cd-logo', alt: team.name || '' })
+        ? safeImg(team.logo, { 'class': 'cd-logo v2-idle-breathe', alt: team.name || '' })
         : '<div class="cd-swatch" style="background:' + escapeHtml(color) + '"></div>';
       return '<div class="cd-team' + sideClass + '">' + logoHtml +
         '<div class="cd-team-name">' + escapeHtml(team.name || '') + '</div></div>';

@@ -45,6 +45,66 @@
   background-position: center;
 }
 
+/* ===========================================================================
+   IDLE-MOTION PACKAGE (Owner QA batch 2, Task 3b — spec §7 "idle life").
+   Owner: "any time there's the logo it shrinks and grows just slightly...
+   slight interesting movement." Three infinite utilities, ONE shared
+   implementation — no per-scene keyframe copies (this consolidates what was
+   previously a bespoke local @keyframes petalBreathe in brb.html; see that
+   file's diff in this batch).
+
+   CRITICAL RULES — read before adding a class to a new element:
+
+   1. `.v2-idle-breathe` is TRANSFORM-based (scale). It must NEVER be placed
+      on an entrance-animated wrapper (one whose inline style already carries
+      `animation: ... both`) or on a #root DIRECT CHILD (the shell's
+      persistent positioned slots — #cd-header/#cd-deck/#hud-left/etc. — all
+      of which own an entrance `both` fill that is the single source of
+      truth for that element's transform). CSS's `animation` property does
+      NOT merge across two same-specificity class rules that each set it —
+      the later one wins outright — so stacking `.v2-idle-breathe` onto an
+      element that already animates its own transform silently DROPS one of
+      the two animations. Idle transform classes belong ONLY on LEAF
+      elements (no animated descendants of their own) several levels below
+      the nearest entrance wrapper.
+   2. If the element you want to make idle ALREADY carries its own entrance
+      animation (e.g. a crest with `animation: scaleIn ... both` directly on
+      it, or series-winner's winner logo sitting inside its own reveal
+      stack), do NOT add the idle class to that element. Wrap it in a
+      dedicated inner `<span>` (no entrance animation of its own) and put
+      the idle class on the SPAN instead — the entrance keeps owning the
+      outer element's transform, the idle owns the inner span's.
+   3. `.v2-idle-glow`/`.v2-idle-spin` are safe on more elements (opacity/
+      filter don't collide with a transform-based entrance the way scale/
+      rotate would), but the wrap-a-leaf discipline still applies for spin
+      specifically since it's also transform-based — see rule 1.
+   4. Idle animations are `infinite`, never `both`/`forwards` — they have no
+      "final frame" to hold, so they're exempt from the render-output-
+      animation full-inline-shorthand rule elsewhere in this package.
+      state-sync.js's replayAnimation still restores them correctly on OBS
+      visibility replay: it stashes/restores `style.animation`, and a purely
+      CLASS-driven animation (no inline `style.animation` at all) restores
+      via the documented empty-string path — `style.animation = 'none'` then
+      `style.animation = els[i].getAttribute('data-anim') || ''` re-reads
+      the class rule once the inline override is cleared. Verified via a
+      round-trip CDP check (Owner QA batch 2 Task 3b review notes).
+   =========================================================================== */
+@keyframes v2IdleBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.035); }
+}
+@keyframes v2IdleGlow {
+  0%, 100% { opacity: 0.82; filter: brightness(0.92); }
+  50%      { opacity: 1;    filter: brightness(1.2); }
+}
+@keyframes v2IdleSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.v2-idle-breathe { animation: v2IdleBreathe 4s ease-in-out infinite; }
+.v2-idle-glow    { animation: v2IdleGlow 5s ease-in-out infinite; }
+.v2-idle-spin    { animation: v2IdleSpin 45s linear infinite; }
+
 /* Mobile legibility floor (spec §2): key text >=28px, labels >=22px,
    info icons >=44px, ban tiles 56px. Enforced by component defaults below,
    documented here for reviewers. */
