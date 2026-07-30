@@ -75,7 +75,7 @@
        Concept D mockup geometry). */
     .hbar-bans { display: flex; align-items: center; gap: 8px; flex: none; }
     .hbar-side-right .hbar-bans { flex-direction: row-reverse; }
-    .hbar-ban-img { width: 40px; height: 40px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); }
+    .hbar-ban-img { width: 48px; height: 48px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); }
     .hbar-ban-tag {
       font-size: 12px; font-weight: 800; letter-spacing: 1.5px; padding: 3px 7px;
       background: #d92626; border-radius: 3px; flex: none;
@@ -91,18 +91,24 @@
        much wider span — the keystone is only ~420px wide at true center
        where escort's bar is thinnest, but RE-VERIFY on a payload map and
        shrink KEYSTONE_H below if it grazes. */
+    /* Height budget (owner QA batch 3f — "slightly touching the scoreboard"):
+       the previous 96px box actually held ~99px of content and wore a 22px
+       shadow, so its visual bottom brushed the control-mode objective UI
+       (~y118-123). Now the content adds up EXACTLY to the box: 40 crest +
+       22 line1 + 13 line2 + 4 gaps + 13 padding = 92, and the shadow is
+       tight — visual bottom ≈104, a clear ~19px above the objective UI. */
     .hbar-center {
-      flex: none; align-self: flex-start; height: 96px; padding: 6px 28px 10px;
+      flex: none; align-self: flex-start; height: 92px; padding: 5px 28px 8px;
       position: relative;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
       background: rgba(8,10,15,0.99);
       border-left: 1px solid rgba(255,255,255,0.16);
       border-right: 1px solid rgba(255,255,255,0.16);
-      box-shadow: 0 6px 22px rgba(0,0,0,0.45);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
-    .hbar-center-line1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; line-height: 1.05; white-space: nowrap; text-transform: uppercase; }
+    .hbar-center-line1 { font-size: 21px; font-weight: 800; letter-spacing: 1px; line-height: 1.05; white-space: nowrap; text-transform: uppercase; }
     .hbar-center-line2 {
-      font-size: 12.5px; font-weight: 700; letter-spacing: 2.5px; line-height: 1.1;
+      font-size: 12px; font-weight: 700; letter-spacing: 2.5px; line-height: 1.1;
       color: rgba(255,255,255,0.55); white-space: nowrap; text-transform: uppercase;
     }
     .hbar-underline {
@@ -318,7 +324,7 @@
             // Idle glow is opacity/filter, safe under the wrapper's slideDown
             // `both` fill.
             '<span class="v2-medallion v2-idle-glow">' +
-              pinwheelSVG({ color1: t1color, color2: t2color, size: 48 }) + '</span>' +
+              pinwheelSVG({ color1: t1color, color2: t2color, size: 40 }) + '</span>' +
             '<span class="hbar-center-line1">' + escapeHtml(line1) + '</span>' +
             '<span class="hbar-center-line2">' + escapeHtml(line2) + '</span>' +
             '<span class="hbar-underline v2-underline"></span>' +
