@@ -3,117 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <title>BRB</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap">
+  <!-- Broadcast v2 (Plan 3 Task 6): countdown full-screen, rebuilt onto
+       overlay-core's defineOverlay (was hand-rolled buildKey/lastBuildKey +
+       raw stateSync(update), ES2020 ?. throughout — see starting-soon.html's
+       file-header comment for the full writeup of why that's disallowed;
+       this scene made the identical migration).
+
+       TEXTURE LAYER: applyTextureBg() directly on #root (map-pick.html
+       pattern) — no cam cutout in this full-screen scene. See
+       starting-soon.html's file-header comment for the two-layer-vs-one
+       rationale (shared across all three Task 6 scenes, documented once).
+
+       BRAND MARK / BREATHING (spec §6, explicit for this scene): the raster
+       ./org.png "breathe" logo (opacity 0.8<->1 CSS-class animation) is
+       replaced by a small pinwheelSVG crest with a "petal-glow" breathing
+       treatment — opacity + filter:brightness keyframes ONLY, deliberately
+       NOT a transform-based animation (no scale/translate pulse). Reason:
+       #brb-crest is a plain flex child of #brb-content (no transform of its
+       own for positioning), but the package-wide convention for any
+       animated wrapper that might ever need transform-based centering is to
+       keep transform off animations applied to persistent page wrappers —
+       see between-matches.html's "centered wrappers" comment for the same
+       underlying gotcha (an animation's transform silently overwrites a
+       positioning transform set elsewhere). Opacity/filter side-steps that
+       class of bug entirely, which is exactly why the plan calls out
+       "opacity/glow keyframes... NO retained transforms" for this element.
+       Crest colors are neutral ELEMENT BRAND accents (--elmt-red/--elmt-
+       gold as literal hsl() strings — pinwheelSVG needs a literal color
+       string, not a var(), since it lands in an SVG fill attribute), not
+       team colors — this is an idle/context-free scene.
+
+       STATIC CHROME: the heading ("WE'LL BE RIGHT BACK"), subtitle
+       ("Please stand by"), and crest never depend on state, so — unlike the
+       countdown box and event label — they're built once in shell()'s
+       literal markup rather than being re-emitted by render() on every
+       keyed repaint (the render-vs-reflow split: shell owns chrome that
+       must never rebuild on data).
+
+       COUNTDOWN CONTRACT (preserved EXACTLY, id `brb-timer-text`): same
+       split as starting-soon.html/between-matches.html — render() (key-
+       gated) owns the countdown box's PRESENCE (countdown.visible toggles
+       the wrapper + rebuilds the digits node); a SECOND, independent
+       stateSync subscriber (trackCountdown) keeps `latestCountdown` fresh
+       and re-arms startLocalTick every real state change, decoupled from
+       the keyed render. The resolver re-queries #brb-timer-text live so it
+       survives #brb-cd's innerHTML rebuild.
+
+       COUNTDOWN FORMATTING NOTE (v1.3.8 dashboard-bug-batch carry-over,
+       still true here): countdown.js's formatTime() now formats
+       unconditionally (0 -> "00:00"), matching starting-soon.html/between-
+       matches.html. The pre-v2 brb.html was the one outlier that special-
+       cased falsy/<=0 input to blank string — that divergence was already
+       reconciled away when countdown.js was extracted (see that file's own
+       header comment), so this v2 rewrite inherits the unconditional
+       "00:00" display for free; no new behavior introduced here.
+
+       KEY: unchanged read-set from the pre-v2 buildKey — eventName +
+       countdown.visible. Neither the heading/subtitle/crest (static) nor
+       anything else render() touches depends on more than that. -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      background: transparent; overflow: hidden;
-      width: 1920px; height: 1080px;
-      font-family: var(--font-body, 'Inter', sans-serif); color: white;
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
     }
+    #root { position: relative; width: 1920px; height: 1080px; }
 
-    .container {
-      position: relative; width: 1920px; height: 1080px;
-      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    #brb-content {
+      position: absolute; inset: 0;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
     }
+    #brb-event { position: absolute; left: 0; right: 0; bottom: 54px; margin: 0 auto; width: fit-content; }
 
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes breathe { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+    /* overlay-core appends its volatile render container as #root's LAST
+       child; this scene never uses it directly (render() writes into each
+       wrapper's persistent .slot-content). Every shell child above carries
+       an id, so this only matches that trailing container. */
+    #root > div:not([id]) { display: none; }
 
-    .rainbow-bar {
-      position: absolute; top: 0; left: 0; right: 0; height: 4px;
-      background: var(--rainbow-gradient, linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316));
+    /* ── Petal-glow breathing crest (see file-header comment) ──────────── */
+    @keyframes petalBreathe {
+      0%, 100% { opacity: 0.72; filter: brightness(0.9); }
+      50%      { opacity: 1;    filter: brightness(1.25); }
     }
+    #brb-crest { margin-bottom: 26px; }
 
-    .org-logo {
-      width: 100px; height: 100px; object-fit: contain;
-      margin-bottom: 40px;
-      animation: breathe 3s ease-in-out infinite;
+    .brb-heading {
+      font-size: 118px; font-weight: 800; letter-spacing: 9px; text-transform: uppercase;
+      line-height: 0.95; text-shadow: 0 4px 30px rgba(0,0,0,0.5);
     }
-
-    .brb-text {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 120px; letter-spacing: 12px;
-      text-shadow: 0 4px 30px rgba(0,0,0,0.5);
-    }
-
     .brb-sub {
-      font-size: 18px; font-weight: 600;
-      letter-spacing: 4px; text-transform: uppercase;
-      color: rgba(255,255,255,0.4);
-      margin-top: 8px;
-      
+      font-size: 24px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase;
+      color: rgba(255,255,255,0.45); margin-top: 14px;
     }
-
-    .brb-timer {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 56px; letter-spacing: 4px;
-      margin-top: 32px;
-      background: var(--accent-gradient, linear-gradient(135deg, #f97316, #ef4444));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      
-    }
-
-    .event-label {
-      position: absolute; bottom: 50px;
-      padding: 8px 32px; border-radius: 4px;
-      background: var(--accent-gradient, linear-gradient(135deg, rgba(249,115,22,0.8), rgba(239,68,68,0.8)));
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 20px; letter-spacing: 3px;
-      
+    #brb-cd { margin-top: 34px; }
+    /* Floor for this scene: countdown digits >=48px (spec). */
+    .brb-cd-digits {
+      font-size: 80px; font-weight: 800; letter-spacing: 3px; line-height: 1;
+      font-variant-numeric: tabular-nums;
+      background: var(--grad4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="container" id="root" style="animation: fadeIn 0.8s ease-out both;"></div>
+  <div id="root"></div>
 
+  <!-- Script order matters: helpers + SVG + component builders + bg helper
+       + countdown engine must all be global before overlay-core wires the
+       render loop. NO ?./?? in the inline script (OBS Chromium 103 floor). -->
   <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./bg-helper.js"></script>
   <script src="./countdown.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    const API = 'http://localhost:3001';
-    let countdownVisible = true;
-    let lastBuildKey = '';
-    let latestCountdown = null;
+    var API = 'http://localhost:3001';
 
-    function buildKey(state) {
-      var vis = state.countdown?.visible !== false ? '1' : '0';
-      return (state.eventName || '') + '|' + vis;
+    // Brand crest colors — literal hsl() strings mirroring theme-v2.css's
+    // --elmt-red/--elmt-gold (see file-header comment).
+    var BRB_ACCENT_1 = 'hsl(0 85% 60%)';
+    var BRB_ACCENT_2 = 'hsl(45 95% 55%)';
+
+    // ── shell: builds the persistent chrome exactly ONCE — heading/subtitle/
+    // crest are 100% static (never state-driven), so they live here rather
+    // than being re-emitted by render() (see file-header comment). ─────────
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'brb-v2');
+      applyTextureBg(root);
+      root.innerHTML =
+        '<div id="brb-content">' +
+          '<div id="brb-crest" style="animation: petalBreathe 3s ease-in-out infinite;">' +
+            pinwheelSVG({ color1: BRB_ACCENT_1, color2: BRB_ACCENT_2, size: 96 }) +
+          '</div>' +
+          '<div class="brb-heading" style="animation: fadeIn 0.7s ease-out 0.15s both;">WE&#39;LL BE RIGHT BACK</div>' +
+          '<div class="brb-sub" style="animation: fadeIn 0.7s ease-out 0.25s both;">Please stand by</div>' +
+          '<div id="brb-cd" style="animation: fadeIn 0.7s ease-out 0.35s both;"><div class="slot-content"></div></div>' +
+        '</div>' +
+        '<div id="brb-event" style="animation: slideUp 0.5s ease-out 0.20s both;"><div class="slot-content"></div></div>';
     }
 
-    function update(state) {
+    // ── key: eventName + countdown.visible — unchanged from the pre-v2
+    // buildKey (see file-header comment). ───────────────────────────────
+    function key(state) {
+      var countdown = state.countdown || {};
+      return [state.eventName, countdown.visible !== false];
+    }
+
+    function render(state) {
       applyTheme(state);
-      const el = document.getElementById('root');
 
-      latestCountdown = state.countdown || null;
-      countdownVisible = state.countdown?.visible !== false;
-      startLocalTick(function () { return document.getElementById('brb-timer-text'); }, function () { return latestCountdown; });
+      var countdown = state.countdown || null;
+      var countdownVisible = !countdown || countdown.visible !== false;
+      var cdWrap = document.getElementById('brb-cd');
+      cdWrap.style.display = countdownVisible ? '' : 'none';
+      document.querySelector('#brb-cd .slot-content').innerHTML = countdownVisible
+        ? '<div class="brb-cd-digits" id="brb-timer-text">' + formatTime(getRemaining(countdown, Date.now())) + '</div>'
+        : '';
 
-      var currentKey = buildKey(state);
-      if (currentKey === lastBuildKey) {
-        var t = document.getElementById('brb-timer-text');
-        if (t) t.textContent = formatTime(getRemaining(latestCountdown, Date.now()));
-        return;
-      }
-      lastBuildKey = currentKey;
-
-      var eventName = state.eventName || 'FACEIT SEASON 8';
-
-      el.innerHTML = `
-        <div class="rainbow-bar"></div>
-        <img class="org-logo" src="./org.png">
-        <div class="brb-text">WE'LL BE RIGHT BACK</div>
-        <div class="brb-sub">Please stand by</div>
-        ${countdownVisible ? `<div class="brb-timer"><span id="brb-timer-text">${formatTime(getRemaining(latestCountdown, Date.now()))}</span></div>` : ''}
-        <div class="event-label">${eventName}</div>
-      `;
+      document.querySelector('#brb-event .slot-content').innerHTML =
+        eventHeader({ eventName: state.eventName || 'FACEIT SEASON 8' });
     }
-    stateSync(update);
+
+    defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render
+    });
+
+    // ── Countdown live-tick wiring (decoupled from the keyed render above —
+    // see file-header comment; same split as starting-soon.html/between-
+    // matches.html). ─────────────────────────────────────────────────────
+    var latestCountdown = null;
+    function trackCountdown(state) {
+      latestCountdown = state.countdown || null;
+      startLocalTick(function () { return document.getElementById('brb-timer-text'); }, function () { return latestCountdown; });
+    }
+    stateSync(trackCountdown);
   </script>
 </body>
 </html>
