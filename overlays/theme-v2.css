@@ -126,20 +126,33 @@
 .v2-medallion svg { position: relative; }
 
 /* ── event header pill (eventHeader()) ──────────────────────────────────── */
+/* The event pill is the ONLY part of the center band that flexes: when the band
+   hits its width budget (a long event name and/or a 7-map pip row), the event
+   NAME shrinks and ellipsizes while the medallion, map pill, and pips keep their
+   full size (they are flex:none below). So it must be the shrinkable flex child
+   here AND carry min-width:0 so it can shrink below its content width. */
 .v2-event-header {
   display: flex; align-items: center; gap: 10px;
   padding: 7px 14px; background: var(--panel-bg); border: var(--panel-border);
   border-radius: var(--panel-radius); white-space: nowrap;
+  flex: 0 1 auto; min-width: 0;
 }
 .v2-event-name {
   position: relative; font-size: 22px; font-weight: 800; letter-spacing: 1px;
   color: rgba(255,255,255,0.85); text-transform: uppercase;
+  /* Sole shrink/ellipsis target. padding-bottom keeps the underline (below)
+     inside the overflow:hidden box so it isn't clipped away. */
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding-bottom: 4px;
 }
 /* eventHeader's built-in .v2-underline sits inside .v2-event-name — pin it as a
-   subtle gradient underline. (The map pill carries the primary underline.) */
-.v2-event-header .v2-underline { position: absolute; left: 0; right: 0; bottom: -4px; }
+   subtle gradient underline. bottom:0 (was -4px) so overflow:hidden on the name
+   doesn't clip it. (The map pill carries the primary underline.) */
+.v2-event-header .v2-underline { position: absolute; left: 0; right: 0; bottom: 0; }
 .v2-event-subtitle {
   font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.4);
+  flex: none;
 }
 
 /* ── map pill (+ gradient underline) ────────────────────────────────────── */
@@ -151,6 +164,7 @@
   border-radius: var(--panel-radius);
   font-size: 28px; font-weight: 800; color: #fff; letter-spacing: 0.5px;
   text-transform: uppercase; white-space: nowrap;
+  flex: none; /* never shrink/clip when the band is width-pressured */
 }
 .v2-map-pill::after {
   content: ''; position: absolute; left: 16px; right: 16px; bottom: 4px;
@@ -158,7 +172,7 @@
 }
 
 /* ── map-winner pips (mapPips()) ────────────────────────────────────────── */
-.v2-pips { display: flex; gap: 3px; align-items: center; }
+.v2-pips { display: flex; gap: 3px; align-items: center; flex: none; }
 .v2-pip {
   width: 26px; height: 22px; border-radius: 2px; box-sizing: border-box;
   display: flex; align-items: center; justify-content: center;

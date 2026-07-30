@@ -30,8 +30,14 @@
     #hud-right { top: 14px; right: 40px; width: 510px; }
     /* Centered via left/right:0 + margin:auto on a fit-content box rather than
        translateX(-50%): the slideDown entrance animates `transform`, and its
-       `both` fill would otherwise clobber a translateX and de-center the band. */
-    #hud-center { top: 0; left: 0; right: 0; margin: 0 auto; width: fit-content; }
+       `both` fill would otherwise clobber a translateX and de-center the band.
+       max-width caps the band to the free middle span (left region ends ≈x550,
+       right starts ≈x1370 → ~820px, minus breathing room). fit-content keeps it
+       compact + centered when content is short (no ellipsis); once content would
+       exceed the cap it holds at 790px and the interior degrades gracefully (the
+       event NAME ellipsizes — see .v2-event-* in theme-v2.css — while medallion,
+       map pill, and pips never shrink), so the band never runs under #hud-right. */
+    #hud-center { top: 0; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 790px; }
 
     /* Side region row: plate (outer) grows, ban wing (inner) is fixed width.
        .hud-row-right mirrors it so the plate stays on the outer edge. */
@@ -42,7 +48,7 @@
 
     /* Center band: map pill + winner pips sit together to the right of the
        medallion (component styles for the pieces themselves live in theme-v2.css). */
-    .v2-center-map { display: flex; align-items: center; gap: 10px; }
+    .v2-center-map { display: flex; align-items: center; gap: 10px; flex: none; }
 
     /* overlay-core appends its volatile render container as #root's LAST child
        (after the shell wrappers). This scene never uses it — render() writes
