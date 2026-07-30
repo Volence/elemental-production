@@ -69,8 +69,10 @@
     /* Cam bottom edge is y:640 (120+520); card starts a clean 40px below it. */
     #cd-card {
       position: absolute; top: 680px; left: 0; right: 0; margin: 0 auto; width: fit-content;
+      max-width: 1600px; /* nowrap pills below: cap + ellipsis so an absurd name can't overflow the canvas */
       display: flex; flex-direction: column; align-items: center; gap: 16px;
     }
+    #cd-card .iv-name-pill, #cd-card .iv-chips { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
     /* ── Name pill: pill + underline anatomy (mirrors eventHeader()/
        v2-map-pill's shared look, scene-local since teamColor tinting is
@@ -212,7 +214,9 @@
 
       var iv = state.interviewee || {};
       document.querySelector('#cd-cams .slot-content').innerHTML =
-        camFrame({ rect: camRect, name: iv.name || '', accent: iv.teamColor || '' });
+        // name:'' — the player card right below the cam already carries the
+        // interviewee's name (bigger); a cam pill would duplicate it stacked.
+        camFrame({ rect: camRect, name: '', accent: iv.teamColor || '' });
 
       document.querySelector('#cd-card .slot-content').innerHTML = cardHtml(iv);
     }

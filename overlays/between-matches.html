@@ -107,8 +107,11 @@
        bottom edge, so neither the countdown box nor the schedule row ever
        overlaps the cutout. Both share the same top/bottom so their content
        baselines line up. */
-    #cd-countdown { position: absolute; left: 24px; top: 950px; bottom: 22px; width: 240px; }
-    #cd-schedule { position: absolute; left: 284px; right: 24px; top: 950px; bottom: 22px; }
+    /* Cam window bottom is y=930; start the band at 942 and run to 16px off
+       the canvas edge so a stacked panel (label + two 32px logo rows) fits
+       without grazing the overflow:hidden edges. */
+    #cd-countdown { position: absolute; left: 24px; top: 942px; bottom: 16px; width: 240px; }
+    #cd-schedule { position: absolute; left: 284px; right: 24px; top: 942px; bottom: 16px; }
     /* Both wrappers resolve a real height via top+bottom; .slot-content
        (a plain block child) needs an explicit height:100% to inherit it —
        height:100% on a descendant only resolves against an ancestor with a
