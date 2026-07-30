@@ -31,5 +31,9 @@ data/state.json
 # README is the only thing tracked in this folder.
 data/map-images/*
 !data/map-images/README.md
+# Producer drop-in hero renders (see data/hero-renders/README.md) — the
+# README is the only thing tracked in this folder.
+data/hero-renders/*
+!data/hero-renders/README.md
 .superpowers/
 .worktrees/

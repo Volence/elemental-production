@@ -26,6 +26,7 @@ import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
 import { buildTeamsUpdate, buildMapsUpdate } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
+import { findLocalHeroRender } from './hero-render-resolver.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -43,9 +44,14 @@ const CACHE_DIR = path.join(DATA_DIR, 'cache');
 // data/map-images/README.md for the naming contract). OverFast's CDN
 // screenshots are the fallback when no local file matches.
 const MAP_IMAGES_DIR = path.join(DATA_DIR, 'map-images');
+// Producer drop-in folder for local full-body hero renders (see
+// data/hero-renders/README.md for the naming contract). Filename is the
+// hero's OverFast key exactly -- no normalization needed, unlike maps.
+const HERO_RENDERS_DIR = path.join(DATA_DIR, 'hero-renders');
 if (!fs.existsSync(FONTS_DIR)) fs.mkdirSync(FONTS_DIR, { recursive: true });
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 if (!fs.existsSync(MAP_IMAGES_DIR)) fs.mkdirSync(MAP_IMAGES_DIR, { recursive: true });
+if (!fs.existsSync(HERO_RENDERS_DIR)) fs.mkdirSync(HERO_RENDERS_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
@@ -174,6 +180,7 @@ app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { setHea
 app.use('/fonts', express.static(FONTS_DIR));
 app.use('/cache', express.static(CACHE_DIR));
 app.use('/map-images', express.static(MAP_IMAGES_DIR));
+app.use('/hero-renders', express.static(HERO_RENDERS_DIR));
 
 // SSE clients for real-time overlay updates
 const sseClients = new Set();
@@ -400,7 +407,10 @@ app.get('/api/state', (req, res) => {
 });
 
 app.patch('/api/state', (req, res) => {
-  const updated = setState(req.body);
+  const body = Array.isArray(req.body.maps)
+    ? { ...req.body, maps: withLocalMapImagesForState(req.body.maps) }
+    : req.body;
+  const updated = setState(body);
   broadcast('state', updated);
   syncToOBS(updated);
   res.json(updated);
@@ -1155,6 +1165,28 @@ function withLocalMapImages(maps) {
   });
 }
 
+/**
+ * The dashboard's manual Add Map flow (client-side, see the `addMap`
+ * function in src/pages/MatchHub.jsx) normally resolves an image itself by
+ * reading the same OverFast+local-pack catalog served at /api/maps before
+ * PATCHing the map into state. This is a server-side backstop for when that
+ * client-side resolution comes back empty (client hasn't loaded /api/maps
+ * yet, the map isn't in the OW2 pool the picker knows about, etc): any map
+ * in a PATCH /api/state body that's missing an `image` gets one filled in
+ * from the local-first map image pack (data/map-images/, see its README)
+ * if a matching file exists. Never clobbers an image that's already set
+ * (FACEIT-imported maps, or the client's own resolved image).
+ */
+function withLocalMapImagesForState(maps) {
+  return (maps || []).map(map => {
+    if (map && !map.image) {
+      const localFile = findLocalMapImage(map.name, MAP_IMAGES_DIR);
+      if (localFile) return { ...map, image: `http://localhost:${PORT}/map-images/${encodeURIComponent(localFile)}` };
+    }
+    return map;
+  });
+}
+
 /** Get all Overwatch maps from OverFast API (cached for 1 hour) */
 app.get('/api/maps', async (req, res) => {
   const ONE_HOUR = 3600000;
@@ -1633,9 +1665,21 @@ async function advancePlaylist(sourceName, stateKeyPrefix) {
 // ============ HEROES API ============
 
 // Serve hero portraits through the local caching proxy so the dashboard and
-// OBS overlays never depend on the Blizzard CDN being reachable mid-broadcast
+// OBS overlays never depend on the Blizzard CDN being reachable mid-broadcast.
+// Also overlay the local-first hero render pack (data/hero-renders/, see its
+// README) used by full-body scenes like Ban Reveal / Map Intro. Checked
+// fresh on EVERY call (not cached) so a producer dropping a file in
+// mid-broadcast shows up on the next request -- same pattern as
+// withLocalMapImages for /api/maps.
 function proxyHeroes(heroes) {
-  return (heroes || []).map(h => ({ ...h, portrait: proxyImageUrl(h.portrait) }));
+  return (heroes || []).map(h => {
+    const renderFile = findLocalHeroRender(h.key, HERO_RENDERS_DIR);
+    return {
+      ...h,
+      portrait: proxyImageUrl(h.portrait),
+      render: renderFile ? `http://localhost:${PORT}/hero-renders/${encodeURIComponent(renderFile)}` : null,
+    };
+  });
 }
 
 app.get('/api/heroes', async (req, res) => {
