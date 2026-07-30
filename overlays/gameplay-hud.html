@@ -3,10 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>Gameplay HUD Overlay</title>
-  <!-- Broadcast v2: Geist via @font-face in fonts-v2.css (NO CDN hotlinks —
-       forbidden in OBS). theme-v2.css owns the design tokens + shared
-       component-internal styles; this file's own <style> owns only the
-       scene's absolute positioning of the three wrapper slots. -->
+  <!-- Broadcast v2 — Concept D "Full Frame" (owner QA batch 3, approved from
+       the concept artifact): the three floating regions of the previous HUD
+       are replaced by a two-tier top frame, OWCS-style.
+
+       Tier 1 (y 0-54, edge to edge): ban chip · logo · team name · SCORE BOX
+       flanking a center chip (crest + "MAP n · NAME" + "FIRST TO x · MODE"),
+       mirrored on the right. Tier 2 (y 54-92, SIDES ONLY — the center span
+       x≈694-1226 stays open so the game's objective UI at x 710-1205 / y>=65
+       is never covered): event/season strip on the left, PICK tag + named
+       map track (mapPips) on the right. Side player rows start at y=112, so
+       both tiers clear them.
+
+       Geist via @font-face in fonts-v2.css (NO CDN hotlinks — forbidden in
+       OBS). theme-v2.css owns tokens + shared component styles; this file's
+       <style> owns scene-local layout, the score-pop moment, and the
+       underline shimmer. -->
   <link rel="stylesheet" href="./theme-v2.css">
   <link rel="stylesheet" href="./fonts-v2.css">
   <link rel="stylesheet" href="./animations.css">
@@ -18,45 +30,113 @@
     }
     #root { position: relative; width: 1920px; height: 1080px; }
 
-    /* ── Three positioned wrapper slots (built ONCE by shell) ──────────────
-       Layout budget (design spec §3, 1920x1080): side plates within y<110
-       (full height of that band), center band within y<62, and the gap
-       columns x≈590–710 (and mirrored 1210–1330) stay clear. The side
-       regions are 510px wide from a 40px inset → left ends at x=550, right
-       starts at x=1370, both clear of the gap columns. The center band is
-       shrink-to-fit and centered above the objective panel. */
-    .hud-slot { position: absolute; }
-    #hud-left  { top: 14px; left: 40px;  width: 510px; }
-    #hud-right { top: 14px; right: 40px; width: 510px; }
-    /* Centered via left/right:0 + margin:auto on a fit-content box rather than
-       translateX(-50%): the slideDown entrance animates `transform`, and its
-       `both` fill would otherwise clobber a translateX and de-center the band.
-       max-width caps the band to the free middle span (left region ends ≈x550,
-       right starts ≈x1370 → ~820px, minus breathing room). fit-content keeps it
-       compact + centered when content is short (no ellipsis); once content would
-       exceed the cap it holds at 790px and the interior degrades gracefully (the
-       event NAME ellipsizes — see .v2-event-* in theme-v2.css — while medallion,
-       map pill, and pips never shrink), so the band never runs under #hud-right. */
-    #hud-center { top: 0; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 790px; }
+    /* ── Shell wrappers (built ONCE; entrance animations live here and never
+       replay on a data tick — the render-vs-reflow split) ─────────────────── */
+    #hud-bar { position: absolute; top: 0; left: 0; right: 0; height: 54px; }
+    #hud-sub-left  { position: absolute; top: 54px; left: 0;  width: 694px; height: 38px; }
+    #hud-sub-right { position: absolute; top: 54px; right: 0; width: 694px; height: 38px; }
 
-    /* Side region row: plate (outer) grows, ban wing (inner) is fixed width.
-       .hud-row-right mirrors it so the plate stays on the outer edge. */
-    .hud-row { display: flex; align-items: stretch; gap: 6px; }
-    .hud-row-right { flex-direction: row-reverse; }
-    .hud-row .v2-panel { flex: 1 1 auto; min-width: 0; }
-    .hud-row .v2-wing  { flex: 0 0 auto; }
-
-    /* Center band: winner pips sit to the right of the medallion (component
-       styles for the pieces themselves live in theme-v2.css). The redundant
-       current-map pill was removed in QA batch 1 — the map name already shows
-       on the map board / lower third. */
-
-    /* overlay-core appends its volatile render container as #root's LAST child
-       (after the shell wrappers). This scene never uses it — render() writes
-       into each wrapper's persistent .slot-content instead (the render-vs-reflow
-       split) — so the trailing, id-less container is hidden. Every shell wrapper
-       has an id, so this only matches that container. */
+    /* overlay-core's trailing volatile container is unused (render writes into
+       the wrappers' .slot-content); every shell child is id'd so this matches
+       only that container. */
     #root > div:not([id]) { display: none; }
+
+    /* ── Tier 1 ──────────────────────────────────────────────────────────── */
+    .hbar {
+      display: flex; align-items: center; height: 54px;
+      background: rgba(8,10,15,0.94);
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+    .hbar-side { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; padding: 0 16px; }
+    .hbar-side-right { flex-direction: row-reverse; }
+    .hbar-logo { width: 40px; height: 40px; border-radius: 3px; object-fit: cover; flex: none; }
+    .hbar-name {
+      font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+    .hbar-score {
+      width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+      font-size: 34px; font-weight: 800; flex: none; color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+    /* Score-change pop: attached inline by render() ONLY to a score box whose
+       value changed since the previous render (scene-local lastScores diff) —
+       so an unrelated data tick can't replay it. One-shot `both` fill. */
+    @keyframes hudScorePop {
+      0%   { transform: scale(1); filter: brightness(1); }
+      35%  { transform: scale(1.28); filter: brightness(1.6); }
+      100% { transform: scale(1); filter: brightness(1); }
+    }
+
+    /* Ban chip: hero portrait(s) + BAN tag. Portraits are 40px (below the
+       56px ban-tile floor, sanctioned: the red tag + slash-red color carry
+       the meaning by shape/color alone at phone scale — owner-approved
+       Concept D mockup geometry). */
+    .hbar-bans { display: flex; align-items: center; gap: 8px; flex: none; }
+    .hbar-side-right .hbar-bans { flex-direction: row-reverse; }
+    .hbar-ban-img { width: 40px; height: 40px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); }
+    .hbar-ban-tag {
+      font-size: 12px; font-weight: 800; letter-spacing: 1.5px; padding: 3px 7px;
+      background: #d92626; border-radius: 3px; flex: none;
+    }
+
+    /* Center chip: crest + two-line map/series context, gradient underline
+       with a periodic shimmer sweep. Overhangs tier 1 by 4px (bottom border
+       continues past the bar edge) so it reads as the frame's keystone. */
+    .hbar-center {
+      flex: none; height: 54px; padding: 0 20px; position: relative;
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(8,10,15,0.99);
+      border-left: 1px solid rgba(255,255,255,0.16);
+      border-right: 1px solid rgba(255,255,255,0.16);
+    }
+    .hbar-center-stack { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .hbar-center-line1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; white-space: nowrap; text-transform: uppercase; }
+    .hbar-center-line2 {
+      font-size: 13px; font-weight: 700; letter-spacing: 2.5px;
+      color: rgba(255,255,255,0.55); white-space: nowrap; text-transform: uppercase;
+    }
+    .hbar-underline {
+      position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; overflow: hidden;
+    }
+    /* Shimmer: a diagonal white highlight sweeps the underline once every
+       ~32s (research: pro persistent HUDs keep decorative loops >=20s and
+       low contrast). Opacity/transform on a pseudo-element — no collision
+       with any entrance animation. */
+    .hbar-underline::after {
+      content: ''; position: absolute; inset: 0; transform: translateX(-110%);
+      background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.65) 50%, transparent 70%);
+      animation: hudShimmer 32s linear infinite;
+    }
+    @keyframes hudShimmer {
+      0%   { transform: translateX(-110%); }
+      4%   { transform: translateX(110%); }
+      100% { transform: translateX(110%); }
+    }
+
+    /* ── Tier 2 ──────────────────────────────────────────────────────────── */
+    .hsub {
+      display: flex; align-items: center; height: 38px; padding: 0 16px; gap: 14px;
+      background: rgba(8,10,15,0.82);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .hsub-right { justify-content: flex-end; }
+    .hsub-event {
+      font-size: 20px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(255,255,255,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hsub-pick {
+      display: flex; align-items: center; gap: 7px; flex: none;
+      font-size: 15px; font-weight: 800; letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.85); text-transform: uppercase;
+    }
+    .hsub-pick-swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
+    /* Named map track = shared mapPips, scaled for the tier (same pattern as
+       map-intro's .mi-pips override). Winner colors are TRUE team identity —
+       mapPips never swap-flips. */
+    .hsub .v2-pips { gap: 7px; }
+    .hsub .v2-pip { width: 54px; height: 26px; border-radius: 3px; font-size: 15px; }
   </style>
 </head>
 <body>
@@ -64,7 +144,7 @@
 
   <!-- Script order matters: helpers + SVG + component builders must all be
        global before overlay-core wires the render loop. NO ?./?? in the inline
-       script (OBS Chromium 103 floor); template literals/const/arrow are fine. -->
+       script (OBS Chromium 103 floor). -->
   <script src="./theme-helpers.js"></script>
   <script src="./pinwheel.js"></script>
   <script src="./components-v2.js"></script>
@@ -75,7 +155,7 @@
     var heroData = [];
 
     // Dep (overlay-core loads it before the first render): hero portraits for
-    // the ban wings. Per-dep catch in overlay-core means a fetch failure just
+    // the ban chips. Per-dep catch in overlay-core means a fetch failure just
     // yields empty heroData rather than blocking the scene.
     function loadHeroes() {
       if (window.__HERO_DATA__) { heroData = window.__HERO_DATA__; return Promise.resolve(); }
@@ -85,55 +165,55 @@
         .catch(function () { heroData = []; });
     }
 
-    // One ban wing: findHeroEntry() resolves each stored hero key to a
-    // (pre-proxied) portrait + display name, then banTile() renders the 56px
-    // slash tile with its name label. Empty bans → no wing (avoid a stray box).
-    function banWing(keys, teamColor) {
-      if (!keys || keys.length === 0) return '';
-      var html = '<div class="v2-wing" style="border-color:' + teamColor + '">';
-      for (var i = 0; i < keys.length; i++) {
-        var hero = findHeroEntry(heroData, keys[i]);
-        var portrait = hero ? hero.portrait : '';
-        var heroName = hero ? hero.name : keys[i];
-        html += banTile({ portrait: portrait, heroName: heroName, teamColor: teamColor });
-      }
-      html += '</div>';
-      return html;
-    }
-
     function scoreOf(team) {
       return (team.score === undefined || team.score === null) ? 0 : team.score;
     }
 
-    // ── shell: builds the three entrance-animated wrappers exactly ONCE ──────
-    // Each wrapper carries an INLINE `animation:` (not an animations.css utility
-    // class) so state-sync.js's replayAnimation() re-runs the entrance on OBS
-    // show/hide: it snapshots each animated element's inline style.animation into
-    // data-anim, sets animation:none, forces reflow, then restores from data-anim.
-    // Inline strings round-trip through that path losslessly (a class would
-    // restore via '' which also works, but inline is what the mechanism reads
-    // first and keeps the exact timing/delay here in one place). render() only
-    // ever rewrites the inner .slot-content, so these wrapper animations NEVER
-    // replay on a data change — that's the fix for the old "team bars re-slide on
-    // every score change" bug. data-shell-marker proves the shell was built once.
+    // Ban chip group: one 40px portrait per banned hero + a single BAN tag.
+    // Empty bans -> no chip (no stray red tag with nothing to label).
+    function banChips(keys) {
+      if (!keys || keys.length === 0) return '';
+      var imgs = '';
+      for (var i = 0; i < keys.length; i++) {
+        var hero = findHeroEntry(heroData, keys[i]);
+        var portrait = hero ? hero.portrait : '';
+        var heroName = hero ? hero.name : keys[i];
+        if (portrait) imgs += safeImg(portrait, { 'class': 'hbar-ban-img', alt: heroName });
+      }
+      if (!imgs) return '';
+      return '<div class="hbar-bans">' + imgs + '<span class="hbar-ban-tag">BAN</span></div>';
+    }
+
+    // One tier-1 team side: bans (inner edge? no — outer, matching the
+    // approved mockup: bans outermost, then logo, then name, score toward
+    // center). `side` mirrors via flex-direction. Logo gets the idle breathe
+    // (leaf img — the entrance `both` fill lives on the shell wrapper).
+    function sideHtml(team, bans, side) {
+      var logoHtml = team.logo
+        ? safeImg(team.logo, { 'class': 'hbar-logo v2-idle-breathe', alt: team.name || '' })
+        : '';
+      return '<div class="hbar-side hbar-side-' + side + '">' +
+        banChips(bans) + logoHtml +
+        '<span class="hbar-name">' + escapeHtml(team.name || '') + '</span>' +
+        '</div>';
+    }
+
+    // ── shell: the three wrappers, built ONCE. Tier 1 drops in first, the two
+    // tier-2 strips slide in from their screen edges just after. ────────────
     function shell(root) {
       root.setAttribute('data-shell-marker', 'hud-v2');
       root.innerHTML =
-        '<div id="hud-left" class="hud-slot" style="animation: slideRight 0.5s ease-out 0.10s both;">' +
+        '<div id="hud-bar" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
           '<div class="slot-content"></div></div>' +
-        '<div id="hud-center" class="hud-slot" style="animation: slideDown 0.5s ease-out 0.15s both;">' +
+        '<div id="hud-sub-left" style="animation: slideRight 0.5s ease-out 0.22s both;">' +
           '<div class="slot-content"></div></div>' +
-        '<div id="hud-right" class="hud-slot" style="animation: slideLeft 0.5s ease-out 0.20s both;">' +
+        '<div id="hud-sub-right" style="animation: slideLeft 0.5s ease-out 0.22s both;">' +
           '<div class="slot-content"></div></div>';
     }
 
-    // ── key: EXACTLY the state leaves render reads (per overlay-core's contract
-    // and lower-third's comment style). applyTheme() also runs in render and sets
-    // many CSS vars nothing here consumes; only the theme leaves this scene's
-    // colors actually derive from (team1Color/team2Color) are keyed. font.family
-    // is keyed for parity with the runtime contract even though the scene renders
-    // in Geist (--font-v2); roundScore is keyed per spec though only
-    // name/status/winner drive the current pips render. ──────────────────────
+    // ── key: EXACTLY the state leaves render reads. maps carries
+    // status/winner/name (track + center context) + mode/picker (center line2
+    // + PICK tag). font.family keyed for runtime-contract parity. ────────────
     function key(state) {
       var teams = state.teams || {};
       var t1 = teams.team1 || {};
@@ -142,7 +222,7 @@
       var font = state.font || {};
       var hb = state.heroBans || {};
       var maps = (state.maps || []).map(function (m) {
-        return [m.status, m.winner, m.name, m.roundScore];
+        return [m.status, m.winner, m.name, m.mode, m.picker];
       });
       return [
         t1.name, t1.logo, t1.score, t1.color,
@@ -154,18 +234,13 @@
       ];
     }
 
-    // ── render: writes into the shell's persistent .slot-content divs, NOT the
-    // runtime's trailing container (which this scene hides). This is the sanctioned
-    // three-region composition: topFrame() returns ONE flex row (plate·wing·center·
-    // wing·plate) which map-intro/map-pick will use, but the HUD needs the plates at
-    // the far screen edges and the center band centered — three separate screen
-    // regions — so it composes the SAME component pieces (teamPlate, banTile wing,
-    // eventHeader, pinwheelSVG medallion, map pill, mapPips) directly instead.
-    //
-    // swapSides is honored exactly like topFrame: the team OBJECTS and their colors
-    // AND ban wings flip with the screen side, but the medallion hub scores/colors
-    // and the winner pips keep TRUE team1/team2 identity (map results belong to the
-    // team that won them, not to a screen side — same invariant as mapPips/mapStripClass).
+    // Scene-local score memory for the pop moment: render() compares each
+    // TEAM's score (true identity, not screen side) against the previous
+    // render and attaches the one-shot pop animation only to a box whose
+    // value actually changed. First render never pops (lastScores starts
+    // null) — the bar is sliding in anyway.
+    var lastScores = null;
+
     function render(state) {
       applyTheme(state);
 
@@ -173,51 +248,97 @@
       var t1 = teams.team1 || {};
       var t2 = teams.team2 || {};
       var theme = state.theme || {};
-      // Resolve team colors with the same precedence applyTheme uses
-      // (theme override wins, then the team object's own color).
       var t1color = theme.team1Color || t1.color || '#3b82f6';
       var t2color = theme.team2Color || t2.color || '#ef4444';
 
-      var swap = !!state.swapSides;
-      var leftTeam = swap ? t2 : t1;
-      var rightTeam = swap ? t1 : t2;
-      var leftColor = swap ? t2color : t1color;
-      var rightColor = swap ? t1color : t2color;
+      var s1 = scoreOf(t1);
+      var s2 = scoreOf(t2);
+      var pop1 = lastScores !== null && lastScores.s1 !== s1;
+      var pop2 = lastScores !== null && lastScores.s2 !== s2;
+      lastScores = { s1: s1, s2: s2 };
 
+      // Swap invariant: team blocks, their ban chips AND their score boxes
+      // flip with swapSides — this bar is the scene's only score display, so
+      // a score must sit beside the team it belongs to (the map-intro/
+      // flythrough hub rule). The crest petals + map track keep TRUE
+      // team1/team2 identity.
+      var swap = !!state.swapSides;
       var heroBans = state.heroBans || {};
-      var leftBans = (swap ? heroBans.team2 : heroBans.team1) || [];
+      var leftTeam  = swap ? t2 : t1;
+      var rightTeam = swap ? t1 : t2;
+      var leftColor  = swap ? t2color : t1color;
+      var rightColor = swap ? t1color : t2color;
+      var leftBans  = (swap ? heroBans.team2 : heroBans.team1) || [];
       var rightBans = (swap ? heroBans.team1 : heroBans.team2) || [];
+      var leftScore  = swap ? s2 : s1;
+      var rightScore = swap ? s1 : s2;
+      var leftPop  = swap ? pop2 : pop1;
+      var rightPop = swap ? pop1 : pop2;
 
       var maps = state.maps || [];
       var bestOf = state.bestOf || maps.length || 5;
+      var threshold = Math.floor(bestOf / 2) + 1;
 
-      // LEFT region: plate (outer edge) + ban wing (inner, toward center).
-      document.querySelector('#hud-left .slot-content').innerHTML =
-        '<div class="hud-row" style="--plate-color:' + leftColor + '">' +
-          teamPlate({ side: 'left', name: leftTeam.name, logo: leftTeam.logo,
-                      score: scoreOf(leftTeam), color: leftColor, linework: true }) +
-          banWing(leftBans, leftColor) +
-        '</div>';
+      // Center context: the map being PLAYED (findCurrentMapIndex — this is
+      // the in-game scene, unlike hero-bans/map-intro which prefer the ban
+      // resolver's map). Falls back to the last completed map when nothing is
+      // live (post-series hold on the gameplay scene).
+      var mapIdx = findCurrentMapIndex(maps);
+      if (mapIdx < 0 || !maps[mapIdx]) {
+        for (var mi = maps.length - 1; mi >= 0; mi--) {
+          if (maps[mi] && maps[mi].status === 'completed') { mapIdx = mi; break; }
+        }
+      }
+      var currentMap = (mapIdx >= 0 && maps[mapIdx]) ? maps[mapIdx] : {};
+      var line1 = currentMap.name
+        ? 'MAP ' + (mapIdx + 1) + ' · ' + currentMap.name
+        : (state.eventName || 'MATCH');
+      var line2 = 'FIRST TO ' + threshold + (currentMap.mode ? ' · ' + currentMap.mode : '');
 
-      // RIGHT region: mirrored — plate on the outer edge, wing inner.
-      document.querySelector('#hud-right .slot-content').innerHTML =
-        '<div class="hud-row hud-row-right" style="--plate-color:' + rightColor + '">' +
-          teamPlate({ side: 'right', name: rightTeam.name, logo: rightTeam.logo,
-                      score: scoreOf(rightTeam), color: rightColor, linework: true }) +
-          banWing(rightBans, rightColor) +
-        '</div>';
+      function scoreBox(score, color, pop) {
+        var style = 'background:' + escapeHtml(color) + ';';
+        if (pop) style += 'animation: hudScorePop 0.45s ease-out both;';
+        return '<div class="hbar-score" style="' + style + '">' + score + '</div>';
+      }
 
-      // CENTER band: event pill | pinwheel medallion (TRUE scores in hub, TRUE
-      // team colors) | winner pips. (The current-map pill was removed in QA
-      // batch 1 — it duplicated the map name already shown on the board.)
-      var hubText = scoreOf(t1) + '·' + scoreOf(t2); // "2·1"
-      document.querySelector('#hud-center .slot-content').innerHTML =
-        '<div class="v2-center-block">' +
-          eventHeader({ eventName: state.eventName || 'MATCH', subtitle: 'BO' + bestOf }) +
-          '<div class="v2-medallion">' +
-            pinwheelSVG({ color1: t1color, color2: t2color, size: 62, hubText: hubText }) +
+      document.querySelector('#hud-bar .slot-content').innerHTML =
+        '<div class="hbar">' +
+          sideHtml(leftTeam, leftBans, 'left') +
+          scoreBox(leftScore, leftColor, leftPop) +
+          '<div class="hbar-center">' +
+            // Idle glow on the crest — opacity/filter, safe under the
+            // wrapper's slideDown `both` fill.
+            '<span class="v2-medallion v2-idle-glow">' +
+              pinwheelSVG({ color1: t1color, color2: t2color, size: 30 }) + '</span>' +
+            '<div class="hbar-center-stack">' +
+              '<span class="hbar-center-line1">' + escapeHtml(line1) + '</span>' +
+              '<span class="hbar-center-line2">' + escapeHtml(line2) + '</span>' +
+            '</div>' +
+            '<span class="hbar-underline v2-underline"></span>' +
           '</div>' +
-          mapPips({ maps: maps, bestOf: bestOf, team1Color: t1color, team2Color: t2color }) +
+          scoreBox(rightScore, rightColor, rightPop) +
+          sideHtml(rightTeam, rightBans, 'right') +
+        '</div>';
+
+      // Tier 2 left: event/season context.
+      var eventText = (state.eventName || 'MATCH') + ' · BO' + bestOf;
+      document.querySelector('#hud-sub-left .slot-content').innerHTML =
+        '<div class="hsub"><span class="hsub-event">' + escapeHtml(eventText) + '</span></div>';
+
+      // Tier 2 right: PICK tag (live map's picker, swatch in the picker's
+      // TRUE color — identity, not screen side) + the named map track.
+      var pickHtml = '';
+      var liveMap = (findCurrentMapIndex(maps) >= 0) ? maps[findCurrentMapIndex(maps)] : null;
+      if (liveMap && liveMap.picker === 'team1') {
+        pickHtml = '<span class="hsub-pick"><span class="hsub-pick-swatch" style="background:' + escapeHtml(t1color) + '"></span>' +
+          escapeHtml(t1.name || 'TEAM 1') + ' PICK</span>';
+      } else if (liveMap && liveMap.picker === 'team2') {
+        pickHtml = '<span class="hsub-pick"><span class="hsub-pick-swatch" style="background:' + escapeHtml(t2color) + '"></span>' +
+          escapeHtml(t2.name || 'TEAM 2') + ' PICK</span>';
+      }
+      document.querySelector('#hud-sub-right .slot-content').innerHTML =
+        '<div class="hsub hsub-right">' + pickHtml +
+        mapPips({ maps: maps, bestOf: bestOf, team1Color: t1color, team2Color: t2color }) +
         '</div>';
     }
 

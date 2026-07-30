@@ -9,7 +9,7 @@ import {
   loadCamLayouts,
   assertReviverSourceSupport,
   normalizeAssign,
-  ensureBanRevealScene,
+  ensureOverlayScene,
   applyCarryover,
   isNonEmptyCarry,
   SCENE_MAP,
@@ -178,9 +178,11 @@ describe('regenerated collections', () => {
       const item = scene.settings.items.find((it) => it.name === 'Ban Reveal BS');
       expect(item.source_uuid).toBe(bs.uuid);
       expect(item.bounds).toEqual({ x: 1920, y: 1080 });
-      // scene_order: Ban Reveal immediately follows Map Pick.
+      // scene_order (owner QA batch 3): Map Pool slots between Map Pick and
+      // Ban Reveal — the pick/ban comms flow reads Pick -> Pool -> Reveal.
       const order = obj.scene_order.map((o) => o.name);
-      expect(order[order.indexOf('Map Pick') + 1]).toBe('Ban Reveal');
+      expect(order[order.indexOf('Map Pick') + 1]).toBe('Map Pool');
+      expect(order[order.indexOf('Map Pick') + 2]).toBe('Ban Reveal');
     }
   });
 
@@ -212,7 +214,7 @@ describe('regenerated collections', () => {
   });
 });
 
-describe('ensureBanRevealScene (2c)', () => {
+describe('ensureOverlayScene (2c, generalized in owner QA batch 3)', () => {
   // A minimal collection with a Map Pick scene but NO Ban Reveal.
   function bareCollection() {
     return {
@@ -229,7 +231,7 @@ describe('ensureBanRevealScene (2c)', () => {
 
   it('creates the scene + browser-source + scene_order entry when absent', () => {
     const obj = bareCollection();
-    const r = ensureBanRevealScene(obj);
+    const r = ensureOverlayScene(obj, BAN_REVEAL);
     expect(r.status).toBe('ban-reveal-created');
     const scene = obj.sources.find((s) => s.id === 'scene' && s.name === 'Ban Reveal');
     const bs = obj.sources.find((s) => s.id === 'browser_source' && s.name === 'Ban Reveal BS');
@@ -245,9 +247,9 @@ describe('ensureBanRevealScene (2c)', () => {
 
   it('is idempotent — a second call is a no-op (no duplicates)', () => {
     const obj = bareCollection();
-    ensureBanRevealScene(obj);
+    ensureOverlayScene(obj, BAN_REVEAL);
     const afterFirst = JSON.stringify(obj);
-    const r2 = ensureBanRevealScene(obj);
+    const r2 = ensureOverlayScene(obj, BAN_REVEAL);
     expect(r2.status).toBe('ban-reveal-present');
     expect(JSON.stringify(obj)).toBe(afterFirst);
     expect(obj.sources.filter((s) => s.name === 'Ban Reveal').length).toBe(1);

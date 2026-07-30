@@ -127,6 +127,22 @@ const BAN_REVEAL = {
   bsUuid: 'a0000001-000f-4000-8000-00000000000f',
   url: 'http://localhost:3001/overlays/hero-bans.html',
   afterScene: 'Map Pick',
+  afterBs: 'Map Pick BS',
+};
+
+// ---- Map Pool scene (owner QA batch 3) ----------------------------------
+// Season pool board (map-pool.html + state.mapPool from Settings). Sits
+// between Map Pick and Ban Reveal in the scene order — the producer shows it
+// during pick/ban comms. Same fixed-UUID idempotent ensure as Ban Reveal
+// (next literals in each family's series: 0x10).
+const MAP_POOL = {
+  sceneName: 'Map Pool',
+  sceneUuid: 'e0000005-0010-4000-8000-000000000010',
+  bsName: 'Map Pool BS',
+  bsUuid: 'a0000001-0010-4000-8000-000000000010',
+  url: 'http://localhost:3001/overlays/map-pool.html',
+  afterScene: 'Map Pick',
+  afterBs: 'Map Pick BS',
 };
 
 // ---- Settings carryover (owner QA batch 1) ------------------------------
@@ -261,24 +277,24 @@ function makeOverlayItem(name, sourceUuid, id) {
   return it;
 }
 
-// Ensure the "Ban Reveal" scene + its browser-source exist (idempotent). Adds
-// the browser_source right after "Map Pick BS", the scene right after the
-// "Map Pick" scene in `sources`, and a scene_order entry right after
-// "Map Pick". Returns a change record (created | present).
-function ensureBanRevealScene(obj) {
+// Ensure an overlay scene + its browser-source exist (idempotent) — used for
+// Ban Reveal and Map Pool. Adds the browser_source right after spec.afterBs,
+// the scene right after spec.afterScene in `sources`, and a scene_order entry
+// right after spec.afterScene. Returns a change record (created | present).
+function ensureOverlayScene(obj, spec) {
   const sources = obj.sources || (obj.sources = []);
-  const hasScene = sources.some((s) => s && s.id === 'scene' && s.name === BAN_REVEAL.sceneName);
-  if (hasScene) return { status: 'ban-reveal-present' };
+  const hasScene = sources.some((s) => s && s.id === 'scene' && s.name === spec.sceneName);
+  if (hasScene) return { status: spec.sceneName.toLowerCase().replace(' ', '-') + '-present' };
 
   // Browser source — mirror the "Map Pick BS" shape exactly.
   const bs = {
     prev_ver: 29,
-    name: BAN_REVEAL.bsName,
-    uuid: BAN_REVEAL.bsUuid,
+    name: spec.bsName,
+    uuid: spec.bsUuid,
     versioned_id: 'browser_source',
     id: 'browser_source',
     settings: {
-      url: BAN_REVEAL.url,
+      url: spec.url,
       width: 1920,
       height: 1080,
       css: '',
@@ -297,12 +313,12 @@ function ensureBanRevealScene(obj) {
   // Scene source — mirror the "Map Pick" scene shape (one full-frame BS item).
   const scene = {
     prev_ver: 29,
-    name: BAN_REVEAL.sceneName,
-    uuid: BAN_REVEAL.sceneUuid,
+    name: spec.sceneName,
+    uuid: spec.sceneUuid,
     versioned_id: 'scene',
     id: 'scene',
     settings: {
-      items: [makeOverlayItem(BAN_REVEAL.bsName, BAN_REVEAL.bsUuid, 1)],
+      items: [makeOverlayItem(spec.bsName, spec.bsUuid, 1)],
       custom_size: false,
       id_counter: 1,
     },
@@ -320,15 +336,15 @@ function ensureBanRevealScene(obj) {
     const i = arr.findIndex(pred);
     if (i === -1) arr.push(item); else arr.splice(i + 1, 0, item);
   };
-  insertAfter(sources, (s) => s && s.name === 'Map Pick BS', bs);
-  insertAfter(sources, (s) => s && s.id === 'scene' && s.name === BAN_REVEAL.afterScene, scene);
+  insertAfter(sources, (s) => s && s.name === spec.afterBs, bs);
+  insertAfter(sources, (s) => s && s.id === 'scene' && s.name === spec.afterScene, scene);
 
   const order = obj.scene_order || (obj.scene_order = []);
-  if (!order.some((o) => o && o.name === BAN_REVEAL.sceneName)) {
-    insertAfter(order, (o) => o && o.name === BAN_REVEAL.afterScene, { name: BAN_REVEAL.sceneName });
+  if (!order.some((o) => o && o.name === spec.sceneName)) {
+    insertAfter(order, (o) => o && o.name === spec.afterScene, { name: spec.sceneName });
   }
 
-  return { status: 'ban-reveal-created' };
+  return { status: spec.sceneName.toLowerCase().replace(' ', '-') + '-created' };
 }
 
 // Ensure the Ban Reveal scene carries caster audio (owner QA batch 3): the
@@ -341,11 +357,11 @@ function ensureBanRevealScene(obj) {
 // an item already present (by name) is never duplicated.
 const BAN_REVEAL_AUDIO_ITEMS = ['Caster 1', 'Caster 2', 'Casters Background Music'];
 
-function ensureBanRevealAudio(obj) {
+function ensureSceneAudio(obj, sceneName) {
   const sources = obj.sources || [];
-  const banScene = sources.find((s) => s && s.id === 'scene' && s.name === BAN_REVEAL.sceneName);
+  const banScene = sources.find((s) => s && s.id === 'scene' && s.name === sceneName);
   const pickScene = sources.find((s) => s && s.id === 'scene' && s.name === 'Map Pick');
-  if (!banScene || !pickScene) return { status: 'ban-reveal-audio-scenes-missing' };
+  if (!banScene || !pickScene) return { status: sceneName + '-audio-scenes-missing' };
 
   const banItems = banScene.settings.items || (banScene.settings.items = []);
   const pickItems = pickScene.settings.items || [];
@@ -379,7 +395,7 @@ function ensureBanRevealAudio(obj) {
     added.push(name);
   }
   banScene.settings.id_counter = new RawNum(String(counter));
-  return { status: added.length ? `ban-reveal-audio-added: ${added.join(', ')}` : 'ban-reveal-audio-present' };
+  return { status: added.length ? `${sceneName} audio added: ${added.join(', ')}` : sceneName + '-audio-present' };
 }
 
 // True if a carry value is worth copying. Strings must be non-blank; arrays
@@ -422,10 +438,16 @@ function processCollection(obj) {
 
   // Ensure the Ban Reveal scene exists BEFORE the cam-bake pass (so the pass
   // sees a complete collection). Idempotent.
-  const banReveal = ensureBanRevealScene(obj);
+  const banReveal = ensureOverlayScene(obj, BAN_REVEAL);
   changes.push({ scene: BAN_REVEAL.sceneName, cam: null, status: banReveal.status });
-  const banRevealAudio = ensureBanRevealAudio(obj);
-  changes.push({ scene: BAN_REVEAL.sceneName, cam: null, status: banRevealAudio.status });
+  // Map Pool inserts after Map Pick too — ensured AFTER Ban Reveal so the
+  // final scene order reads Map Pick -> Map Pool -> Ban Reveal.
+  const mapPool = ensureOverlayScene(obj, MAP_POOL);
+  changes.push({ scene: MAP_POOL.sceneName, cam: null, status: mapPool.status });
+  for (const audioScene of [BAN_REVEAL.sceneName, MAP_POOL.sceneName]) {
+    const audio = ensureSceneAudio(obj, audioScene);
+    changes.push({ scene: audioScene, cam: null, status: audio.status });
+  }
 
   const scenes = (obj.sources || []).filter((s) => s && s.id === 'scene');
   const byName = new Map(scenes.map((s) => [s.name, s]));
@@ -601,4 +623,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   main();
 }
 
-export { parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, assertReviverSourceSupport, normalizeAssign, makeSceneItem, makeOverlayItem, ensureBanRevealScene, applyCarryover, isNonEmptyCarry, loadCarrySources, SCENE_MAP, CARRY_SOURCES, BAN_REVEAL, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_OUTER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };
+export { parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, assertReviverSourceSupport, normalizeAssign, makeSceneItem, makeOverlayItem, ensureOverlayScene, ensureSceneAudio, applyCarryover, isNonEmptyCarry, loadCarrySources, SCENE_MAP, CARRY_SOURCES, BAN_REVEAL, MAP_POOL, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_OUTER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };

@@ -126,6 +126,27 @@ Third round of owner feedback on the v2 package:
   bob + sub-degree tilt, 7 s) applied to the ban art leaf at reveal scale —
   Ban Reveal's banned heroes gently idle while the scene holds. Deck-scale
   tiles (Map Intro bookends) deliberately stay still.
+- **Gameplay HUD rebuilt as "Full Frame" (Concept D, owner-approved).** The
+  three floating regions are replaced by a two-tier OWCS-style top frame:
+  tier 1 (edge to edge, 54 px) carries ban chips (hero portrait + BAN tag),
+  team logo/name, and team-colored score boxes flanking a center keystone
+  chip (crest + "MAP n · NAME" + "FIRST TO x · MODE" + gradient underline
+  with a ~32 s shimmer sweep); tier 2 (38 px, sides only — the game's
+  objective UI span stays open) carries the event/season strip and the
+  named map track (shared mapPips) with a live-map PICK tag. Score boxes
+  play a one-shot pop+glow only when that team's score actually changed
+  (scene-local diff — unrelated data ticks can't replay it).
+- **Season Map Pool feature.** New `state.mapPool` (persisted like all
+  state), a Settings → Season Map Pool editor (checkbox grid grouped by
+  mode from `/api/maps`, saved via PATCH so it survives restarts), a new
+  `map-pool.html` overlay (mode columns; played maps grayscale with the
+  picker's badge + final round score; live map lit with a LIVE tag; empty
+  pool shows a configure hint instead of dead air; footer = series pips +
+  format chip), and a "Map Pool" OBS scene (generator ensure between Map
+  Pick and Ban Reveal + live obs-websocket injection, both with caster
+  audio). Map-name matching is normalization-tolerant (typographic vs
+  ASCII apostrophes — "King's Row" from FACEIT matches "King’s Row" from
+  the OverFast catalog).
 - **Ban Reveal carries caster audio.** The Ban Reveal scene now includes
   `Caster 1`, `Caster 2`, and `Casters Background Music`, copied from Map
   Pick's items (same offscreen-tiny-scale audio trick, same transforms) —

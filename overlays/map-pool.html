@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Map Pool Overlay</title>
+  <!-- Broadcast v2 — Season Map Pool board (owner QA batch 3, approved from
+       the concept artifact; modeled on the OWCS pool screen the owner
+       clipped). Shows the SEASON's legal pool (state.mapPool, set in the
+       dashboard's Settings → Season Map Pool editor) grouped into mode
+       columns, cross-referenced against the CURRENT SERIES (state.maps):
+       played maps gray out with the picker's badge + final round score, the
+       live map gets a lit border + LIVE tag, untouched maps stay full color
+       ("what's left to pick"). Producer flow: show this during pick/ban
+       comms, then the existing Map Pick board for the series recap.
+
+       Full-screen scene on the petal texture (applyTextureBg — this is a
+       tab-out board like map-pick, not an over-video scene). Pool card art
+       comes from /api/maps' screenshot field routed through the server's
+       image proxy (OBS overlays never hotlink remote images — the
+       obs-overlay constraint that motivated /api/proxy-image). Same stack +
+       conventions as every v2 scene; NO ?./?? in the inline script (OBS
+       Chromium 103 floor). -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
+    }
+    #root { position: relative; width: 1920px; height: 1080px; }
+    #mpo-bg { position: absolute; inset: 0; }
+    #root > div:not([id]) { display: none; }
+
+    /* ── Header: team chips flanking the crest (map-pick's header anatomy,
+       scene-local build) ─────────────────────────────────────────────────── */
+    #mpo-header { position: absolute; top: 26px; left: 0; right: 0; z-index: 2; }
+    .mpo-hdr-row { display: flex; align-items: center; justify-content: center; gap: 26px; }
+    .mpo-chip {
+      display: flex; align-items: center; gap: 12px; background: var(--panel-bg);
+      border: var(--panel-border); border-radius: var(--panel-radius); padding: 8px 16px;
+    }
+    .mpo-chip-logo { width: 40px; height: 40px; border-radius: var(--panel-radius); object-fit: cover; flex: none; }
+    .mpo-chip-name { font-size: 26px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+    .mpo-chip-score { font-size: 26px; font-weight: 800; padding: 2px 12px; border-radius: var(--panel-radius); flex: none; }
+    .mpo-crest { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .mpo-crest-event {
+      font-size: 15px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(255,255,255,0.55); max-width: 700px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ── Pool grid: one column per mode present in the pool ───────────────── */
+    #mpo-grid { position: absolute; top: 150px; left: 60px; right: 60px; bottom: 120px; z-index: 2; }
+    .mpo-grid-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 22px; height: 100%; }
+    .mpo-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .mpo-mode {
+      text-align: center; font-size: 18px; font-weight: 800; letter-spacing: 3px;
+      text-transform: uppercase; color: rgba(255,255,255,0.75);
+      background: var(--panel-bg); border: var(--panel-border);
+      border-radius: var(--panel-radius); padding: 8px 0; flex: none;
+    }
+    .mpo-card {
+      position: relative; border-radius: var(--panel-radius); overflow: hidden;
+      flex: 1; min-height: 0; border: 1px solid rgba(255,255,255,0.16); background: #10131b;
+    }
+    .mpo-card-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .mpo-card-name {
+      position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 12px;
+      background: rgba(8,10,15,0.88); font-size: 19px; font-weight: 800;
+      letter-spacing: 1px; text-transform: uppercase;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mpo-card-out .mpo-card-img { filter: grayscale(1) brightness(0.45); }
+    .mpo-card-out .mpo-card-name { color: rgba(255,255,255,0.45); }
+    .mpo-card-live { border: 2px solid #fff; box-shadow: 0 0 30px rgba(255,255,255,0.25); }
+    .mpo-badge {
+      position: absolute; top: 8px; left: 8px; display: flex; align-items: center; gap: 8px;
+      background: rgba(8,10,15,0.92); border-radius: var(--panel-radius); padding: 4px 8px;
+      border: 1px solid rgba(255,255,255,0.2); font-size: 12.5px; font-weight: 800; letter-spacing: 1px;
+      text-transform: uppercase; max-width: calc(100% - 90px);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mpo-badge-logo { width: 26px; height: 26px; border-radius: var(--panel-radius); object-fit: cover; flex: none; }
+    .mpo-score-tag, .mpo-live-tag {
+      position: absolute; top: 8px; right: 8px; border-radius: var(--panel-radius);
+      padding: 4px 10px; font-size: 15px; font-weight: 800;
+    }
+    .mpo-score-tag { background: rgba(8,10,15,0.92); border: 1px solid rgba(255,255,255,0.2); }
+    .mpo-live-tag { background: #fff; color: #0a0c11; letter-spacing: 2px; font-size: 13px; }
+
+    /* Empty-pool state — same never-dead-air rule as Ban Reveal's AWAITING
+       chip: the producer sees a configure hint, not a blank board. */
+    .mpo-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    .mpo-empty-chip {
+      font-weight: 800; font-size: 30px; letter-spacing: 3px; text-transform: uppercase;
+      color: rgba(255,255,255,0.34); background: rgba(8,10,15,0.35);
+      border: 2px solid rgba(255,255,255,0.14); border-radius: var(--panel-radius);
+      padding: 18px 44px; text-align: center;
+    }
+
+    /* ── Footer: series pips + format chip ─────────────────────────────────── */
+    #mpo-footer { position: absolute; bottom: 34px; left: 0; right: 0; z-index: 2; }
+    .mpo-foot-row { display: flex; align-items: center; justify-content: center; gap: 18px; }
+    .mpo-foot-bo {
+      background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+      font-size: 20px; font-weight: 800; letter-spacing: 2px; padding: 8px 16px;
+    }
+    #mpo-footer .v2-pips { gap: 8px; }
+    #mpo-footer .v2-pip { width: 46px; height: 34px; border-radius: 3px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./bg-helper.js"></script>
+  <script src="./overlay-core.js"></script>
+  <script src="./state-sync.js"></script>
+  <script>
+    var API = 'http://localhost:3001';
+    var mapData = [];      // /api/maps: [{ name, gamemodes, screenshot }]
+    var mapDataByName = {};
+
+    // Name normalization for cross-source matching: the OverFast catalog uses
+    // typographic apostrophes ("King’s Row") while FACEIT/state and manual
+    // entry use ASCII ("King's Row"); accents get the same NFD-strip treatment
+    // as normHeroName/_mapAbbrev.
+    function normMapName(name) {
+      return String(name || '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[‘’]/g, "'")
+        .toLowerCase().trim();
+    }
+
+    // Dep: the full map catalog (art + modes) for pool cards. Per-dep catch in
+    // overlay-core means a fetch failure leaves an empty catalog (cards render
+    // name-only) rather than blocking the scene.
+    function loadMapCatalog() {
+      return fetch(API + '/api/maps')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          mapData = d || [];
+          mapDataByName = {};
+          for (var i = 0; i < mapData.length; i++) {
+            if (mapData[i] && mapData[i].name) mapDataByName[normMapName(mapData[i].name)] = mapData[i];
+          }
+        })
+        .catch(function () { mapData = []; mapDataByName = {}; });
+    }
+
+    // Mode display order (columns appear only for modes the pool contains).
+    var MODE_ORDER = ['control', 'escort', 'hybrid', 'push', 'flashpoint'];
+
+    function proxied(url) {
+      if (!url) return '';
+      if (url.indexOf('http://localhost') === 0) return url; // already local/proxied
+      return API + '/api/proxy-image?url=' + encodeURIComponent(url);
+    }
+
+    function scoreOf(team) {
+      return (team.score === undefined || team.score === null) ? 0 : team.score;
+    }
+
+    // Series lookup: pool cards match state.maps entries BY NAME (the series'
+    // maps are the source of truth for played/live/picker/score).
+    function seriesEntry(maps, name) {
+      for (var i = 0; i < maps.length; i++) {
+        if (maps[i] && normMapName(maps[i].name) === normMapName(name)) return maps[i];
+      }
+      return null;
+    }
+
+    function teamShort(team, fallback) {
+      var n = (team && team.name) || fallback;
+      // First MEANINGFUL word, capped — leading articles produce nonsense
+      // markers ("The Fallen" -> "THE PICK"), so skip them; the logo +
+      // position carry full identity anyway.
+      var words = String(n).split(/\s+/).filter(function (w) {
+        return ['the', 'team', 'a', 'an'].indexOf(w.toLowerCase()) === -1;
+      });
+      return (words[0] || String(n).split(/\s+/)[0] || '').slice(0, 8);
+    }
+
+    function cardHtml(name, series, t1, t2, delay) {
+      var cat = mapDataByName[normMapName(name)] || {};
+      var img = proxied(cat.screenshot);
+      var cls = 'mpo-card';
+      var overlays = '';
+
+      if (series && series.status === 'completed') {
+        cls += ' mpo-card-out';
+      } else if (series && (series.status === 'current' || series.status === 'in_progress')) {
+        cls += ' mpo-card-live';
+        overlays += '<div class="mpo-live-tag">LIVE</div>';
+      }
+
+      if (series && series.picker === 'team1') {
+        overlays += '<div class="mpo-badge">' +
+          (t1.logo ? safeImg(t1.logo, { 'class': 'mpo-badge-logo', alt: t1.name || '' }) : '') +
+          escapeHtml(teamShort(t1, 'TEAM 1')) + ' PICK</div>';
+      } else if (series && series.picker === 'team2') {
+        overlays += '<div class="mpo-badge">' +
+          (t2.logo ? safeImg(t2.logo, { 'class': 'mpo-badge-logo', alt: t2.name || '' }) : '') +
+          escapeHtml(teamShort(t2, 'TEAM 2')) + ' PICK</div>';
+      }
+      if (series && series.status === 'completed' && series.roundScore) {
+        overlays += '<div class="mpo-score-tag">' + escapeHtml(series.roundScore) + '</div>';
+      }
+
+      return '<div class="' + cls + '" style="animation: fadeIn 0.4s ease-out ' + delay.toFixed(2) + 's both;">' +
+        (img ? safeImg(img, { 'class': 'mpo-card-img', alt: name }) : '') +
+        overlays +
+        '<div class="mpo-card-name">' + escapeHtml(name) + '</div>' +
+        '</div>';
+    }
+
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'map-pool-v2');
+      root.innerHTML = '<div id="mpo-bg"></div>' +
+        '<div id="mpo-header" style="animation: slideDown 0.5s ease-out 0.10s both;"><div class="slot-content"></div></div>' +
+        '<div id="mpo-grid"><div class="slot-content" style="height:100%"></div></div>' +
+        '<div id="mpo-footer" style="animation: slideUp 0.5s ease-out 0.30s both;"><div class="slot-content"></div></div>';
+      applyTextureBg(document.getElementById('mpo-bg'));
+    }
+
+    // key: EXACTLY the leaves render reads. mapPool is the board itself; maps
+    // reduced to the cross-ref fields; teams feed chips + badges.
+    function key(state) {
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var maps = (state.maps || []).map(function (m) {
+        return [m.name, m.status, m.winner, m.picker, m.roundScore];
+      });
+      return [
+        state.mapPool, maps,
+        t1.name, t1.logo, t1.score, t1.color,
+        t2.name, t2.logo, t2.score, t2.color,
+        state.eventName, state.bestOf,
+        theme.team1Color, theme.team2Color
+      ];
+    }
+
+    function render(state) {
+      applyTheme(state);
+
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var t1color = theme.team1Color || t1.color || '#3b82f6';
+      var t2color = theme.team2Color || t2.color || '#ef4444';
+      var maps = state.maps || [];
+      var bestOf = state.bestOf || maps.length || 5;
+      var pool = state.mapPool || [];
+
+      // Header — no swapSides here: like map-pick's header, this is an
+      // identity board, not a screen-side presentation.
+      document.querySelector('#mpo-header .slot-content').innerHTML =
+        '<div class="mpo-hdr-row">' +
+          '<div class="mpo-chip">' +
+            (t1.logo ? safeImg(t1.logo, { 'class': 'mpo-chip-logo v2-idle-breathe', alt: t1.name || '' }) : '') +
+            '<span class="mpo-chip-name">' + escapeHtml(t1.name || 'Team 1') + '</span>' +
+            '<span class="mpo-chip-score" style="background:' + escapeHtml(t1color) + '">' + scoreOf(t1) + '</span>' +
+          '</div>' +
+          '<div class="mpo-crest">' +
+            '<span class="v2-medallion v2-idle-glow">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 56 }) + '</span>' +
+            '<span class="mpo-crest-event">' + escapeHtml((state.eventName || 'MATCH') + ' · BO' + bestOf) + '</span>' +
+          '</div>' +
+          '<div class="mpo-chip">' +
+            '<span class="mpo-chip-score" style="background:' + escapeHtml(t2color) + '">' + scoreOf(t2) + '</span>' +
+            '<span class="mpo-chip-name">' + escapeHtml(t2.name || 'Team 2') + '</span>' +
+            (t2.logo ? safeImg(t2.logo, { 'class': 'mpo-chip-logo v2-idle-breathe', alt: t2.name || '' }) : '') +
+          '</div>' +
+        '</div>';
+
+      // Grid — pool grouped into mode columns; cards stagger their fade by
+      // column then row (render-output animations, full inline shorthand).
+      var gridHtml;
+      if (pool.length === 0) {
+        gridHtml = '<div class="mpo-empty"><div class="mpo-empty-chip">No map pool set<br>' +
+          '<span style="font-size:18px;letter-spacing:2px">Settings → Season Map Pool</span></div></div>';
+      } else {
+        var cols = '';
+        var colIdx = 0;
+        for (var mo = 0; mo < MODE_ORDER.length; mo++) {
+          var mode = MODE_ORDER[mo];
+          var names = [];
+          for (var p = 0; p < pool.length; p++) {
+            var cat = mapDataByName[normMapName(pool[p])];
+            var modes = (cat && cat.gamemodes) || [];
+            if (modes.indexOf(mode) !== -1) names.push(pool[p]);
+          }
+          if (names.length === 0) continue;
+          var cards = '';
+          for (var c = 0; c < names.length; c++) {
+            cards += cardHtml(names[c], seriesEntry(maps, names[c]), t1, t2, 0.15 + colIdx * 0.06 + c * 0.05);
+          }
+          cols += '<div class="mpo-col">' +
+            '<div class="mpo-mode" style="animation: fadeIn 0.4s ease-out ' + (0.12 + colIdx * 0.06).toFixed(2) + 's both;">' + escapeHtml(mode) + '</div>' +
+            cards + '</div>';
+          colIdx++;
+        }
+        gridHtml = '<div class="mpo-grid-row">' + cols + '</div>';
+      }
+      document.querySelector('#mpo-grid .slot-content').innerHTML = gridHtml;
+
+      // Footer — series pips (TRUE winner colors) + format chip.
+      document.querySelector('#mpo-footer .slot-content').innerHTML =
+        '<div class="mpo-foot-row">' +
+          mapPips({ maps: maps, bestOf: bestOf, team1Color: t1color, team2Color: t2color }) +
+          '<span class="mpo-foot-bo">BO' + bestOf + '</span>' +
+        '</div>';
+    }
+
+    defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render,
+      deps: [loadMapCatalog]
+    });
+  </script>
+</body>
+</html>

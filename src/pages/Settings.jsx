@@ -48,6 +48,31 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
   const [castersBgMusicSelected, setCastersBgMusicSelected] = useState(state.castersBgMusicFile || '');
   const [bgMusicSaving, setBgMusicSaving] = useState(false);
   const [bgMusicError, setBgMusicError] = useState('');
+
+  // Season Map Pool editor (feeds state.mapPool → Map Pool overlay/scene).
+  const [allMaps, setAllMaps] = useState([]);
+  const [mapPoolSel, setMapPoolSel] = useState(() => new Set(state.mapPool || []));
+  const [mapPoolDirty, setMapPoolDirty] = useState(false);
+  useEffect(() => {
+    fetch(`${api}/api/maps`).then(r => r.json()).then(setAllMaps).catch(() => {});
+  }, [api]);
+  // Re-sync from state only while the editor has no local edits (same
+  // local-edits-win rule the Theming page needed).
+  useEffect(() => {
+    if (!mapPoolDirty) setMapPoolSel(new Set(state.mapPool || []));
+  }, [state.mapPool, mapPoolDirty]);
+  const toggleMapPool = (name) => {
+    setMapPoolSel(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+    setMapPoolDirty(true);
+  };
+  const saveMapPool = async () => {
+    await updateState({ mapPool: [...mapPoolSel] });
+    setMapPoolDirty(false);
+  };
   const [browseTarget, setBrowseTarget] = useState(null); // 'flythroughs' | 'mapMusic' | 'bgMusic' | null
   const [dirtyFields, setDirtyFields] = useState(new Set());
   const markDirty = (field) => {
@@ -282,6 +307,53 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             <div>⏺ <strong>Enable</strong> — Settings → Output → Replay Buffer → ✅ Enable. Set Maximum Replay Time to 20s, Maximum Memory to 512 MB.</div>
             <div>📎 <strong>Usage</strong> — Toggle buffer ON in Production Controls, save clips during gameplay, then play them in Between Matches with auto-cycling.</div>
           </div>
+        </div>
+      </div>
+
+      {/* Season Map Pool — feeds the Map Pool overlay/scene. Saved into
+          state.mapPool via PATCH, so it persists in state.json across
+          restarts and only needs re-picking when the league rotates maps. */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">🗺️ Season Map Pool</span>
+          <span style={{ fontSize: '0.7rem', color: mapPoolDirty ? 'var(--warning, #f59e0b)' : 'var(--text-muted)' }}>
+            {mapPoolSel.size} selected{mapPoolDirty ? ' · unsaved' : ''}
+          </span>
+        </div>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '8px 0' }}>
+          Pick the maps that are legal in the current league season. The Map Pool scene shows this pool with
+          picks/bans grayed out as the series progresses.
+        </p>
+        {allMaps.length === 0 ? (
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Loading map list…</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
+            {['control', 'escort', 'hybrid', 'push', 'flashpoint'].map(mode => (
+              <div key={mode}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)', marginBottom: 6 }}>{mode}</div>
+                <div style={{ display: 'grid', gap: 4 }}>
+                  {allMaps.filter(m => (m.gamemodes || []).includes(mode)).map(m => (
+                    <label key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={mapPoolSel.has(m.name)}
+                        onChange={() => toggleMapPool(m.name)}
+                      />
+                      {m.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button className="btn btn-primary" onClick={saveMapPool} disabled={!mapPoolDirty}>
+            {mapPoolDirty ? 'Save Map Pool' : 'Saved'}
+          </button>
+          <button className="btn btn-ghost" onClick={() => { setMapPoolSel(new Set()); setMapPoolDirty(true); }}>
+            Clear
+          </button>
         </div>
       </div>
 

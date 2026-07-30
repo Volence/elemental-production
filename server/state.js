@@ -29,6 +29,7 @@ const defaultState = {
   players: { team1: [], team2: [] },
   playerStats: [],
   mapVeto: [], // { action: 'ban'|'pick', team: 'team1'|'team2', map: {} }
+  mapPool: [], // season-level legal map pool (map NAMES, as in /api/maps). Set from Settings' "Season Map Pool" editor; persisted like all state so it survives restarts. Empty = pool board shows a configure hint.
   casters: [
     { name: 'Caster 1', camUrl: '', visible: true },
     { name: 'Caster 2', camUrl: '', visible: true },
