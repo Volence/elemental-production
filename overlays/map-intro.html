@@ -6,10 +6,42 @@
   <!-- Broadcast v2: same stack as gameplay-hud.html/map-pick.html/hero-bans.html
        — no Google Fonts (Geist via @font-face in fonts-v2.css); theme-v2.css/
        fonts-v2.css/animations.css own tokens + shared component-internal
-       styles; this file's own <style> owns scene-local layout. UNLIKE the
-       other three scenes, this one stays TRANSPARENT with only a dark
-       gradient wash (it renders OVER the map flythrough video) — NO
-       applyTextureBg/petal texture, no bg-helper.js script tag. -->
+       styles; this file's own <style> owns scene-local layout.
+
+       OWNER QA BATCH 2 REDESIGN: the old scene was a HUD-style top frame bar
+       plus a wide, mostly-empty lower score deck. Owner verdict: the top bar
+       felt "squished/linear" and the bottom bar was "mostly empty… kind of
+       meh", and — crucially — the flythrough video behind this scene does NOT
+       need to stay visible ("we can have anything in the middle or any
+       space"). So this is now a CENTERED full-screen BEAT (same family as
+       hero-bans.html's Ban Reveal / series-winner.html's winner reveal): a big
+       map name is the star, with a matchup band beneath flanked by ban art
+       tiles. The topFrame() bar is gone entirely.
+
+       Like map-pick/hero-bans it renders OVER the map flythrough video (an OBS
+       media source) — so NO petal texture / applyTextureBg / bg-helper.js.
+       Legibility over the moving video comes from (1) the dark over-video
+       gradient wash kept from the pre-v2 scene (.bg-overlay, #mi-bg — an id'd
+       child so #root>div:not([id]) still only hides overlay-core's trailing
+       container) and (2) subtle team washes + solid panel/chip backgrounds +
+       text-shadows, which is what lets the composition read on both a dark and
+       a light/gray moving background.
+
+       RENDER-OUTPUT ANIMATIONS (hero-bans.html's documented, plan-sanctioned
+       deviation from the package's "shell owns the only entrance animations"
+       rule, applied here too): shell() builds ONLY the persistent, id'd,
+       animation-free chrome — the gradient wash, the two team washes (colors
+       set later via a CSS custom property, never a rebuild), and the centered
+       stage wrapper. EVERY visible piece of the beat — eyebrow, map name,
+       underline, chips, matchup band, ban tiles — is emitted fresh by render()
+       with its own inline `animation:...both` shorthand, staggered, and all of
+       it is rebuilt together on every keyed render. That's correct here: every
+       field in this scene's key changing (a new map, a score/match-point flip,
+       a swap, a ban change) really is a new broadcast moment that should
+       re-play the entrance, exactly like hero-bans' ban panels. state-sync's
+       replayAnimation() round-trips these via data-anim on OBS show/hide (the
+       full inline shorthand — not a bare animation-delay longhand — is what
+       survives that stash/restore; see banArtTile()'s comment). -->
   <link rel="stylesheet" href="./theme-v2.css">
   <link rel="stylesheet" href="./fonts-v2.css">
   <link rel="stylesheet" href="./animations.css">
@@ -22,111 +54,132 @@
     #root { position: relative; width: 1920px; height: 1080px; }
 
     /* Dark gradient over the flythrough video for text readability — static
-       shell chrome, transparent center / darker edges (kept from the pre-v2
-       scene's over-video treatment, not a new invention). */
+       shell chrome, transparent-ish center / darker edges (kept from the
+       pre-v2 scene's over-video treatment, not a new invention). Sits behind
+       everything. */
     .bg-overlay {
-      position: absolute; inset: 0;
+      position: absolute; inset: 0; pointer-events: none;
       background:
-        linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.05) 100%),
-        radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.35) 100%);
+        linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 45%, rgba(0,0,0,0.20) 100%),
+        radial-gradient(ellipse 70% 60% at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.10) 60%, rgba(0,0,0,0.35) 100%);
     }
 
-    /* ── Two positioned wrapper slots (built ONCE by shell) ──────────────
-       #mi-top: continuity with the HUD/map-pick's top frame. topFrame()
-       returns ONE flex row (plate·center·plate, no wings here) rather than
-       the HUD's three split regions, so exact coordinate parity with the
-       HUD's edge-anchored plates isn't achievable — spec §7's "morph" is
-       cross-scene coordinated coordinates + an entrance animation, NOT a
-       true FLIP (that would need to track DOM nodes across a page reload,
-       which OBS's browser-source reload on scene switch makes impossible).
-       This scene instead places the frame in the SAME top-of-screen band the
-       HUD/map-pick occupy (top edge, horizontally centered) so the eye reads
-       it as "the same object, moved" even though it's a fresh element. */
-    /* max-width caps the frame at 1840px (40px canvas margin either side) so
-       a long event name hits shared CSS's .v2-event-name ellipsis path
-       (theme-v2.css) instead of pushing the whole top frame off-canvas —
-       same carry-over fix as gameplay-hud/map-pick's top frame. */
-    #mi-top { top: 22px; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 1840px; }
-    /* #mi-deck: lower deck — ban tiles flanking the score deck (mockup: the
-       card sits ~9% off the bottom, ~76% wide, horizontally centered).
-       Centered via left/right:0 + margin:auto on an explicit-width box
-       rather than left:50%+translateX(-50%): the slideUp shell entrance
-       below animates `transform`, and its `both` fill would otherwise
-       clobber a translateX and de-center the deck permanently (same
-       gotcha gameplay-hud.html's #hud-center comment documents). */
-    #mi-deck { left: 0; right: 0; bottom: 9%; margin: 0 auto; width: 76%; }
+    /* Team washes (shell chrome, built ONCE, colors set via --wash-color) —
+       same pattern as hero-bans.html: gives the over-video scene team-colored
+       life without ever replaying their fade on a data tick (render() only
+       calls setProperty on the persistent nodes). Stretched full-screen. */
+    .mi-wash { position: absolute; inset: 0; pointer-events: none; }
 
-    .mi-slot { position: absolute; }
+    /* Centered stage: a full-screen flex column that vertically + horizontally
+       centers the single .slot-content block render() writes into. No entrance
+       animation of its own — its CHILDREN carry the staged inline animations
+       (see the file-header comment). */
+    #mi-stage {
+      position: absolute; inset: 0; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+    }
+    #mi-stage > .slot-content { width: 100%; }
 
-    /* overlay-core appends its volatile render container as #root's LAST
-       child (after the shell wrappers + bg-overlay). This scene never uses
-       it — render() writes into each wrapper's persistent .slot-content
-       instead (the render-vs-reflow split, same as the other v2 scenes) —
-       so the trailing, id-less container is hidden. EVERY child shell()
-       builds (including .bg-overlay) must carry an id so this selector
-       matches ONLY that trailing container, not a real piece of chrome. */
+    /* overlay-core appends its volatile render container as #root's LAST child
+       (after the shell wrappers). This scene never uses it — render() writes
+       into each wrapper's persistent .slot-content instead — so the trailing,
+       id-less container is hidden. EVERY child shell() builds carries an id so
+       this selector matches ONLY that trailing container. */
     #root > div:not([id]) { display: none; }
 
-    /* ── Chips above the deck (MATCH POINT / MAP n · NAME · MODE) ────────── */
-    .mi-chips { display: flex; justify-content: center; gap: 8px; margin-bottom: 10px; }
-    .mi-chip-point {
-      background: #fff; color: #0a0c11; font-weight: 800; font-size: 22px;
-      letter-spacing: 1px; padding: 6px 16px; border-radius: var(--panel-radius);
-      text-transform: uppercase;
+    /* ── Eyebrow (event name, dim brand context above the name) ──────────── */
+    .mi-eyebrow {
+      font-size: 26px; font-weight: 700; letter-spacing: 6px; text-transform: uppercase;
+      color: rgba(255,255,255,0.62); text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+      margin-bottom: 18px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      max-width: 1400px; margin-left: auto; margin-right: auto;
     }
+
+    /* ── Map name — the star (mobile floor >=72px; this goes BIG) ─────────── */
+    .mi-name {
+      font-size: 132px; font-weight: 800; line-height: 0.98; letter-spacing: 2px;
+      text-transform: uppercase; color: #fff;
+      text-shadow: 0 6px 34px rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.7);
+      max-width: 1720px; margin: 0 auto;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .mi-underline { width: 420px; height: 4px; margin: 24px auto 0; border-radius: 2px; }
+
+    /* ── Chips row (MAP n · MODE, MATCH POINT) ───────────────────────────── */
+    .mi-chips { display: flex; justify-content: center; gap: 14px; margin-top: 26px; }
     .mi-chip-map {
       background: var(--panel-bg); border: var(--panel-border); color: #fff;
-      font-weight: 800; font-size: 22px; letter-spacing: 1px;
-      padding: 6px 16px; border-radius: var(--panel-radius); text-transform: uppercase;
+      font-weight: 800; font-size: 30px; letter-spacing: 1.5px;
+      padding: 10px 24px; border-radius: var(--panel-radius); text-transform: uppercase;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+    }
+    .mi-chip-point {
+      background: #fff; color: #0a0c11; font-weight: 800; font-size: 30px;
+      letter-spacing: 2px; padding: 10px 24px; border-radius: var(--panel-radius);
+      text-transform: uppercase; box-shadow: 0 0 26px rgba(255,255,255,0.35);
     }
 
-    /* ── Deck row: ban tile | ban tile | score deck | ban tile | ban tile ── */
-    .mi-row { display: flex; align-items: stretch; gap: 8px; }
+    /* ── Matchup band: [bans] team ··· score-hub ··· team [bans] ──────────── */
+    .mi-match {
+      display: flex; align-items: center; justify-content: center; gap: 26px;
+      margin-top: 52px;
+    }
+    .mi-bans { display: flex; gap: 10px; flex: none; }
+    /* Ban art tile (deck scale — shared banArtTile() anatomy: render/portrait
+       fallback + red slash + name overlay). Layout only here; the shared look
+       lives on .v2-ban-art-tile. */
+    .mi-ban-tile { width: 140px; aspect-ratio: 1 / 1.12; flex: none; }
 
-    /* Ban render tile (deck scale — smaller, simpler sibling of hero-bans.html's
-       full-screen reveal panels: same art/fallback/name anatomy via the
-       shared banArtTile() (components-v2.js, Plan 3 Task 1 consolidation),
-       no slam/sweep animation — this is a steady-state card, not a reveal
-       moment. Layout only here — background/border/border-radius/
-       box-sizing/overflow/position live on the shared .v2-ban-art-tile
-       class; this scene keeps only its own width/aspect-ratio/flex sizing. */
-    .mi-ban-tile {
-      width: 108px; aspect-ratio: 1 / 1.1; flex: none;
+    /* Team block: logo + name/tag. Left block reads logo→text (text toward the
+       center hub); right block mirrors it. max-width sized so full org names
+       ("TORONTO DEFIANT", "LONDON SPITFIRE") fit without ellipsis; a genuinely
+       long name still ellipsizes rather than blowing out the row. */
+    .mi-team { display: flex; align-items: center; gap: 18px; flex: none; min-width: 0; max-width: 560px; }
+    .mi-team-right { flex-direction: row-reverse; text-align: right; }
+    .mi-logo {
+      width: 76px; height: 76px; border-radius: var(--panel-radius); object-fit: cover;
+      flex: none; border: 1px solid rgba(255,255,255,0.2); background: rgba(8,10,15,0.6);
     }
-
-    /* Score deck: dark panel, team blocks flanking a mini pinwheel hub. */
-    .mi-deck-panel {
-      flex: 1 1 auto; min-width: 0; background: var(--panel-bg); border: var(--panel-border);
-      border-radius: var(--panel-radius); display: flex; align-items: center;
-      justify-content: center; gap: 28px; padding: 14px 20px;
-    }
-    .mi-team-block { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .mi-team-block-right { flex-direction: row-reverse; text-align: right; }
-    .mi-team-logo {
-      width: 44px; height: 44px; border-radius: var(--panel-radius); object-fit: cover;
-      flex: none; border: 1px solid rgba(255,255,255,0.15);
-    }
-    .mi-team-swatch { width: 44px; height: 44px; border-radius: var(--panel-radius); flex: none; }
+    .mi-swatch { width: 76px; height: 76px; border-radius: var(--panel-radius); flex: none; }
     .mi-team-text { min-width: 0; }
     .mi-team-name {
-      font-size: 28px; font-weight: 800; color: #fff; text-transform: uppercase;
+      font-size: 40px; font-weight: 800; color: #fff; text-transform: uppercase;
       letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
     }
-    .mi-team-tag {
-      margin-top: 3px; font-size: 22px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    .mi-tag {
+      margin-top: 6px; font-size: 24px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; text-shadow: 0 1px 6px rgba(0,0,0,0.8);
     }
 
-    .mi-hub { display: flex; align-items: center; gap: 0; flex: none; }
-</style>
+    /* Score hub: big team-colored scores flanking a pinwheel crest. */
+    .mi-hub { display: flex; align-items: center; gap: 22px; flex: none; padding: 0 10px; }
+    .mi-score {
+      font-size: 78px; font-weight: 800; line-height: 1; flex: none;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.7);
+    }
+
+    /* Series pips beneath the matchup — adds series rhythm/context and keeps
+       the beat feeling full without a "mostly empty" bar. Scaled up from the
+       component default (transform-free — the row is a leaf, so it doesn't
+       fight the wrapper's entrance animation). */
+    .mi-pips { margin-top: 30px; display: flex; justify-content: center; }
+    .mi-pips .v2-pips { gap: 8px; }
+    .mi-pips .v2-pip {
+      width: 46px; height: 38px; border-radius: 3px; font-size: 18px;
+    }
+  </style>
 </head>
 <body>
   <div id="root"></div>
 
   <!-- Script order matters: helpers + SVG + component builders must all be
        global before overlay-core wires the render loop. NO bg-helper.js —
-       this scene never calls applyTextureBg (see the CSS comment above). NO
-       ?./?? in the inline script (OBS Chromium 103 floor); var/function/
-       string-concat style for consistency with the other v2 scenes. -->
+       this scene never calls applyTextureBg. NO ?./?? in the inline script
+       (OBS Chromium 103 floor); var/function/string-concat for consistency
+       with the other v2 scenes. -->
   <script src="./theme-helpers.js"></script>
   <script src="./pinwheel.js"></script>
   <script src="./components-v2.js"></script>
@@ -149,61 +202,67 @@
       return (team.score === undefined || team.score === null) ? 0 : team.score;
     }
 
-    // One deck-scale ban tile. Shared render/portrait-fallback/slash/name
-    // anatomy via banArtTile() (components-v2.js, Plan 3 Task 1 carry-over
-    // consolidation with hero-bans.html's panelHtml()) — deck scale
-    // (size: 108, matching this tile's own width so the fallback bust comes
-    // out at banArtTile's documented exact 64px), animated: false and NO
-    // entrance/sweep animation — the deck is a steady-state card (visible
-    // for the whole map-intro hold), not a reveal moment. nameOverlay: true
-    // reproduces the tile-bottom name bar this scene always had.
-    function banTileDeck(heroKey, teamColor) {
+    // One matchup-scale ban art tile. Shared render/portrait-fallback/slash/
+    // name anatomy via banArtTile() (components-v2.js). animated:false — the
+    // whole beat's entrance lives on the wrapper's inline animation below; the
+    // slash is steady-state here (a card held for the whole map-intro hold),
+    // not a reveal sweep. nameOverlay:true keeps the hero name on the tile.
+    function banTile(heroKey, teamColor) {
       var hero = findHeroEntry(heroData, heroKey);
       var heroName = hero ? hero.name : heroKey;
       var renderUrl = hero ? hero.render : null;
       var portrait = hero ? hero.portrait : '';
-
       return banArtTile({
         renderUrl: renderUrl, portrait: portrait, heroName: heroName, teamColor: teamColor,
-        size: 108, animated: false, nameOverlay: true,
+        size: 140, animated: false, nameOverlay: true,
         wrapperClass: 'mi-ban-tile'
       });
     }
 
-    // One deck-scale team block: logo/swatch + name + optional tag. `side`
-    // picks which edge the block sits on (mirrors the row so the logo stays
-    // toward the outer edge, name/tag toward the hub — same left/right
-    // mirroring convention as teamPlate()/.v2-wash-right in components-v2.js).
-    function teamBlockHtml(team, color, tag, side) {
-      var sideClass = side === 'right' ? ' mi-team-block-right' : '';
-      var logoHtml = team.logo
-        ? safeImg(team.logo, { 'class': 'mi-team-logo', alt: team.name || '' })
-        : '<div class="mi-team-swatch" style="background:' + escapeHtml(color) + '"></div>';
-      var tagHtml = tag ? '<div class="mi-team-tag" style="color:' + escapeHtml(color) + '">' + escapeHtml(tag) + '</div>' : '';
-      return '<div class="mi-team-block' + sideClass + '">' + logoHtml +
-        '<div class="mi-team-text"><div class="mi-team-name">' + escapeHtml(team.name || '') + '</div>' + tagHtml + '</div></div>';
+    function bansGroupHtml(bans, teamColor) {
+      var html = '';
+      for (var i = 0; i < bans.length; i++) html += banTile(bans[i], teamColor);
+      return '<div class="mi-bans">' + html + '</div>';
     }
 
-    // ── shell: builds the two entrance-animated wrappers exactly ONCE ────────
-    // Same inline-animation-string mechanism as the other v2 scenes:
-    // state-sync's replayAnimation() re-runs these on OBS show/hide; render()
-    // only ever rewrites the inner .slot-content divs so they never replay on
-    // a data tick. #mi-top slides down (echoes the HUD center band's own
-    // slideDown), #mi-deck slides up a beat later, staggered.
+    // One team block: logo/swatch + name + optional tag. `side` mirrors the
+    // row (logo outer, text toward the center hub) — same left/right
+    // convention as the rest of the package.
+    function teamBlockHtml(team, color, tag, side) {
+      var sideClass = side === 'right' ? ' mi-team-right' : '';
+      var logoHtml = team.logo
+        ? safeImg(team.logo, { 'class': 'mi-logo', alt: team.name || '' })
+        : '<div class="mi-swatch" style="background:' + escapeHtml(color) + '"></div>';
+      var tagHtml = tag
+        ? '<div class="mi-tag" style="color:' + escapeHtml(color) + '">' + escapeHtml(tag) + '</div>'
+        : '';
+      return '<div class="mi-team' + sideClass + '">' + logoHtml +
+        '<div class="mi-team-text"><div class="mi-team-name">' + escapeHtml(team.name || '') + '</div>' +
+        tagHtml + '</div></div>';
+    }
+
+    // ── shell: builds the persistent chrome exactly ONCE ────────────────────
+    // Gradient wash + the two team washes + the centered stage wrapper. None of
+    // these are rebuilt by render(): the washes only get a CSS custom property
+    // set on them, and the stage's .slot-content is the ONLY thing render()
+    // rewrites (with fully self-animated children). See the file-header
+    // comment for why the beat lives in render() output here.
     function shell(root) {
       root.setAttribute('data-shell-marker', 'map-intro-v2');
       root.innerHTML =
         '<div id="mi-bg" class="bg-overlay"></div>' +
-        '<div id="mi-top" class="mi-slot" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
-          '<div class="slot-content"></div></div>' +
-        '<div id="mi-deck" class="mi-slot" style="animation: slideUp 0.5s ease-out 0.25s both;">' +
-          '<div class="slot-content"></div></div>';
+        '<div id="mi-wash-left" class="mi-wash v2-wash-left" style="animation: fadeIn 0.6s ease-out 0.05s both;"></div>' +
+        '<div id="mi-wash-right" class="mi-wash v2-wash-right" style="animation: fadeIn 0.6s ease-out 0.05s both;"></div>' +
+        '<div id="mi-stage"><div class="slot-content"></div></div>';
     }
 
     // ── key: EXACTLY the state leaves render reads ──────────────────────────
-    // maps is reduced to [name, mode, status, picker] per entry — that's
-    // findCurrentMapIndex/findCurrentMap (status/name), the MAP n · NAME ·
-    // MODE chip (name/mode), and the ATTACK FIRST/MAP PICK tags (picker).
+    // maps reduced to [name, mode, status, picker] per entry — findCurrentMap
+    // fallback (status/name), the MAP n · MODE chip + map name (name/mode), and
+    // the MAP PICK / ATTACK FIRST tags (picker). activeBanMapIdx is the
+    // server's derived ban-map resolver answer — preferred for the map context
+    // so the labeled map (name/number/mode) matches the bans shown, exactly
+    // like hero-bans.html.
     function key(state) {
       var teams = state.teams || {};
       var t1 = teams.team1 || {};
@@ -216,7 +275,7 @@
       return [
         t1.name, t1.logo, t1.score, t1.color,
         t2.name, t2.logo, t2.score, t2.color,
-        maps,
+        maps, state.activeBanMapIdx,
         hb.team1, hb.team2,
         state.bestOf, state.eventName, state.swapSides,
         theme.team1Color, theme.team2Color
@@ -235,76 +294,42 @@
 
       var maps = state.maps || [];
       var bestOf = state.bestOf || maps.length || 5;
-      var currentMap = findCurrentMap(maps);
-      var currentIdx = findCurrentMapIndex(maps);
 
-      // ── Map-number fix ────────────────────────────────────────────────
-      // The old scene computed the displayed map number as
-      // `(t1.score + t2.score) + 1` — a "count of maps decided so far"
-      // heuristic that breaks the instant any map is a draw/void (doesn't
-      // add to either score) or the series has a completed-but-scoreless
-      // edge case: the number silently drifts from the actual map[] index.
-      // findCurrentMapIndex walks the real per-map status (current ->
-      // upcoming -> last played), so it's correct whenever state.maps is
-      // populated. The score-sum heuristic is kept ONLY as a fallback for
-      // the (pre-FACEIT-sync) moment state.maps is genuinely empty, where
-      // there's no index to walk at all.
-      var mapNum = maps.length > 0 ? currentIdx + 1 : (scoreOf(t1) + scoreOf(t2) + 1);
+      // ── Map context ────────────────────────────────────────────────────
+      // Prefer state.activeBanMapIdx (the server's DERIVED getActiveBanIdx
+      // answer) so the labeled map — name, number, mode, picker — is the SAME
+      // map whose bans (heroBans, derived from that index) are shown in the
+      // matchup band below. Fall back to findCurrentMap for pre-fix/persisted
+      // states that carry no activeBanMapIdx (-1/undefined), and finally to the
+      // score-sum heuristic only when maps is genuinely empty (pre-sync).
+      var abIdx = (typeof state.activeBanMapIdx === 'number') ? state.activeBanMapIdx : -1;
+      var mapIdx = (abIdx >= 0 && maps[abIdx]) ? abIdx : findCurrentMapIndex(maps);
+      var currentMap = (mapIdx >= 0 && maps[mapIdx]) ? maps[mapIdx] : {};
+      var mapNum = maps.length > 0 ? mapIdx + 1 : (scoreOf(t1) + scoreOf(t2) + 1);
 
       var heroBans = state.heroBans || {};
       var t1bans = (heroBans.team1 || []).slice(0, 2);
       var t2bans = (heroBans.team2 || []).slice(0, 2);
 
-      // ── Top frame: continuity with the HUD/map-pick top frame ──────────
-      // banWings: null — bans are shown bigger in the deck below (spec §6:
-      // "ban wings hide on scenes where bans are shown bigger elsewhere").
-      // hubText mirrors gameplay-hud's "t1·t2" score hub. currentMapName
-      // comes from findCurrentMap so the pill never blanks between maps.
-      var hubText = scoreOf(t1) + '·' + scoreOf(t2);
-      var topFrameHtml = topFrame({
-        team1: { name: t1.name, logo: t1.logo, score: scoreOf(t1), color: t1color },
-        team2: { name: t2.name, logo: t2.logo, score: scoreOf(t2), color: t2color },
-        eventName: state.eventName,
-        bestOf: bestOf,
-        maps: maps,
-        banWings: null,
-        hubText: hubText,
-        swapSides: state.swapSides,
-        currentMapName: currentMap.name || null
-      });
-      document.querySelector('#mi-top .slot-content').innerHTML = topFrameHtml;
-
-      // ── Chips: MATCH POINT + MAP n · NAME · MODE ────────────────────────
-      // Winning threshold: first-to ceil(bestOf/2) maps == floor(bestOf/2)+1
-      // (BO5 -> 3, BO3 -> 2). "Match point" fires the moment either team sits
-      // ONE map below that (BO5: score 2; BO3: score 1) — win the current map
-      // and the series ends.
+      // ── MATCH POINT ─────────────────────────────────────────────────────
+      // Winning threshold: floor(bestOf/2)+1 (BO5 -> 3, BO3 -> 2). Fires the
+      // moment either team sits ONE map below it (win the current map and the
+      // series ends) — same logic as the pre-redesign scene.
       var threshold = Math.floor(bestOf / 2) + 1;
       var matchPoint = scoreOf(t1) === threshold - 1 || scoreOf(t2) === threshold - 1;
-      var chipsHtml = '';
-      if (matchPoint) {
-        chipsHtml += '<div class="mi-chip-point">MATCH POINT</div>';
-      }
-      if (currentMap.name) {
-        var mapChipText = 'MAP ' + mapNum + ' · ' + currentMap.name + (currentMap.mode ? ' · ' + currentMap.mode : '');
-        chipsHtml += '<div class="mi-chip-map">' + escapeHtml(mapChipText) + '</div>';
-      }
 
-      // ── Lower deck: ban tiles flanking the score deck ───────────────────
-      // Tags: read straight off the mockup (ban-reveal-map-intro.html §2) —
-      // the NON-picker team carries "ATTACK FIRST", the picker carries
-      // "MAP PICK". No picker on this map yet -> neither tag (there's no
-      // real data to report, and guessing would be misleading on air).
+      // Tags from the map picker: the picker team carries MAP PICK, the other
+      // ATTACK FIRST. No picker -> neither tag (no real data to report).
       var picker = currentMap.picker || null;
       var t1Tag = picker === 'team1' ? 'MAP PICK' : (picker === 'team2' ? 'ATTACK FIRST' : '');
       var t2Tag = picker === 'team2' ? 'MAP PICK' : (picker === 'team1' ? 'ATTACK FIRST' : '');
 
-      // Same swap invariant as topFrame/gameplay-hud: the team OBJECTS (logo,
-      // name, tag, bans, screen side) flip with swapSides so the deck reads
-      // as the SAME arrangement as the top frame right above it, but the
-      // mini hub keeps TRUE team1/team2 colors + score order (a map result/
-      // score belongs to the team, not to whichever side of the screen it's
-      // currently drawn on — same invariant mapPips/the HUD medallion use).
+      // Swap invariant: the team OBJECTS (logo, name, tag, bans, screen side)
+      // flip with swapSides so the band reads left→right as OBS shows the
+      // teams; the score hub keeps TRUE team1/team2 identity — the pinwheel
+      // petal colors are always color1=t1/color2=t2, and each flanking score is
+      // its own team's (a score belongs to the team, not a screen side). Same
+      // invariant mapPips/the HUD medallion use.
       var swap = !!state.swapSides;
       var leftTeam = swap ? t2 : t1;
       var rightTeam = swap ? t1 : t2;
@@ -315,25 +340,61 @@
       var leftBans = swap ? t2bans : t1bans;
       var rightBans = swap ? t1bans : t2bans;
 
-      var leftTilesHtml = '';
-      for (var i = 0; i < leftBans.length; i++) leftTilesHtml += banTileDeck(leftBans[i], leftColor);
-      var rightTilesHtml = '';
-      for (var j = 0; j < rightBans.length; j++) rightTilesHtml += banTileDeck(rightBans[j], rightColor);
+      // Washes — persistent nodes; setProperty repaints without a rebuild, so
+      // their shell fade never replays on a data tick (hero-bans pattern).
+      document.getElementById('mi-wash-left').style.setProperty('--wash-color', hexToAlpha(t1color, 0.20));
+      document.getElementById('mi-wash-right').style.setProperty('--wash-color', hexToAlpha(t2color, 0.20));
 
-      // Mini hub reuses the same TRUE-identity "t1·t2" hubText as the top
-      // frame's medallion above it (hubText, computed earlier).
-      var deckHtml =
-        teamBlockHtml(leftTeam, leftColor, leftTag, 'left') +
-        '<div class="mi-hub">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 48, hubText: hubText }) + '</div>' +
-        teamBlockHtml(rightTeam, rightColor, rightTag, 'right');
+      // ── Beat (all render-output, each with its own staggered inline
+      // animation — see file-header comment) ─────────────────────────────
+      var html = '';
 
-      document.querySelector('#mi-deck .slot-content').innerHTML =
-        '<div class="mi-chips">' + chipsHtml + '</div>' +
-        '<div class="mi-row">' +
-          leftTilesHtml +
-          '<div class="mi-deck-panel">' + deckHtml + '</div>' +
-          rightTilesHtml +
+      if (state.eventName) {
+        html += '<div class="mi-eyebrow" style="animation: fadeIn 0.5s ease-out 0.10s both;">' +
+          escapeHtml(state.eventName) + '</div>';
+      }
+
+      if (currentMap.name) {
+        html += '<div class="mi-name" style="animation: slideUp 0.55s cubic-bezier(0.16,1,0.3,1) 0.16s both;">' +
+          escapeHtml(currentMap.name) + '</div>';
+        html += '<div class="mi-underline v2-underline" style="animation: fadeIn 0.6s ease-out 0.30s both;"></div>';
+      }
+
+      var chipsHtml = '';
+      if (currentMap.name) {
+        var mapChipText = 'MAP ' + mapNum + (currentMap.mode ? ' · ' + currentMap.mode : '');
+        chipsHtml += '<div class="mi-chip-map">' + escapeHtml(mapChipText) + '</div>';
+      }
+      if (matchPoint) {
+        chipsHtml += '<div class="mi-chip-point">MATCH POINT</div>';
+      }
+      if (chipsHtml) {
+        html += '<div class="mi-chips" style="animation: slideUp 0.5s ease-out 0.36s both;">' + chipsHtml + '</div>';
+      }
+
+      // Score hub: TRUE-identity scores + pinwheel (never swap-flipped).
+      var hubHtml =
+        '<div class="mi-hub">' +
+          '<div class="mi-score" style="color:' + escapeHtml(t1color) + '">' + scoreOf(t1) + '</div>' +
+          '<div class="v2-medallion">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 72 }) + '</div>' +
+          '<div class="mi-score" style="color:' + escapeHtml(t2color) + '">' + scoreOf(t2) + '</div>' +
         '</div>';
+
+      html += '<div class="mi-match" style="animation: slideUp 0.55s cubic-bezier(0.16,1,0.3,1) 0.46s both;">' +
+        bansGroupHtml(leftBans, leftColor) +
+        teamBlockHtml(leftTeam, leftColor, leftTag, 'left') +
+        hubHtml +
+        teamBlockHtml(rightTeam, rightColor, rightTag, 'right') +
+        bansGroupHtml(rightBans, rightColor) +
+        '</div>';
+
+      // Series pips — TRUE winner colors (mapPips never swap-flips).
+      if (maps.length > 0) {
+        html += '<div class="mi-pips" style="animation: fadeIn 0.5s ease-out 0.56s both;">' +
+          mapPips({ maps: maps, bestOf: bestOf, team1Color: t1color, team2Color: t2color }) + '</div>';
+      }
+
+      document.querySelector('#mi-stage .slot-content').innerHTML = html;
     }
 
     defineOverlay({

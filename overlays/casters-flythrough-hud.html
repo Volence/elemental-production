@@ -10,19 +10,21 @@
        there is no petal texture, no #cd-bg layer, and no cutout mask
        (there's nothing to punch a hole IN; the whole page is already
        transparent). bg-helper.js is therefore not loaded — this scene has
-       no use for applyTextureBg/applyCutoutMask. The old scene had no dark
-       gradient wash either (compare map-intro.html, which keeps one because
-       ITS v1 predecessor had one) — legibility over the moving video instead
-       comes from eventHeader's and camFrame's own opaque panel-bg chips
-       (dark solid, not translucent-over-a-wash), same as the old scene's
-       per-element rgba(0,0,0,0.45-0.55) + backdrop-blur chips. No deck (the
-       flythrough IS the visual; this overlay is frame + names + title only).
+       no use for applyTextureBg/applyCutoutMask. Legibility over the moving
+       video comes from eventHeader's / camFrame's / the info band's own
+       opaque panel-bg chips (dark solid, not translucent-over-a-wash).
+
+       OWNER QA BATCH 2: the scene gains a centered INFO BAND below the cams
+       (~y 610-740) — a MAP n · NAME · MODE chip (+ MATCH POINT) plus a compact
+       matchup strip (logos, names, a true-identity score/pinwheel hub, and the
+       series map pips). It carries the same map/matchup context the redesigned
+       map-intro shows, WITHOUT covering the cams (which stay the visual focus)
+       and WITHOUT any texture (still an over-video scene). pinwheel.js is now
+       loaded for the hub crest.
 
        Cam frames: CAM_LAYOUTS.flythrough (legacy OBS-measured coordinates,
-       preserved verbatim in cam-layout.js — NOT the desk rects). The old
-       hardcoded per-caster rainbow gradient accent bars are gone; camFrame's
-       built-in gradient-4 underline replaces them (same swap casters.html
-       made for its own old rainbow bars). -->
+       preserved verbatim in cam-layout.js — NOT the desk rects). camFrame's
+       built-in gradient-4 underline replaces the old rainbow accent bars. -->
   <link rel="stylesheet" href="./theme-v2.css">
   <link rel="stylesheet" href="./fonts-v2.css">
   <link rel="stylesheet" href="./animations.css">
@@ -34,27 +36,69 @@
     }
     #root { position: relative; width: 1920px; height: 1080px; }
 
-    /* Positioned wrapper slots (built ONCE by shell). #cd-header uses
+    /* Positioned wrapper slots (built ONCE by shell). #cd-header/#cd-band use
        width:fit-content + margin:auto rather than left:50%+translateX so the
-       slideDown entrance transform doesn't clobber the centering (same
+       slideDown/slideUp entrance transforms don't clobber the centering (same
        gotcha documented on casters.html's #cd-header). */
     #cd-header { position: absolute; top: 40px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
     /* Cam frames sit directly in canvas coordinates (CAM_LAYOUTS rects are
        already 1920x1080-space) — plain full-canvas positioning context. */
     #cd-cams { position: absolute; inset: 0; }
+    /* Info band: centered below the cams (cams bottom-edge ~y552, name pills
+       ~y600), so the band's ~y610 top clears them. */
+    #cd-band { position: absolute; top: 610px; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 1600px; }
 
     /* Hide overlay-core's trailing volatile container (this scene renders into
        each shell wrapper's .slot-content instead). Every shell child is id'd,
        so this only matches that container. */
     #root > div:not([id]) { display: none; }
+
+    /* ── Info band ───────────────────────────────────────────────────────── */
+    .cd-band-inner { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+    .cd-chips { display: flex; justify-content: center; gap: 12px; }
+    .cd-chip-map {
+      background: var(--panel-bg); border: var(--panel-border); color: #fff;
+      font-weight: 800; font-size: 26px; letter-spacing: 1.5px;
+      padding: 8px 20px; border-radius: var(--panel-radius); text-transform: uppercase;
+      white-space: nowrap; text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+    }
+    .cd-chip-point {
+      background: #fff; color: #0a0c11; font-weight: 800; font-size: 26px;
+      letter-spacing: 2px; padding: 8px 20px; border-radius: var(--panel-radius);
+      text-transform: uppercase; box-shadow: 0 0 22px rgba(255,255,255,0.35);
+    }
+
+    /* Matchup strip: [logo name]  [score hub score]  [name logo] — a single
+       dark panel so it reads as one unit over the moving video. */
+    .cd-strip {
+      display: flex; align-items: center; justify-content: center; gap: 30px;
+      background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+      padding: 14px 26px;
+    }
+    .cd-team { display: flex; align-items: center; gap: 14px; flex: none; max-width: 400px; min-width: 0; }
+    .cd-team-right { flex-direction: row-reverse; }
+    .cd-logo {
+      width: 48px; height: 48px; border-radius: var(--panel-radius); object-fit: cover;
+      flex: none; border: 1px solid rgba(255,255,255,0.2); background: rgba(8,10,15,0.6);
+    }
+    .cd-swatch { width: 48px; height: 48px; border-radius: var(--panel-radius); flex: none; }
+    .cd-team-name {
+      font-size: 34px; font-weight: 800; color: #fff; text-transform: uppercase;
+      letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.7); min-width: 0;
+    }
+    .cd-hub { display: flex; align-items: center; gap: 16px; flex: none; }
+    .cd-score { font-size: 46px; font-weight: 800; line-height: 1; flex: none; }
+    .cd-pips { display: flex; justify-content: center; }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
-  <!-- No bg-helper.js: this scene never builds a texture/cutout layer. No
-       pinwheel.js: neither eventHeader nor camFrame use pinwheelSVG. -->
+  <!-- No bg-helper.js: this scene never builds a texture/cutout layer.
+       pinwheel.js IS loaded now for the info band's score-hub crest. -->
   <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
   <script src="./components-v2.js"></script>
   <script src="./cam-layout.js"></script>
   <script src="./overlay-core.js"></script>
@@ -64,6 +108,10 @@
       return (v === undefined || v === null) ? 2 : v;
     }
 
+    function scoreOf(team) {
+      return (team.score === undefined || team.score === null) ? 0 : team.score;
+    }
+
     // ── shell: builds the persistent chrome exactly ONCE ────────────────────
     function shell(root) {
       root.setAttribute('data-shell-marker', 'casters-flythrough-v2');
@@ -71,15 +119,38 @@
         '<div id="cd-header" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
           '<div class="slot-content"></div></div>' +
         '<div id="cd-cams" style="animation: fadeIn 0.5s ease-out 0.15s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-band" style="animation: slideUp 0.5s ease-out 0.28s both;">' +
           '<div class="slot-content"></div></div>';
     }
 
-    // ── key: casters names, casterLayout, eventName, theme team colors (v1
-    // read-set — no teams/maps at all, this scene draws no deck). ───────────
+    // ── key: casters (names) + casterLayout + eventName for the header/cams,
+    // PLUS the matchup context the info band now reads — teams (name/logo/
+    // score/color), maps ([name,mode,status]), activeBanMapIdx, bestOf,
+    // swapSides, theme team colors. ─────────────────────────────────────────
     function key(state) {
       var theme = state.theme || {};
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
       var casters = (state.casters || []).map(function (c) { return c && c.name; });
-      return [casters, state.casterLayout, state.eventName, theme.team1Color, theme.team2Color];
+      var maps = (state.maps || []).map(function (m) { return [m.name, m.mode, m.status, m.winner]; });
+      return [
+        casters, state.casterLayout, state.eventName,
+        t1.name, t1.logo, t1.score, t1.color,
+        t2.name, t2.logo, t2.score, t2.color,
+        maps, state.activeBanMapIdx, state.bestOf, state.swapSides,
+        theme.team1Color, theme.team2Color
+      ];
+    }
+
+    function teamHtml(team, color, side) {
+      var sideClass = side === 'right' ? ' cd-team-right' : '';
+      var logoHtml = team.logo
+        ? safeImg(team.logo, { 'class': 'cd-logo', alt: team.name || '' })
+        : '<div class="cd-swatch" style="background:' + escapeHtml(color) + '"></div>';
+      return '<div class="cd-team' + sideClass + '">' + logoHtml +
+        '<div class="cd-team-name">' + escapeHtml(team.name || '') + '</div></div>';
     }
 
     function render(state) {
@@ -98,6 +169,69 @@
         camsHtml += camFrame({ rect: camRects[i], name: caster.name || '' });
       }
       document.querySelector('#cd-cams .slot-content').innerHTML = camsHtml;
+
+      // ── Info band ───────────────────────────────────────────────────────
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var t1color = theme.team1Color || t1.color || '#3b82f6';
+      var t2color = theme.team2Color || t2.color || '#ef4444';
+
+      var maps = state.maps || [];
+      var bestOf = state.bestOf || maps.length || 5;
+
+      // Map context — prefer the server's derived activeBanMapIdx (same as
+      // map-intro / hero-bans), fall back to findCurrentMapIndex.
+      var abIdx = (typeof state.activeBanMapIdx === 'number') ? state.activeBanMapIdx : -1;
+      var mapIdx = (abIdx >= 0 && maps[abIdx]) ? abIdx : findCurrentMapIndex(maps);
+      var currentMap = (mapIdx >= 0 && maps[mapIdx]) ? maps[mapIdx] : {};
+
+      var threshold = Math.floor(bestOf / 2) + 1;
+      var matchPoint = scoreOf(t1) === threshold - 1 || scoreOf(t2) === threshold - 1;
+
+      var chipsHtml = '';
+      if (currentMap.name) {
+        var mapChipText = 'MAP ' + (mapIdx + 1) + ' · ' + currentMap.name +
+          (currentMap.mode ? ' · ' + currentMap.mode : '');
+        chipsHtml += '<div class="cd-chip-map">' + escapeHtml(mapChipText) + '</div>';
+      }
+      if (matchPoint) {
+        chipsHtml += '<div class="cd-chip-point">MATCH POINT</div>';
+      }
+
+      // Swap invariant: team objects flip with swapSides; the hub keeps true
+      // team1/team2 identity (pinwheel petal colors + each flanking score) and
+      // pips read true winner colors (mapPips never swap-flips). Same as
+      // map-intro / the HUD medallion.
+      var swap = !!state.swapSides;
+      var leftTeam = swap ? t2 : t1;
+      var rightTeam = swap ? t1 : t2;
+      var leftColor = swap ? t2color : t1color;
+      var rightColor = swap ? t1color : t2color;
+
+      var hubHtml =
+        '<div class="cd-hub">' +
+          '<div class="cd-score" style="color:' + escapeHtml(t1color) + '">' + scoreOf(t1) + '</div>' +
+          '<div class="v2-medallion">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 52 }) + '</div>' +
+          '<div class="cd-score" style="color:' + escapeHtml(t2color) + '">' + scoreOf(t2) + '</div>' +
+        '</div>';
+
+      var pipsHtml = '<div class="cd-pips">' +
+        mapPips({ maps: maps, bestOf: bestOf, team1Color: t1color, team2Color: t2color }) + '</div>';
+
+      var stripHtml =
+        '<div class="cd-strip">' +
+          teamHtml(leftTeam, leftColor, 'left') +
+          hubHtml +
+          teamHtml(rightTeam, rightColor, 'right') +
+        '</div>';
+
+      var bandHtml = '<div class="cd-band-inner">';
+      if (chipsHtml) bandHtml += '<div class="cd-chips">' + chipsHtml + '</div>';
+      bandHtml += stripHtml + pipsHtml + '</div>';
+
+      document.querySelector('#cd-band .slot-content').innerHTML = bandHtml;
     }
 
     defineOverlay({
