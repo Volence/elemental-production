@@ -3,461 +3,542 @@
 <head>
   <meta charset="UTF-8">
   <title>Casters Scoreboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap">
+  <!-- Broadcast v2 (Plan 3 Task 3): a RESKIN of the v1 scoreboard onto the
+       casters.html cam-scene template. The chrome (petal texture + cutout cam
+       frames + event header) and the deck's LOOK are v2; the DATA machinery
+       (playerStats table, per-map bans fallback chain, map-index resolution,
+       auto-advance, switchMap interactivity) is preserved verbatim, only
+       re-expressed on overlay-core.
+
+       Cutout invariant (see casters.html for the long form): caster browser
+       sources sit BEHIND this overlay in OBS; the petal texture lives on a
+       dedicated #cd-bg layer with a CSS luminance mask (applyCutoutMask,
+       bg-helper.js) that punches transparent windows at exactly
+       CAM_LAYOUTS.desk's coordinates — the SAME rects as casters.html (the v1
+       420x240 divergence is gone). ?bg=transparent is deliberately NOT
+       supported here (a casters.html-only feature); this scene always paints
+       the texture.
+
+       overlay-core mapping of the v1 hand-rolled loop:
+       - switchMap(i): v1 set the local `currentMap` then nulled lastRenderKey
+         and re-ran update(); v2 sets `currentMap` then calls the captured
+         handle.forceRender() (the sanctioned "repaint with unchanged state"
+         escape hatch). `currentMap` is LOCAL interaction state and is NOT in
+         the key — forceRender is its repaint path.
+       - the malformed-round guard: v1 early-returned AFTER stashing lastState
+         but WITHOUT committing lastRenderKey, so a corrected same-key frame
+         still repainted. v2 expresses this as `validate` returning false for a
+         malformed selected round — overlay-core commits the key ONLY at a
+         genuine render point, so a false from validate gives the no-latch
+         behavior for free.
+       - auto-advance (new map's stats -> show latest): v1 reset currentMap
+         when playerStats.length changed; v2 runs the same reset inside
+         validate (pre-dedup, pre-render) so a local switchMap click — which
+         doesn't change the stats length — never trips it. -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      background: transparent; overflow: hidden;
-      width: 1920px; height: 1080px;
-      font-family: var(--font-body, 'Inter', sans-serif); color: white;
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
     }
+    #root { position: relative; width: 1920px; height: 1080px; }
 
+    /* Petal-texture cutout layer (mask set in render from the live layout). */
+    #cd-bg { position: absolute; inset: 0; }
 
-    .container {
-      position: relative; width: 1920px; height: 1080px;
-      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
-    }
+    /* Positioned wrapper slots (built ONCE by shell). Centered wrappers use
+       width:fit-content + margin:auto rather than left:50%+translateX so the
+       slideDown/slideUp entrance transforms don't clobber the centering. */
+    #cd-header { position: absolute; top: 40px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
+    #cd-cams { position: absolute; inset: 0; }
+    /* Deck sits below the cam frames. render() sets the exact `top` per layout
+       (dual cams end higher than single, and layout 0 has no cams at all) so
+       each layout gets the most vertical room; the CSS default is the single-
+       cam value. fitPanelToCanvas zoom-shrinks the panel if the dense table
+       would still run past 1080. The cam frames NEVER move — only the deck
+       panel is repositioned/scaled. */
+    #cd-deck { position: absolute; top: 610px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
 
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(14px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    /* ── Scoreboard deck panel ─────────────────────────────────────────────
+       .v2-panel supplies the surface (dark panel + hairline + sharp corners);
+       these own the scoreboard-local layout. Densities are tuned so the full
+       10-player table + totals stays under the single-cam vertical budget at
+       the fitPanel 0.6 floor (no bottom clipping). */
+    .sb-panel { width: 1360px; padding: 14px 24px; }
 
-    /* ── Branding top-left ── */
-    .branding {
-      position: absolute; top: 28px; left: 36px;
-      display: flex; align-items: center; gap: 16px;
-    }
-    .branding .org-logo { width: 56px; height: 56px; object-fit: contain; }
-    .branding .divider { width: 2px; height: 42px; background: rgba(255,255,255,0.2); }
-    .branding .event-name {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 28px; letter-spacing: 2px; line-height: 1.1;
-    }
-
-    /* ── Main content — single centered column ── */
-    .main-content {
-      position: absolute; top: 100px;
-      left: 50%; transform: translateX(-50%);
-      display: flex; flex-direction: column; align-items: center;
-      gap: 12px;
-    }
-
-    /* ── Caster cam area ── */
-    .caster-area { display: flex; gap: 24px; }
-    .caster-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-    .caster-slot {
-      width: 420px; height: 240px;
-      border: 2px solid rgba(255,255,255,0.06);
-      border-radius: 8px; background: transparent;
-    }
-    .caster-label {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-    }
-    .caster-label .name {
-      font-size: 15px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1.5px; text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    }
-
-    /* ── Scoreboard panel ── */
-    .scoreboard-panel {
-      width: 1300px;
-      background: rgba(8,8,18,0.85);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px;
-      padding: 20px 28px;
-      animation: slideUp 0.5s 0.2s ease forwards;
-    }
-
-    /* ── Scoreboard header with map selector ── */
     .sb-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 14px; padding-bottom: 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin-bottom: 10px; padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-    .sb-title-area { display: flex; align-items: center; gap: 12px; }
+    .sb-title-area { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .sb-title-row { display: flex; align-items: baseline; gap: 12px; }
     .sb-title {
-      font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+      font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap;
     }
     .sb-map-mode {
-      font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.35);
-      text-transform: uppercase; letter-spacing: 1px;
+      font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.4);
+      text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;
     }
-    .sb-score {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif); font-size: 26px; letter-spacing: 2px;
+    .sb-title-underline { width: 220px; }
+    .sb-header-right { display: flex; align-items: center; gap: 18px; }
+    .sb-score { font-size: 34px; font-weight: 800; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+    .sb-score .sb-dash { color: rgba(255,255,255,0.25); }
+
+    /* Map selector — v2 chips; active = white glow (same "now" signal as the
+       live pip / map-pick's live column). */
+    .sb-map-selector { display: flex; gap: 6px; }
+    .sb-map-btn {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
+      border-radius: var(--panel-radius); padding: 7px 14px; font-size: 15px; font-weight: 800;
+      color: rgba(255,255,255,0.65); cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+      pointer-events: auto; white-space: nowrap;
     }
-    .map-selector { display: flex; gap: 5px; }
-    .map-btn {
-      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 4px; padding: 5px 12px; font-size: 11px; font-weight: 600;
-      color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.2s;
+    .sb-map-btn:hover { background: rgba(255,255,255,0.12); }
+    .sb-map-btn.active { background: #fff; color: #0a0c11; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.7); }
+
+    /* Hero bans row */
+    .sb-bans {
+      display: flex; align-items: flex-start; justify-content: center; gap: 22px;
+      margin-bottom: 8px; padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
     }
-    .map-btn:hover { background: rgba(255,255,255,0.1); }
-    .map-btn.active { background: rgba(99,102,241,0.3); border-color: #6366f1; color: white; }
+    .sb-ban-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .sb-ban-label {
+      font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+      color: rgba(255,255,255,0.4); align-self: center; padding-top: 18px;
+    }
 
-    /* ── Two-team grid ── */
-    .teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-    .team-block { border-radius: 6px; overflow: hidden; }
-
-    .team-heading {
-      padding: 8px 12px; font-size: 14px; font-weight: 800;
+    /* Two-team grid */
+    .sb-teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .sb-team-block { border-radius: var(--panel-radius); overflow: hidden; }
+    .sb-team-heading {
+      padding: 4px 10px; font-size: 28px; font-weight: 800;
       display: flex; justify-content: space-between; align-items: center;
       text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .team-heading .team-logo { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; margin-right: 8px; }
-    .team-heading .team-info { display: flex; align-items: center; }
-    .win-badge {
-      background: #22c55e; color: white; font-size: 9px; font-weight: 700;
-      padding: 2px 7px; border-radius: 3px; text-transform: uppercase;
+    .sb-team-heading .sb-team-logo { width: 30px; height: 30px; border-radius: var(--panel-radius); object-fit: cover; margin-right: 10px; }
+    .sb-team-heading .sb-team-info { display: flex; align-items: center; min-width: 0; }
+    .sb-team-heading .sb-team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-win-badge {
+      background: var(--elmt-green); color: #06210f; font-size: 13px; font-weight: 800;
+      padding: 3px 9px; border-radius: var(--panel-radius); text-transform: uppercase; letter-spacing: 1px; flex: none;
     }
-
-    .stat-header {
-      display: grid; grid-template-columns: 110px repeat(6, 1fr);
-      gap: 2px; padding: 4px 12px; font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.3);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+    .sb-stat-header {
+      display: grid; grid-template-columns: 150px repeat(6, 1fr);
+      gap: 2px; padding: 3px 10px; font-size: 14px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-
-    .player-row {
-      display: grid; grid-template-columns: 110px repeat(6, 1fr);
-      gap: 2px; padding: 5px 12px; font-size: 13px;
-      border-bottom: 1px solid rgba(255,255,255,0.03);
-    }
-
-    .player-name { font-weight: 700; display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .role-tag {
-      font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 2px;
-      text-transform: uppercase; flex-shrink: 0;
-    }
-    .role-tank { background: rgba(245,158,11,0.2); color: #f59e0b; }
-    .role-damage { background: rgba(239,68,68,0.2); color: var(--accent, #ef4444); }
-    .role-support { background: rgba(34,197,94,0.2); color: #22c55e; }
-
-    .stat-val { text-align: center; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.75); }
-
-    /* ── Comparison totals footer ── */
-    .totals-compare {
-      margin-top: 14px; padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.08);
-    }
-    .totals-compare .section-label {
-      font-size: 10px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 2px; color: rgba(255,255,255,0.3);
-      text-align: center; margin-bottom: 10px;
-    }
-    .totals-row {
-      display: grid; grid-template-columns: 1fr auto 1fr;
-      gap: 0; align-items: center;
-      padding: 5px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.03);
-    }
-    .totals-row:last-child { border-bottom: none; }
-    .totals-val-left {
-      text-align: right; padding-right: 20px;
-      font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums;
-    }
-    .totals-val-right {
-      text-align: left; padding-left: 20px;
-      font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums;
-    }
-    .totals-label {
-      text-align: center; font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 1px;
-      color: rgba(255,255,255,0.35); min-width: 90px;
-    }
-    .totals-val-left.higher { color: #22c55e; }
-    .totals-val-right.higher { color: #22c55e; }
-
-    /* ── Hero bans row ── */
-    .bans-row {
-      display: flex; align-items: center; justify-content: center; gap: 16px;
-      margin-bottom: 12px; padding-bottom: 10px;
+    .sb-player-row {
+      display: grid; grid-template-columns: 150px repeat(6, 1fr);
+      gap: 2px; padding: 3px 10px; font-size: 22px;
       border-bottom: 1px solid rgba(255,255,255,0.04);
     }
-    .bans-row .ban-label {
-      font-size: 9px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1px; color: rgba(255,255,255,0.3);
+    .sb-player-name { font-weight: 700; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-role-tag {
+      font-size: 12px; font-weight: 800; padding: 2px 6px; border-radius: 2px;
+      text-transform: uppercase; flex: none; letter-spacing: 0.5px;
     }
-    .bans-row .ban-icon {
-      width: 32px; height: 32px; border-radius: 6px;
-      overflow: hidden; position: relative;
+    .sb-role-tank { background: rgba(245,158,11,0.22); color: var(--elmt-gold); }
+    .sb-role-damage { background: rgba(239,68,68,0.22); color: var(--elmt-red); }
+    .sb-role-support { background: rgba(34,197,94,0.22); color: var(--elmt-green); }
+    .sb-role-unknown { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55); }
+    .sb-stat-val { text-align: center; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.8); font-weight: 600; }
+
+    /* Comparison totals footer */
+    .sb-totals { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .sb-totals-section-label {
+      font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+      color: rgba(255,255,255,0.35); text-align: center; margin-bottom: 6px;
     }
-    .bans-row .ban-icon img { width: 100%; height: 100%; object-fit: cover; }
-    .bans-row .ban-x {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 900; color: white;
+    .sb-totals-names { display: grid; grid-template-columns: 1fr auto 1fr; margin-bottom: 4px; }
+    .sb-totals-name-left { text-align: right; padding-right: 22px; font-size: 20px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-totals-name-right { text-align: left; padding-left: 22px; font-size: 20px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-totals-name-spacer { min-width: 120px; }
+    .sb-totals-row {
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+      padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
     }
+    .sb-totals-row:last-child { border-bottom: none; }
+    .sb-totals-val-left { text-align: right; padding-right: 22px; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .sb-totals-val-right { text-align: left; padding-left: 22px; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .sb-totals-label {
+      text-align: center; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      color: rgba(255,255,255,0.4); min-width: 120px;
+    }
+    .sb-totals-val-left.higher, .sb-totals-val-right.higher { color: var(--elmt-green); }
+
+    /* Empty state */
+    .sb-empty { padding: 40px; text-align: center; color: rgba(255,255,255,0.4); font-size: 20px; font-weight: 600; }
+
+    /* Hide overlay-core's trailing volatile container (this scene renders into
+       each shell wrapper's .slot-content instead). Every shell child is id'd,
+       so this only matches that container. */
+    #root > div:not([id]) { display: none; }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
+  <div id="root"></div>
 
   <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./cam-layout.js"></script>
+  <script src="./bg-helper.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
-    const API = 'http://localhost:3001';
-    let currentMap = -1;
-    let lastStatsLen = 0;
-    let heroData = [];
+    var API = 'http://localhost:3001';
+    var heroData = [];
 
-    const roleOrder = { 'Tank': 0, 'Damage': 1, 'Support': 2 };
+    // LOCAL interaction state (deliberately NOT in the key — forceRender is its
+    // repaint path). currentMap: overlay map-button selection (-1 = auto).
+    // lastStatsLen: drives the auto-advance reset in validate().
+    var currentMap = -1;
+    var lastStatsLen = 0;
 
-    async function loadHeroes() {
-      heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+    var roleOrder = { 'Tank': 0, 'Damage': 1, 'Support': 2 };
+
+    // Dep: hero portraits for the ban tiles (server pre-injects __HERO_DATA__).
+    function loadHeroes() {
+      if (window.__HERO_DATA__) { heroData = window.__HERO_DATA__; return Promise.resolve(); }
+      return fetch(API + '/api/heroes')
+        .then(function (r) { return r.json(); })
+        .then(function (d) { heroData = d || []; })
+        .catch(function () { heroData = []; });
     }
     function heroNameToKey(name) {
-      const hero = findHeroEntry(heroData, name);
+      var hero = findHeroEntry(heroData, name);
       return hero ? hero.key : '';
     }
     function getHeroPortrait(key) {
-      const hero = findHeroEntry(heroData, key);
+      var hero = findHeroEntry(heroData, key);
       return hero ? hero.portrait : '';
     }
 
-    var lastRenderKey = '';
-    var lastState = null;
-    function update(state) {
-      // Stash latest state (before the dedup guard) so local interactions
-      // (switchMap) can force a repaint without waiting for a poll.
-      lastState = state;
-      var renderKey = JSON.stringify([
-        state.teams, state.maps, state.casters, state.casterLayout,
-        state.playerStats, state.bestOf, state.eventName, state.theme,
-        state.selectedMapIdx, state.heroBans, state.perMapBans
-      ]);
-      // Commit lastRenderKey only at genuine render points below — the
-      // malformed-round early return must leave it unset so a corrected
-      // frame with the same key still repaints (renderKey-latch bug).
-      if (renderKey === lastRenderKey) return;
-      applyTheme(state);
-      const el = document.getElementById('root');
-      const stats = state.playerStats;
-      const t1 = state.teams?.team1;
-      const t2 = state.teams?.team2;
-      const t1Color = t1?.color || '#3b82f6';
-      const t2Color = t2?.color || '#ef4444';
+    function scoreOf(team) {
+      return (team.score === undefined || team.score === null) ? 0 : team.score;
+    }
+    function normalizeLayout(v) {
+      return (v === undefined || v === null) ? 2 : v;
+    }
 
-      if (!stats || stats.length === 0 || !t1?.name) {
-        lastRenderKey = renderKey;
-        el.innerHTML = `
-          <div class="branding">
-            <img class="org-logo" src="./org.png">
-            <div class="divider"></div>
-            <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
-          </div>
-          <div class="main-content">
-            <div class="caster-area">
-              ${(state.casterLayout ?? 2) >= 1 ? `<div class="caster-col">
-                <div class="caster-slot" style="${(state.casterLayout ?? 2) === 1 ? 'width:560px;height:330px' : ''}"></div>
-                <div class="caster-label"><span class="name">${state.casters?.[0]?.name || 'Caster 1'}</span></div>
-              </div>` : ''}
-              ${(state.casterLayout ?? 2) >= 2 ? `<div class="caster-col">
-                <div class="caster-slot"></div>
-                <div class="caster-label"><span class="name">${state.casters?.[1]?.name || 'Caster 2'}</span></div>
-              </div>` : ''}
-            </div>
-            <div class="scoreboard-panel" style="opacity:1">
-              <div style="padding:24px;text-align:center;color:rgba(255,255,255,0.3);font-size:14px">No stats available — load a match to see the scoreboard</div>
-            </div>
-          </div>`;
-        return;
+    // Map-index resolution chain (verbatim from v1): overlay click > dashboard
+    // selection > latest map with stats. currentMap is applied only when >= 0.
+    function resolveIdx(state) {
+      var stats = state.playerStats || [];
+      if (currentMap >= 0) return Math.min(currentMap, stats.length - 1);
+      var serverIdx = state.selectedMapIdx;
+      if (serverIdx !== undefined && serverIdx !== null && serverIdx >= 0) {
+        return Math.min(serverIdx, stats.length - 1);
       }
+      return stats.length - 1;
+    }
 
-      // Auto-advance to latest when a new map's stats arrive
+    // ── shell: builds the persistent chrome exactly ONCE ────────────────────
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'casters-scoreboard-v2');
+      root.innerHTML =
+        '<div id="cd-bg"></div>' +
+        '<div id="cd-header" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-cams" style="animation: fadeIn 0.5s ease-out 0.15s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-deck" style="animation: slideUp 0.5s ease-out 0.25s both;">' +
+          '<div class="slot-content"></div></div>';
+      applyTextureBg(document.getElementById('cd-bg'));
+    }
+
+    // ── validate: auto-advance + malformed-round guard (see header comment) ──
+    function validate(state) {
+      var stats = state.playerStats || [];
+      // Auto-advance: a new map's stats (length changed) drop any sticky
+      // overlay-click selection so the freshest map shows. Here (pre-dedup) so
+      // a local switchMap click — stats length unchanged — never trips it.
+      // CAUTION: this mutation relies on overlay-core calling validate exactly
+      // ONCE per frame, pre-dedup — a speculative/double validate call would
+      // double-fire the advance. Also note a deliberate ordering change vs v1:
+      // auto-advance now runs BEFORE the empty-state check, so a transient
+      // empty->repopulated stats blip resets a click selection to auto (v1
+      // kept it). Freshest-map-wins is the safer on-air default.
       if (stats.length !== lastStatsLen) {
         lastStatsLen = stats.length;
         currentMap = -1;
       }
-
-      // Map index: 1) overlay button click, 2) dashboard selection, 3) latest
-      const serverIdx = state.selectedMapIdx;
-      let idx;
-      if (currentMap >= 0) {
-        idx = Math.min(currentMap, stats.length - 1);
-      } else if (serverIdx != null && serverIdx >= 0) {
-        idx = Math.min(serverIdx, stats.length - 1);
-      } else {
-        idx = stats.length - 1;
-      }
-      const round = stats[idx];
-      if (!round || !round.teams || round.teams.length < 2) return;
-      lastRenderKey = renderKey;
-
-      // Map selector
-      const mapBtns = stats.map((r, i) => {
-        const mapName = state.maps?.[i]?.name || `Map ${i + 1}`;
-        return `<button class="map-btn ${i === idx ? 'active' : ''}" onclick="switchMap(${i})">${mapName}</button>`;
-      }).join('');
-
-      // Team blocks
-      const teamHtml = round.teams.map((team, ti) => {
-        const color = ti === 0 ? t1Color : t2Color;
-        const teamData = ti === 0 ? t1 : t2;
-        const sorted = [...team.players].sort((a, b) => (roleOrder[a.role] ?? 9) - (roleOrder[b.role] ?? 9));
-
-        const rows = sorted.map(p => {
-          const roleTag = `<span class="role-tag role-${p.role.toLowerCase()}">${p.role[0]}</span>`;
-          return `<div class="player-row">
-            <div class="player-name">${roleTag} ${p.nickname}</div>
-            <div class="stat-val">${p.kdRatio.toFixed(1)}</div>
-            <div class="stat-val">${p.kills}</div>
-            <div class="stat-val">${p.deaths}</div>
-            <div class="stat-val">${p.finalBlows}</div>
-            <div class="stat-val">${p.damageDealt.toLocaleString()}</div>
-            <div class="stat-val">${p.healingDone.toLocaleString()}</div>
-          </div>`;
-        }).join('');
-
-        return `<div class="team-block" style="border-top:2px solid ${color}">
-          <div class="team-heading" style="color:${color}">
-            <div class="team-info">
-              ${teamData?.logo ? `<img class="team-logo" src="${proxyImg(teamData.logo)}">` : ''}
-              ${team.name}
-            </div>
-            ${team.stats.teamWin ? '<span class="win-badge">WIN</span>' : ''}
-          </div>
-          <div class="stat-header">
-            <div>Player</div><div class="stat-val">K/D</div><div class="stat-val">Elims</div>
-            <div class="stat-val">Deaths</div><div class="stat-val">FB</div>
-            <div class="stat-val">Dmg</div><div class="stat-val">Heal</div>
-          </div>
-          ${rows}
-        </div>`;
-      }).join('');
-
-      // Build comparison totals
-      const r1 = round.teams[0]; const r2 = round.teams[1];
-      const t1Dmg = r1.players.reduce((s,p) => s+(p.damageDealt||0), 0);
-      const t2Dmg = r2.players.reduce((s,p) => s+(p.damageDealt||0), 0);
-      const t1Heal = r1.players.reduce((s,p) => s+(p.healingDone||0), 0);
-      const t2Heal = r2.players.reduce((s,p) => s+(p.healingDone||0), 0);
-
-      const compareRows = [
-        ['Eliminations', r1.stats.totalEliminations, r2.stats.totalEliminations],
-        ['Deaths', r1.stats.totalDeaths, r2.stats.totalDeaths],
-        ['Final Blows', r1.stats.totalFinalBlows, r2.stats.totalFinalBlows],
-        ['Damage', t1Dmg, t2Dmg],
-        ['Healing', t1Heal, t2Heal],
-      ];
-      if (r1.stats.objectiveTime != null) compareRows.push(['Obj Time', r1.stats.objectiveTime, r2.stats.objectiveTime]);
-
-      const compareHtml = compareRows.map(([label, v1, v2]) => {
-        const isTime = label === 'Obj Time';
-        const d1 = isTime ? `${v1}s` : Number(v1).toLocaleString();
-        const d2 = isTime ? `${v2}s` : Number(v2).toLocaleString();
-        const lowerIsBetter = label === 'Deaths';
-        const h1 = lowerIsBetter ? (v1 < v2 ? 'higher' : '') : (v1 > v2 ? 'higher' : '');
-        const h2 = lowerIsBetter ? (v2 < v1 ? 'higher' : '') : (v2 > v1 ? 'higher' : '');
-        return `<div class="totals-row">
-          <div class="totals-val-left ${h1}" style="color:${h1 ? '' : t1Color}">${d1}</div>
-          <div class="totals-label">${label}</div>
-          <div class="totals-val-right ${h2}" style="color:${h2 ? '' : t2Color}">${d2}</div>
-        </div>`;
-      }).join('');
-
-      // Build hero bans (fall back to heroBans if perMapBans empty)
-      const perMapBans = state.perMapBans || [];
-      const mapBans = perMapBans[idx];
-      let bansHtml = '';
-      const renderBan = (ban, color) => {
-        const heroName = typeof ban === 'string' ? ban : ban?.name || '';
-        if (!heroName) return '';
-        const key = heroNameToKey(heroName);
-        // Fall back to the FACEIT-provided ban image if the hero isn't in heroData
-        const portrait = getHeroPortrait(key) || proxyImg(typeof ban === 'object' && ban ? ban.image : '');
-        return `<div class="ban-icon" style="border:2px solid ${color}">
-          ${portrait ? `<img src="${portrait}" alt="${heroName}" title="${heroName}">` : ''}
-          <div class="ban-x" style="background:rgba(0,0,0,0.4)">✕</div>
-        </div>`;
-      };
-      let t1Bans = '', t2Bans = '';
-      if (mapBans && (mapBans.team1Ban || mapBans.team2Ban)) {
-        t1Bans = mapBans.team1Ban ? renderBan(mapBans.team1Ban, t1Color) : '';
-        t2Bans = mapBans.team2Ban ? renderBan(mapBans.team2Ban, t2Color) : '';
-      } else {
-        const hb = state.heroBans || {};
-        t1Bans = (hb.team1 || [])[0] ? renderBan((hb.team1 || [])[0], t1Color) : '';
-        t2Bans = (hb.team2 || [])[0] ? renderBan((hb.team2 || [])[0], t2Color) : '';
-      }
-      if (t1Bans || t2Bans) {
-        bansHtml = `<div class="bans-row">
-          ${t1Bans}
-          <span class="ban-label">Bans</span>
-          ${t2Bans}
-        </div>`;
-      }
-
-      el.innerHTML = `
-        <div class="branding">
-          <img class="org-logo" src="./org.png">
-          <div class="divider"></div>
-          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
-        </div>
-
-        <div class="main-content">
-          <div class="caster-area">
-            ${(state.casterLayout ?? 2) >= 1 ? `<div class="caster-col">
-              <div class="caster-slot" style="${(state.casterLayout ?? 2) === 1 ? 'width:560px;height:330px' : ''}"></div>
-              <div class="caster-label"><span class="name">${state.casters?.[0]?.name || 'Caster 1'}</span></div>
-            </div>` : ''}
-            ${(state.casterLayout ?? 2) >= 2 ? `<div class="caster-col">
-              <div class="caster-slot"></div>
-              <div class="caster-label"><span class="name">${state.casters?.[1]?.name || 'Caster 2'}</span></div>
-            </div>` : ''}
-          </div>
-
-          <div class="scoreboard-panel">
-            <div class="sb-header">
-              <div class="sb-title-area">
-                <div class="sb-title">${round.mapName || 'Match Stats'}</div>
-                <div class="sb-map-mode">${round.mapMode || ''}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:16px">
-                <div class="sb-score">
-                  <span style="color:${t1Color}">${t1.score || 0}</span>
-                  <span style="color:rgba(255,255,255,0.2)"> – </span>
-                  <span style="color:${t2Color}">${t2.score || 0}</span>
-                </div>
-                <div class="map-selector">${mapBtns}</div>
-              </div>
-            </div>
-            ${bansHtml}
-            <div class="teams-grid">${teamHtml}</div>
-            <div class="totals-compare">
-              <div class="section-label">Team Totals</div>
-              <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:0;margin-bottom:6px">
-                <div style="text-align:right;padding-right:20px;font-size:13px;font-weight:800;color:${t1Color};text-transform:uppercase">${t1.name}</div>
-                <div style="min-width:90px"></div>
-                <div style="text-align:left;padding-left:20px;font-size:13px;font-weight:800;color:${t2Color};text-transform:uppercase">${t2.name}</div>
-              </div>
-              ${compareHtml}
-            </div>
-          </div>
-        </div>
-      `;
-
-      // Single-cam layout grows the cam slot 240px→330px tall, which can push
-      // the stats panel past the 1080px canvas (bottom gets cut off on stream)
-      fitPanelToCanvas(el.querySelector('.scoreboard-panel'));
+      var t1 = (state.teams && state.teams.team1) || {};
+      // Empty state (no stats / no team) is a LEGITIMATE render (v1 committed
+      // its key and drew the placeholder), so allow it.
+      if (!stats.length || !t1.name) return true;
+      // Malformed selected round -> skip WITHOUT committing the key so a
+      // corrected same-key frame still repaints (v1's uncommitted early return).
+      var round = stats[resolveIdx(state)];
+      if (!round || !round.teams || round.teams.length < 2) return false;
+      return true;
     }
 
-    window.switchMap = function(idx) {
-      currentMap = idx;
-      // State content is unchanged by a local click, so null the key to
-      // defeat the dedup guard and repaint with the new currentMap.
-      lastRenderKey = null;
-      if (lastState) update(lastState);
+    // ── key: the state leaves render reads. currentMap (local click state) is
+    // intentionally absent — forceRender() is its repaint path. ──────────────
+    function key(state) {
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var casters = (state.casters || []).map(function (c) { return c && c.name; });
+      var maps = (state.maps || []).map(function (m) { return [m.status, m.name]; });
+      return [
+        t1.name, t1.logo, t1.color, scoreOf(t1),
+        t2.name, t2.logo, t2.color, scoreOf(t2),
+        casters, state.casterLayout,
+        state.playerStats, state.bestOf, state.eventName,
+        state.selectedMapIdx, state.heroBans, state.perMapBans,
+        maps, theme.team1Color, theme.team2Color
+      ];
+    }
+
+    function renderChrome(state, camRects) {
+      document.querySelector('#cd-header .slot-content').innerHTML =
+        eventHeader({ eventName: state.eventName || 'FACEIT Season 8', subtitle: 'SCOREBOARD' });
+
+      var casters = state.casters || [];
+      var camsHtml = '';
+      for (var i = 0; i < camRects.length; i++) {
+        var caster = casters[i] || {};
+        camsHtml += camFrame({ rect: camRects[i], name: caster.name || '' });
+      }
+      document.querySelector('#cd-cams .slot-content').innerHTML = camsHtml;
+    }
+
+    // One ban tile (v2 banTile — the red "denied" slash replaces v1's ✕). The
+    // portrait resolves via heroData, falling back to the FACEIT-provided ban
+    // image when the hero isn't in the pack.
+    function banCell(ban, color) {
+      var heroName = (typeof ban === 'string') ? ban : (ban && ban.name) || '';
+      if (!heroName) return '';
+      var heroKey = heroNameToKey(heroName);
+      var portrait = getHeroPortrait(heroKey) || proxyImg((typeof ban === 'object' && ban) ? ban.image : '');
+      return '<div class="sb-ban-cell">' +
+        banTile({ portrait: portrait, heroName: heroName, teamColor: color, size: 56 }) +
+        '</div>';
+    }
+
+    // Per-map bans fallback chain (verbatim from v1): perMapBans[idx] wins;
+    // fall back to heroBans.team{1,2}[0] when this map has no per-map bans.
+    function bansHtml(state, idx, t1Color, t2Color) {
+      var perMapBans = state.perMapBans || [];
+      var mapBans = perMapBans[idx];
+      var t1Ban = '', t2Ban = '';
+      if (mapBans && (mapBans.team1Ban || mapBans.team2Ban)) {
+        t1Ban = mapBans.team1Ban ? banCell(mapBans.team1Ban, t1Color) : '';
+        t2Ban = mapBans.team2Ban ? banCell(mapBans.team2Ban, t2Color) : '';
+      } else {
+        var hb = state.heroBans || {};
+        t1Ban = (hb.team1 || [])[0] ? banCell((hb.team1 || [])[0], t1Color) : '';
+        t2Ban = (hb.team2 || [])[0] ? banCell((hb.team2 || [])[0], t2Color) : '';
+      }
+      if (!t1Ban && !t2Ban) return '';
+      return '<div class="sb-bans">' + t1Ban +
+        '<span class="sb-ban-label">Bans</span>' + t2Ban + '</div>';
+    }
+
+    function teamBlockHtml(team, teamData, color) {
+      var players = (team.players || []).slice().sort(function (a, b) {
+        return (roleOrder[a.role] === undefined ? 9 : roleOrder[a.role]) -
+               (roleOrder[b.role] === undefined ? 9 : roleOrder[b.role]);
+      });
+      var rows = players.map(function (p) {
+        var role = p.role || 'Unknown';
+        var roleTag = '<span class="sb-role-tag sb-role-' + escapeHtml(role.toLowerCase()) + '">' +
+          escapeHtml(role.charAt(0)) + '</span>';
+        var kd = (p.kdRatio === undefined || p.kdRatio === null) ? 0 : p.kdRatio;
+        return '<div class="sb-player-row">' +
+          '<div class="sb-player-name">' + roleTag + '<span>' + escapeHtml(p.nickname || '') + '</span></div>' +
+          '<div class="sb-stat-val">' + Number(kd).toFixed(1) + '</div>' +
+          '<div class="sb-stat-val">' + (p.kills || 0) + '</div>' +
+          '<div class="sb-stat-val">' + (p.deaths || 0) + '</div>' +
+          '<div class="sb-stat-val">' + (p.finalBlows || 0) + '</div>' +
+          '<div class="sb-stat-val">' + Number(p.damageDealt || 0).toLocaleString() + '</div>' +
+          '<div class="sb-stat-val">' + Number(p.healingDone || 0).toLocaleString() + '</div>' +
+          '</div>';
+      }).join('');
+
+      var logoHtml = (teamData && teamData.logo)
+        ? safeImg(teamData.logo, { 'class': 'sb-team-logo', alt: team.name || '' }) : '';
+      var winBadge = (team.stats && team.stats.teamWin) ? '<span class="sb-win-badge">Win</span>' : '';
+
+      return '<div class="sb-team-block" style="border-top:3px solid ' + escapeHtml(color) + '">' +
+        '<div class="sb-team-heading" style="color:' + escapeHtml(color) + '">' +
+          '<div class="sb-team-info">' + logoHtml +
+            '<span class="sb-team-name">' + escapeHtml(team.name || '') + '</span></div>' +
+          winBadge +
+        '</div>' +
+        '<div class="sb-stat-header">' +
+          '<div>Player</div><div class="sb-stat-val">K/D</div><div class="sb-stat-val">Elims</div>' +
+          '<div class="sb-stat-val">Deaths</div><div class="sb-stat-val">FB</div>' +
+          '<div class="sb-stat-val">Dmg</div><div class="sb-stat-val">Heal</div>' +
+        '</div>' + rows +
+        '</div>';
+    }
+
+    function totalsHtml(round, t1, t2, t1Color, t2Color) {
+      var r1 = round.teams[0], r2 = round.teams[1];
+      var t1Dmg = r1.players.reduce(function (s, p) { return s + (p.damageDealt || 0); }, 0);
+      var t2Dmg = r2.players.reduce(function (s, p) { return s + (p.damageDealt || 0); }, 0);
+      var t1Heal = r1.players.reduce(function (s, p) { return s + (p.healingDone || 0); }, 0);
+      var t2Heal = r2.players.reduce(function (s, p) { return s + (p.healingDone || 0); }, 0);
+      var s1 = r1.stats || {}, s2 = r2.stats || {};
+
+      var rows = [
+        ['Eliminations', s1.totalEliminations, s2.totalEliminations],
+        ['Deaths', s1.totalDeaths, s2.totalDeaths],
+        ['Final Blows', s1.totalFinalBlows, s2.totalFinalBlows],
+        ['Damage', t1Dmg, t2Dmg],
+        ['Healing', t1Heal, t2Heal]
+      ];
+      if (s1.objectiveTime !== undefined && s1.objectiveTime !== null) {
+        rows.push(['Obj Time', s1.objectiveTime, s2.objectiveTime]);
+      }
+
+      var rowsHtml = rows.map(function (row) {
+        var label = row[0], v1 = row[1], v2 = row[2];
+        var isTime = label === 'Obj Time';
+        var d1 = isTime ? (v1 + 's') : Number(v1 || 0).toLocaleString();
+        var d2 = isTime ? (v2 + 's') : Number(v2 || 0).toLocaleString();
+        var lowerBetter = label === 'Deaths';
+        var h1 = lowerBetter ? (v1 < v2) : (v1 > v2);
+        var h2 = lowerBetter ? (v2 < v1) : (v2 > v1);
+        var st1 = h1 ? '' : (' style="color:' + escapeHtml(t1Color) + '"');
+        var st2 = h2 ? '' : (' style="color:' + escapeHtml(t2Color) + '"');
+        return '<div class="sb-totals-row">' +
+          '<div class="sb-totals-val-left ' + (h1 ? 'higher' : '') + '"' + st1 + '>' + d1 + '</div>' +
+          '<div class="sb-totals-label">' + escapeHtml(label) + '</div>' +
+          '<div class="sb-totals-val-right ' + (h2 ? 'higher' : '') + '"' + st2 + '>' + d2 + '</div>' +
+          '</div>';
+      }).join('');
+
+      return '<div class="sb-totals">' +
+        '<div class="sb-totals-section-label">Team Totals</div>' +
+        '<div class="sb-totals-names">' +
+          '<div class="sb-totals-name-left" style="color:' + escapeHtml(t1Color) + '">' + escapeHtml(t1.name || '') + '</div>' +
+          '<div class="sb-totals-name-spacer"></div>' +
+          '<div class="sb-totals-name-right" style="color:' + escapeHtml(t2Color) + '">' + escapeHtml(t2.name || '') + '</div>' +
+        '</div>' + rowsHtml +
+        '</div>';
+    }
+
+    function render(state) {
+      applyTheme(state);
+
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var t1Color = theme.team1Color || t1.color || '#3b82f6';
+      var t2Color = theme.team2Color || t2.color || '#ef4444';
+
+      var layout = normalizeLayout(state.casterLayout);
+      var camRects = layout === 0 ? [] : (layout === 1 ? CAM_LAYOUTS.desk.single : CAM_LAYOUTS.desk.dual);
+      applyCutoutMask(document.getElementById('cd-bg'), camRects);
+      renderChrome(state, camRects);
+
+      // Deck top per layout: dual cams end at y~482 (+pill ~532), single at
+      // y~547 (+pill ~597), layout 0 has no cams. Placing the deck just under
+      // each maximises the fitPanel budget so the common dual view barely
+      // shrinks while single (taller cams) shrinks more. Cam frames don't move.
+      document.getElementById('cd-deck').style.top =
+        layout === 0 ? '170px' : (layout === 1 ? '610px' : '545px');
+
+      var deck = document.querySelector('#cd-deck .slot-content');
+      var stats = state.playerStats || [];
+
+      // Empty state (no stats / no team): v2 panel placeholder. Header + cams
+      // still render above.
+      if (!stats.length || !t1.name) {
+        deck.innerHTML = '<div class="sb-panel v2-panel"><div class="sb-empty">' +
+          'No stats available — load a match to see the scoreboard</div></div>';
+        return;
+      }
+
+      var idx = resolveIdx(state);
+      var round = stats[idx];
+
+      // Map selector chips
+      var mapBtns = stats.map(function (r, i) {
+        var mapName = (state.maps && state.maps[i] && state.maps[i].name) || ('Map ' + (i + 1));
+        return '<button class="sb-map-btn ' + (i === idx ? 'active' : '') + '" onclick="switchMap(' + i + ')">' +
+          escapeHtml(mapName) + '</button>';
+      }).join('');
+
+      var titleName = round.mapName || round.map || 'Match Stats';
+      var headerHtml =
+        '<div class="sb-header">' +
+          '<div class="sb-title-area">' +
+            '<div class="sb-title-row">' +
+              '<span class="sb-title">' + escapeHtml(titleName) + '</span>' +
+              '<span class="sb-map-mode">' + escapeHtml(round.mapMode || '') + '</span>' +
+            '</div>' +
+            '<span class="v2-underline sb-title-underline"></span>' +
+          '</div>' +
+          '<div class="sb-header-right">' +
+            '<div class="sb-score">' +
+              '<span style="color:' + escapeHtml(t1Color) + '">' + scoreOf(t1) + '</span>' +
+              '<span class="sb-dash"> - </span>' +
+              '<span style="color:' + escapeHtml(t2Color) + '">' + scoreOf(t2) + '</span>' +
+            '</div>' +
+            '<div class="sb-map-selector">' + mapBtns + '</div>' +
+          '</div>' +
+        '</div>';
+
+      var teamHtml =
+        '<div class="sb-teams-grid">' +
+          teamBlockHtml(round.teams[0], t1, t1Color) +
+          teamBlockHtml(round.teams[1], t2, t2Color) +
+        '</div>';
+
+      deck.innerHTML =
+        '<div class="sb-panel v2-panel">' +
+          headerHtml +
+          bansHtml(state, idx, t1Color, t2Color) +
+          teamHtml +
+          totalsHtml(round, t1, t2, t1Color, t2Color) +
+        '</div>';
+
+      // Single-cam layout grows the cam frame, and the dense table can run past
+      // 1080 — zoom-shrink the DECK PANEL only (never the cam frames, whose OBS
+      // caster sources are aligned to the canonical rects).
+      fitPanelToCanvas(deck.querySelector('.sb-panel'));
+    }
+
+    var handle = defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      validate: validate,
+      render: render,
+      deps: [loadHeroes]
+    });
+
+    // Map-button interactivity: set the local selection then force a repaint
+    // (state is unchanged by a local click, so the key wouldn't move — that's
+    // exactly what forceRender is for). Replaces v1's lastRenderKey=null hack.
+    window.switchMap = function (i) {
+      currentMap = i;
+      handle.forceRender();
     };
 
-    loadHeroes().then(() => stateSync(update));
+    // The first render can land while Geist is still loading (fallback-font
+    // metrics are TALLER, so the deck measures ~120px too tall) and/or during
+    // the deck's entrance animation. fitPanelToCanvas then over-shrinks, and on
+    // a static scene with no later data tick that zoom sticks. Re-fit once the
+    // real font is ready AND once more after the entrance (0.75s) settles — a
+    // fresh render at steady state measures correctly.
+    function refitDeck() { handle.forceRender(); }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitDeck);
+    setTimeout(refitDeck, 1200);
   </script>
 </body>
 </html>
