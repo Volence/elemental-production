@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findCurrentMapIndex, findCurrentMap, mapStripClass } from './theme-helpers.js';
+import { findCurrentMapIndex, findCurrentMap, mapStripClass, hexToAlpha, proxyImg } from './theme-helpers.js';
 
 describe('findCurrentMapIndex', () => {
   it('prefers the live map', () => {
@@ -31,5 +31,32 @@ describe('mapStripClass', () => {
   });
   it('returns empty for upcoming maps', () => {
     expect(mapStripClass({ status: 'upcoming' }, 3, 2)).toBe('');
+  });
+});
+
+// Drift guard: components-v2.js keeps deliberate private duplicates of these
+// two functions (see the comment at the top of components-v2.js explaining
+// why it can't require() this module). Covering both surfaces means a future
+// change to one won't silently go untested on the other.
+describe('hexToAlpha', () => {
+  it('converts a hex color + alpha to an rgba() string', () => {
+    expect(hexToAlpha('#ff0000', 0.5)).toBe('rgba(255,0,0,0.5)');
+    expect(hexToAlpha('#00ff00', 1)).toBe('rgba(0,255,0,1)');
+    expect(hexToAlpha('#123456', 0.38)).toBe('rgba(18,52,86,0.38)');
+  });
+  it('passes through non-hex input unchanged', () => {
+    expect(hexToAlpha('transparent', 0.5)).toBe('transparent');
+    expect(hexToAlpha('', 0.5)).toBe('');
+  });
+});
+
+describe('proxyImg', () => {
+  it('routes an external URL through the local proxy', () => {
+    const out = proxyImg('https://cdn.example.com/a.png');
+    expect(out).toContain('/api/proxy-image?url=');
+    expect(out).toContain(encodeURIComponent('https://cdn.example.com/a.png'));
+  });
+  it('passes a localhost URL through unchanged', () => {
+    expect(proxyImg('http://localhost:3001/cache/x.png')).toBe('http://localhost:3001/cache/x.png');
   });
 });

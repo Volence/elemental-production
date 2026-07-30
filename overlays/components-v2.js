@@ -89,6 +89,14 @@ function banTile(opts) {
   var portrait = _proxyImg(opts.portrait || '');
   var heroName = opts.heroName || '';
   var teamColor = opts.teamColor || '';
+  var size = opts.size;
+
+  // Default tile is 56px via .v2-ban-tile in theme-v2.css (mobile legibility
+  // floor). `opts.size` is an inline override for contexts that need a
+  // different fixed size (e.g. the 84px map-board tiles) — scene CSS still
+  // owns everything else about the tile's look.
+  var sizeStyle = size ? ('width:' + size + 'px;height:' + size + 'px;') : '';
+  var nameStyle = size ? (' style="font-size:' + Math.round(size * 0.2) + 'px;"') : '';
 
   var tileInner;
   if (heroName) {
@@ -103,12 +111,12 @@ function banTile(opts) {
   }
 
   var html =
-    '<div class="v2-ban-tile" style="position:relative;border-color:' + escapeHtml(teamColor) + '">' +
+    '<div class="v2-ban-tile" style="position:relative;border-color:' + escapeHtml(teamColor) + ';' + sizeStyle + '">' +
     tileInner +
     '</div>';
 
   if (heroName) {
-    html += '<div class="v2-ban-tile-name">' + escapeHtml(heroName) + '</div>';
+    html += '<div class="v2-ban-tile-name"' + nameStyle + '>' + escapeHtml(heroName) + '</div>';
   }
 
   return html;
@@ -148,11 +156,187 @@ function teamPlate(opts) {
   return html;
 }
 
+// Accent/punctuation-insensitive first-word extraction for map abbreviations
+// ("King's Row" -> "KIN"). Same NFD-strip technique as theme-helpers.js's
+// normHeroName, kept as a private local copy for the same reason _hexToAlpha/
+// _proxyImg above are duplicated rather than required: this file must not
+// depend on theme-helpers.js at require time (see the big comment up top).
+function _mapAbbrev(name) {
+  if (!name) return '';
+  var stripped = String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  var firstWord = stripped.split(/[^a-zA-Z0-9]+/)[0] || '';
+  return firstWord.slice(0, 3).toUpperCase();
+}
+
+// Event name pill: dark block with the event name and a gradient underline
+// bar (the underline gradient itself — team1->accent->accent->team2 — is
+// scene CSS's job via .v2-underline; this just emits the hook element).
+// Class prefix v2-event-.
+function eventHeader(opts) {
+  opts = opts || {};
+  var eventName = opts.eventName || '';
+  var subtitle = opts.subtitle || '';
+
+  var html =
+    '<div class="v2-event-header">' +
+    '<div class="v2-event-name">' + escapeHtml(eventName) + '<span class="v2-underline"></span></div>';
+
+  if (subtitle) {
+    html += '<div class="v2-event-subtitle">' + escapeHtml(subtitle) + '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// Per-series map-winner pip row (v7/v8 mockups). One .v2-pip per map,
+// padded with .v2-pip-empty up to bestOf so the row never reflows as the
+// series progresses. Winner fill/live glow are read off team colors passed
+// in by the caller — these are ALWAYS the true team1/team2 colors, never
+// swapSides-flipped (same invariant as theme-helpers' mapStripClass: map
+// results belong to the team that won them, not to a screen side).
+function mapPips(opts) {
+  opts = opts || {};
+  var maps = opts.maps || [];
+  var bestOf = opts.bestOf || maps.length;
+  var team1Color = opts.team1Color || '';
+  var team2Color = opts.team2Color || '';
+
+  var html = '<div class="v2-pips">';
+  var i;
+  for (i = 0; i < maps.length; i++) {
+    var map = maps[i] || {};
+    var abbrev = _mapAbbrev(map.name);
+    var cls = 'v2-pip';
+    var style = '';
+
+    if (map.status === 'completed') {
+      var winnerColor = map.winner === 'team1' ? team1Color : (map.winner === 'team2' ? team2Color : '');
+      if (winnerColor) {
+        style = ' style="background:' + escapeHtml(winnerColor) + '"';
+      }
+    } else if (map.status === 'current') {
+      cls += ' v2-pip-live';
+    }
+
+    html += '<div class="' + cls + '"' + style + '>' + escapeHtml(abbrev) + '</div>';
+  }
+  for (; i < bestOf; i++) {
+    html += '<div class="v2-pip v2-pip-empty"></div>';
+  }
+  html += '</div>';
+
+  return html;
+}
+
+// Indirection to reach pinwheelSVG (defined in pinwheel.js) without this
+// file requiring that module at load time. In the browser both files load
+// as classic <script> tags and pinwheelSVG is a plain global by the time
+// topFrame() is actually CALLED (script order, not module graph, decides
+// that). In Vitest there is no shared global scope across ES module
+// imports, so overlays/components-v2.test.js sets `globalThis.pinwheelSVG =
+// pinwheelSVG` (imported from ./pinwheel.js) before calling topFrame() —
+// the lookup below is a lazy, call-time `typeof` check, so it works
+// regardless of import/require ordering as long as the global is set
+// before topFrame() actually runs.
+/* global pinwheelSVG */
+function _pinwheel(opts) {
+  return (typeof pinwheelSVG !== 'undefined') ? pinwheelSVG(opts) : '';
+}
+
+// One hero-ban wing (v7 mockup): a row of banTile()s in the team's color,
+// sitting between a team plate and the center block. Empty array -> an
+// empty (but present) wing container; topFrame omits the wing entirely
+// when banWings itself is absent so "no bans configured yet" doesn't leave
+// a stray empty box on screen.
+function _banWing(bans, teamColor) {
+  var html = '<div class="v2-wing" style="border-color:' + escapeHtml(teamColor) + '">';
+  for (var i = 0; i < bans.length; i++) {
+    var ban = bans[i] || {};
+    html += banTile({ portrait: ban.portrait, heroName: ban.heroName, teamColor: teamColor, size: 56 });
+  }
+  html += '</div>';
+  return html;
+}
+
+// Persistent top frame shared by the gameplay HUD, map-pick, and map-intro
+// scenes (v7 plates/wings + v8 center band). This function owns internal
+// layout only (the flex row of plate/wing/center/wing/plate) — absolute
+// positioning, scale, and fit-to-canvas placement of the whole
+// .v2-top-frame block onto the 1080p stream is scene CSS's job.
+//
+// opts: { team1, team2 (each {name, logo, score, color}), eventName,
+//   bestOf, maps, banWings ({team1:[], team2:[]} or null/absent),
+//   hubText, swapSides }
+function topFrame(opts) {
+  opts = opts || {};
+  var team1 = opts.team1 || {};
+  var team2 = opts.team2 || {};
+  var swapSides = !!opts.swapSides;
+  var bestOf = opts.bestOf;
+  var maps = opts.maps || [];
+  var banWings = opts.banWings;
+  var hubText = opts.hubText || '';
+
+  var leftTeam = swapSides ? team2 : team1;
+  var rightTeam = swapSides ? team1 : team2;
+  var leftColor = leftTeam.color || '';
+  var rightColor = rightTeam.color || '';
+
+  var leftPlate = teamPlate({
+    side: 'left', name: leftTeam.name, logo: leftTeam.logo, score: leftTeam.score,
+    color: leftColor, linework: true
+  });
+  var rightPlate = teamPlate({
+    side: 'right', name: rightTeam.name, logo: rightTeam.logo, score: rightTeam.score,
+    color: rightColor, linework: true
+  });
+
+  var leftWingHtml = '';
+  var rightWingHtml = '';
+  if (banWings) {
+    var leftBans = (swapSides ? banWings.team2 : banWings.team1) || [];
+    var rightBans = (swapSides ? banWings.team1 : banWings.team2) || [];
+    leftWingHtml = _banWing(leftBans, leftColor);
+    rightWingHtml = _banWing(rightBans, rightColor);
+  }
+
+  var currentMapName = '';
+  for (var i = 0; i < maps.length; i++) {
+    if (maps[i] && maps[i].status === 'current') {
+      currentMapName = maps[i].name || '';
+      break;
+    }
+  }
+
+  var eventPill = eventHeader({ eventName: opts.eventName, subtitle: bestOf ? ('BO' + bestOf) : '' });
+  var medallion = '<div class="v2-medallion">' + _pinwheel({ color1: leftColor, color2: rightColor, size: 62, hubText: hubText }) + '</div>';
+  var mapPill = '<div class="v2-map-pill">' + escapeHtml(currentMapName) + '</div>';
+  var pipsRow = mapPips({ maps: maps, bestOf: bestOf, team1Color: team1.color, team2Color: team2.color });
+
+  var centerHtml =
+    '<div class="v2-center-block">' + eventPill + medallion + mapPill + pipsRow + '</div>';
+
+  var html =
+    '<div class="v2-top-frame" style="display:flex;align-items:stretch;">' +
+    '<div class="v2-frame-side v2-frame-left">' + leftPlate + '</div>' +
+    leftWingHtml +
+    centerHtml +
+    rightWingHtml +
+    '<div class="v2-frame-side v2-frame-right">' + rightPlate + '</div>' +
+    '</div>';
+
+  return html;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     escapeHtml: escapeHtml,
     banTile: banTile,
     teamPlate: teamPlate,
-    safeImg: safeImg
+    safeImg: safeImg,
+    eventHeader: eventHeader,
+    mapPips: mapPips,
+    topFrame: topFrame
   };
 }
