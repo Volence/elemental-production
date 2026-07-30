@@ -231,7 +231,7 @@
         '</div>';
     }
 
-    function winnerHtml(winner, loser, wScore, lScore, teamColor) {
+    function winnerHtml(winner, loser, wScore, lScore, teamColor, teamColorAlt) {
       // safeImg() already routes src through _proxyImg() internally —
       // pass the raw logo URL, not a pre-proxied one (double-proxying is
       // idempotent but redundant; this matches every other v2 scene's
@@ -251,7 +251,7 @@
         '<div class="sw-label" style="animation: slideDown 0.5s ease-out 0.05s both;">Series Winner</div>' +
         '<div class="sw-logo-wrap">' +
           '<div id="sw-pinwheel" style="animation: swPinwheelSpinUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;">' +
-            pinwheelSVG({ color1: teamColor, color2: swShade(teamColor, 0.55), size: 620, glow: false }) +
+            pinwheelSVG({ color1: teamColor, color2: teamColorAlt || swShade(teamColor, 0.55), size: 620, glow: false }) +
           '</div>' +
           '<div id="sw-glow-burst" style="animation: swGlowBurst 1.3s ease-out 0.15s both;"></div>' +
           logoHtml +
@@ -307,6 +307,11 @@
       }
 
       var teamColor = winKey === 'team1' ? t1color : t2color;
+      // The logo's second distinct color (auto-extracted alongside the
+      // primary — see src/lib/color-extract.js pickTwoColors). Empty when
+      // the logo only has one color family; the pinwheel then falls back to
+      // a darker shade of the primary.
+      var teamColorAlt = winKey === 'team1' ? (theme.team1ColorAlt || '') : (theme.team2ColorAlt || '');
       // Scene-local custom property (unlike applyTheme()'s globals on
       // document.documentElement) — only #sw-glow-burst/.sw-logo below
       // consume it, so it's set on #root, matching v1's `el.style.
@@ -316,7 +321,7 @@
       var wScore = winKey === 'team1' ? t1.score : t2.score;
       var lScore = winKey === 'team1' ? t2.score : t1.score;
 
-      stageSlot.innerHTML = winnerHtml(winner, loser, wScore, lScore, teamColor);
+      stageSlot.innerHTML = winnerHtml(winner, loser, wScore, lScore, teamColor, teamColorAlt);
       eventSlot.innerHTML = eventHeader({ eventName: state.eventName || 'FACEIT SEASON 8' });
     }
 

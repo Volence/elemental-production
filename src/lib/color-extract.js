@@ -83,3 +83,50 @@ export function pickBestBucket(buckets) {
   if (grayBest) return neutralSilver(grayBest);
   return ELMT_ACCENT_FALLBACK;
 }
+
+// Minimum RGB distance (Euclidean, 0-441) between the primary and a candidate
+// secondary before the candidate counts as "another part of the logo" rather
+// than a neighboring quantization bucket of the same color. Adjacent 16-step
+// buckets of one hue sit ~16-28 apart; genuinely different logo colors sit
+// well past 60.
+const SECONDARY_MIN_DISTANCE = 60;
+
+function bucketAvg(b) {
+  return [b.r / b.count, b.g / b.count, b.b / b.count];
+}
+
+// Pick the logo's TWO most prominent distinct colors (owner QA batch 3: the
+// series-winner pinwheel's secondary petals should be "actually another part
+// of the logo", not a synthetic shade of the primary). Same scoring policy
+// as pickBestBucket ("vibrant beats big-but-gray"); the secondary is the
+// best-scoring vibrant bucket at least SECONDARY_MIN_DISTANCE away from the
+// primary. `secondary` is null when the logo genuinely has only one color
+// family (callers fall back to shading the primary).
+export function pickTwoColors(buckets) {
+  const primary = pickBestBucket(buckets);
+
+  // Re-find the primary's bucket average to measure distances against. The
+  // gray/fallback paths have no vibrant primary bucket — no secondary then.
+  let primaryBucket = null, primaryScore = 0;
+  for (const b of Object.values(buckets)) {
+    if (b.count === 0 || b.satScore / b.count < MIN_AVG_SATURATION) continue;
+    const score = b.satScore * Math.sqrt(b.count);
+    if (score > primaryScore) { primaryScore = score; primaryBucket = b; }
+  }
+  if (!primaryBucket) return { primary, secondary: null };
+
+  const [pr, pg, pb] = bucketAvg(primaryBucket);
+  let second = null, secondScore = 0;
+  for (const b of Object.values(buckets)) {
+    if (b === primaryBucket || b.count === 0) continue;
+    if (b.satScore / b.count < MIN_AVG_SATURATION) continue;
+    const [r, g, bl] = bucketAvg(b);
+    const dist = Math.hypot(r - pr, g - pg, bl - pb);
+    if (dist < SECONDARY_MIN_DISTANCE) continue;
+    const score = b.satScore * Math.sqrt(b.count);
+    if (score > secondScore) { secondScore = score; second = b; }
+  }
+  if (!second) return { primary, secondary: null };
+  const [sr, sg, sb] = bucketAvg(second);
+  return { primary, secondary: toHex(Math.round(sr), Math.round(sg), Math.round(sb)) };
+}

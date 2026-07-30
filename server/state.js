@@ -77,8 +77,10 @@ const defaultState = {
     rainbowColors: ['#2563eb', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444', '#f97316'],
     team1Color: '#3b82f6',
     team1ColorAuto: true,
+    team1ColorAlt: '', // logo's second distinct color (auto-extracted; '' = none found)
     team2Color: '#ef4444',
     team2ColorAuto: true,
+    team2ColorAlt: '',
     countdownColor: '#ffffff',
     countdownLabelBg: ['#f97316', '#ef4444'],
     scheduleRowBg: 'rgba(15,15,25,0.85)',

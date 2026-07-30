@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pickBestBucket, sampleBuckets, ELMT_ACCENT_FALLBACK } from './color-extract.js';
+import { pickBestBucket, pickTwoColors, sampleBuckets, ELMT_ACCENT_FALLBACK } from './color-extract.js';
 
 const bucket = (r, g, b, count, satAvg) => ({ r: r * count, g: g * count, b: b * count, count, satScore: satAvg * count });
 
@@ -71,5 +71,44 @@ describe('sampleBuckets', () => {
       5, 5, 5, 255,        // near-black, l < 0.15
     ];
     expect(sampleBuckets(data)).toEqual({});
+  });
+});
+
+describe('pickTwoColors', () => {
+  it('picks the second-most-prominent DISTINCT vibrant color as secondary', () => {
+    const buckets = {
+      red: bucket(220, 40, 40, 300, 0.75),   // primary
+      gold: bucket(210, 170, 40, 150, 0.6),  // distinct second color
+      gray: bucket(128, 128, 128, 900, 0.02),
+    };
+    const { primary, secondary } = pickTwoColors(buckets);
+    expect(primary).toBe('#dc2828');
+    expect(secondary).toBe('#d2aa28');
+  });
+
+  it('rejects a neighboring quantization bucket of the same hue (returns null, not a shade)', () => {
+    const buckets = {
+      red: bucket(220, 40, 40, 300, 0.75),
+      redNeighbor: bucket(208, 48, 48, 200, 0.7), // ~17 RGB distance — same color family
+    };
+    expect(pickTwoColors(buckets).secondary).toBe(null);
+  });
+
+  it('returns null secondary for a single-color logo', () => {
+    expect(pickTwoColors({ red: bucket(220, 40, 40, 300, 0.75) }).secondary).toBe(null);
+  });
+
+  it('returns null secondary when the logo is all gray (silver primary path)', () => {
+    const { primary, secondary } = pickTwoColors({ a: bucket(120, 120, 125, 500, 0.03) });
+    expect(primary).toBe('#88888d');
+    expect(secondary).toBe(null);
+  });
+
+  it('a gray bucket can never be the secondary, however large', () => {
+    const buckets = {
+      red: bucket(220, 40, 40, 300, 0.75),
+      gray: bucket(70, 70, 70, 2000, 0.02), // far from red but near-zero saturation
+    };
+    expect(pickTwoColors(buckets).secondary).toBe(null);
   });
 });

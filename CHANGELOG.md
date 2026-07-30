@@ -218,6 +218,13 @@ Third round of owner feedback on the v2 package:
 - **`.mov` flythroughs recognized.** The flythrough directory scan accepts
   `.mov`/`.m4v` alongside `.mp4`/`.webm` (the producer's recorder outputs
   QuickTime; OBS's ffmpeg source plays it natively).
+- **Two-color logo extraction.** The color extractor now also picks the
+  logo's SECOND most prominent distinct color (`pickTwoColors` — same
+  vibrant-beats-big-but-gray scoring, with a minimum RGB distance so a
+  neighboring shade of the primary never counts). Auto-extraction stores it
+  as `theme.teamNColorAlt`; the Series Winner pinwheel's secondary petals
+  use it, so the crest shows two real parts of the winning logo (falling
+  back to a darker shade of the primary for single-color logos).
 - **Canonical scene-list order.** The generator now enforces the owner's
   show-flow scene order (Starting, Casters, Map Pool, Map Pick, Ban Reveal,
   Map Intro, Casters Flythrough, Gameplay, desk scenes, Between Matches,
