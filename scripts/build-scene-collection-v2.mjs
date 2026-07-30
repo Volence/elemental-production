@@ -398,6 +398,47 @@ function ensureSceneAudio(obj, sceneName) {
   return { status: added.length ? `${sceneName} audio added: ${added.join(', ')}` : sceneName + '-audio-present' };
 }
 
+// ---- Scene-item z-order policy (owner QA batch 3 release sweep) ----------
+// OBS renders a scene's `items` array bottom -> top. The v2 design rule is:
+// video FEEDS sit at the bottom (game capture, flythrough video, replay,
+// caster/interview cams — the overlay frames them through its transparent
+// cutouts), the overlay BROWSER SOURCE sits above them, and audio-only
+// sources ride on top (they draw nothing). This pass STABLE-sorts every
+// scene's items by that class rank, which fixes the long-standing Between
+// Matches defect (its overlay sat BELOW the Replay, so the replay's
+// SCALE_OUTER overspill wasn't masked) and pins the convention for every
+// future scene. Stable = relative order within a class is preserved, so
+// re-running is a byte-identical no-op.
+const FEED_SOURCES = new Set([
+  'Overwatch', 'Map Flythrough', 'Replay', 'Interviewee', 'Caster 1', 'Caster 2',
+]);
+const OVERLAY_SOURCES = new Set([
+  'Starting Soon BS', 'Map Pick BS', 'Map Pool BS', 'Ban Reveal BS',
+  'Map Intro BS', 'Casters Flythrough Hud', 'Gameplay HUD', 'Casters BS',
+  'Casters Lobby BS', 'Casters Scoreboard BS', 'Casters Map Score BS',
+  'Between Matches BS', 'BRB BS', 'Interview BS', 'Series Winner BS',
+  'End Stream BS',
+]);
+
+function itemRank(name) {
+  if (FEED_SOURCES.has(name)) return 0;
+  if (OVERLAY_SOURCES.has(name)) return 1;
+  return 2; // audio-only / anything else — draws nothing, rides on top
+}
+
+function enforceItemOrder(obj) {
+  const changed = [];
+  for (const s of obj.sources || []) {
+    if (!s || s.id !== 'scene' || !s.settings || !Array.isArray(s.settings.items)) continue;
+    const before = s.settings.items.map((it) => it.name).join('|');
+    // Array.prototype.sort is stable in modern V8; rank ties keep file order.
+    s.settings.items.sort((a, b) => itemRank(a.name) - itemRank(b.name));
+    const after = s.settings.items.map((it) => it.name).join('|');
+    if (before !== after) changed.push(s.name);
+  }
+  return { status: changed.length ? `item-order fixed: ${changed.join(', ')}` : 'item-order ok' };
+}
+
 // True if a carry value is worth copying. Strings must be non-blank; arrays
 // (playlist) must be non-empty; booleans (is_local_file) always count as
 // present. Anything else (null/undefined) is skipped.
@@ -448,6 +489,11 @@ function processCollection(obj) {
     const audio = ensureSceneAudio(obj, audioScene);
     changes.push({ scene: audioScene, cam: null, status: audio.status });
   }
+
+  // Enforce the feeds < overlay < audio z-order convention on every scene
+  // (AFTER the ensure steps so newly added items are covered too).
+  const itemOrder = enforceItemOrder(obj);
+  changes.push({ scene: '(all)', cam: null, status: itemOrder.status });
 
   const scenes = (obj.sources || []).filter((s) => s && s.id === 'scene');
   const byName = new Map(scenes.map((s) => [s.name, s]));
