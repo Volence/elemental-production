@@ -8,7 +8,10 @@
        animations.css own tokens + shared component-internal styles; this
        file's own <style> owns scene-local layout. This is the Plan 3 Task 2
        cam-scene TEMPLATE — Tasks 3-4's caster variants copy this skeleton and
-       only swap the deck.
+       only swap the deck. The cam-cutout mask machinery (camMaskDataUri +
+       applyCutoutMask) is NOT copied inline anymore — it lives in
+       bg-helper.js (shared with every scene that needs a cutout layer);
+       just include the script tag and call applyCutoutMask(bgEl, camRects).
 
        Layout A (design spec §5 / casters-layout.html mockup, option A —
        option B's rail is REJECTED): two equal cams high-center, transparent
@@ -26,13 +29,13 @@
        #root itself) with a CSS mask: an inline data: SVG (white rect = keep,
        black rect = hole, one hole per active cam rect) punches transparent
        windows at exactly CAM_LAYOUTS.desk's coordinates. Rebuilt (well,
-       re-pointed — see updateCutoutMask()) whenever casterLayout changes,
-       via style.setProperty on the SAME persistent #cd-bg node — same
-       "touch a custom property on a persistent shell node, don't rebuild
-       the node" pattern hero-bans.html's wash divs use for team-color
-       changes. ?bg=transparent (preserved from the old scene, used for
-       flythrough-style embeds) skips building #cd-bg entirely — frames and
-       deck still render over a fully transparent page. -->
+       re-pointed — see applyCutoutMask() in bg-helper.js) whenever
+       casterLayout changes, via style.setProperty on the SAME persistent
+       #cd-bg node — same "touch a custom property on a persistent shell
+       node, don't rebuild the node" pattern hero-bans.html's wash divs use
+       for team-color changes. ?bg=transparent (preserved from the old scene,
+       used for flythrough-style embeds) skips building #cd-bg entirely —
+       frames and deck still render over a fully transparent page. -->
   <link rel="stylesheet" href="./theme-v2.css">
   <link rel="stylesheet" href="./fonts-v2.css">
   <link rel="stylesheet" href="./animations.css">
@@ -134,56 +137,6 @@
         '<div class="cd-deck-name">' + escapeHtml(team.name || '') + '</div></div>';
     }
 
-    // Builds a data: SVG mask image for the cutout layer: a full-canvas white
-    // rect (mask default = keep, per CSS luminance masking) with one BLACK
-    // rect per active cam rect punched on top (mask = hole). 1920x1080 native
-    // size matches the canvas 1:1 so `mask-size:100% 100%` never distorts it.
-    // Empty `rects` -> a white-only mask is never even requested by the
-    // caller (see updateCutoutMask) so this always has >=1 hole when called.
-    function camMaskDataUri(rects) {
-      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">' +
-        '<rect width="1920" height="1080" fill="white"/>';
-      for (var i = 0; i < rects.length; i++) {
-        var r = rects[i];
-        svg += '<rect x="' + r.x + '" y="' + r.y + '" width="' + r.w + '" height="' + r.h + '" fill="black"/>';
-      }
-      svg += '</svg>';
-      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-    }
-
-    // Re-points #cd-bg's mask to the given rect set. Called from render (not
-    // shell): the active rects depend on casterLayout, which is DATA, but
-    // this only ever touches style properties on the persistent #cd-bg node
-    // — never rebuilds it — so it can't interfere with the node's own
-    // (nonexistent) entrance animation. No rects (layout 0, or ?bg=transparent
-    // where #cd-bg doesn't exist) -> no mask -> the texture (if present)
-    // covers the full canvas with no holes.
-    //
-    // mask-mode MUST be forced to 'luminance' (+ the legacy -webkit-mask-
-    // source-type equivalent) — verified against a real Chromium build
-    // while implementing this: an image mask source's default mode per the
-    // current CSS Masking spec is 'alpha', not luminance, so a mask image
-    // whose white/black rects are BOTH fully opaque (alpha 1 everywhere, the
-    // whole point of "white keep / black hole") masks NOTHING under the
-    // default mode — every pixel stays fully visible, no cutout at all.
-    // Explicit luminance mode is what makes white=visible/black=hidden work.
-    function updateCutoutMask(rects) {
-      var bgEl = document.getElementById('cd-bg');
-      if (!bgEl) return;
-      if (rects.length === 0) {
-        bgEl.style.removeProperty('mask-image');
-        bgEl.style.removeProperty('-webkit-mask-image');
-        return;
-      }
-      var maskUrl = 'url("' + camMaskDataUri(rects) + '")';
-      bgEl.style.setProperty('mask-image', maskUrl);
-      bgEl.style.setProperty('-webkit-mask-image', maskUrl);
-      bgEl.style.setProperty('mask-size', '100% 100%');
-      bgEl.style.setProperty('-webkit-mask-size', '100% 100%');
-      bgEl.style.setProperty('mask-mode', 'luminance');
-      bgEl.style.setProperty('-webkit-mask-source-type', 'luminance');
-    }
-
     // ── shell: builds the persistent chrome exactly ONCE ────────────────────
     // #cd-bg (texture + cutout mask target) is built here but its mask is set
     // by render (depends on casterLayout). The three slot wrappers carry the
@@ -241,7 +194,7 @@
       var layout = (state.casterLayout === undefined || state.casterLayout === null) ? 2 : state.casterLayout;
       var camRects = layout === 0 ? [] : (layout === 1 ? CAM_LAYOUTS.desk.single : CAM_LAYOUTS.desk.dual);
 
-      updateCutoutMask(camRects);
+      applyCutoutMask(document.getElementById('cd-bg'), camRects);
 
       // ── header: event name + gradient underline, top-center ────────────
       document.querySelector('#cd-header .slot-content').innerHTML =
