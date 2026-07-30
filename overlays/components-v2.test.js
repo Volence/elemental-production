@@ -88,6 +88,18 @@ describe('mapPips', () => {
     expect(html).toContain('BUS');
     expect(html).toContain('KIN');
   });
+  it('truncates rather than overflows when maps.length exceeds bestOf (stale data)', () => {
+    const staleMaps = [
+      { name: 'Busan', status: 'completed', winner: 'team1' },
+      { name: 'Dorado', status: 'completed', winner: 'team2' },
+      { name: "King's Row", status: 'current', winner: null },
+    ];
+    const html = mapPips({ maps: staleMaps, bestOf: 2, team1Color: '#111111', team2Color: '#222222' });
+    const pipCount = (html.match(/class="v2-pip(?:"| )/g) || []).length;
+    expect(pipCount).toBe(2);
+    expect(html).not.toContain('v2-pip-empty');
+    expect(html).not.toContain('KIN'); // 3rd map truncated, not rendered
+  });
 });
 
 describe('topFrame', () => {
@@ -114,6 +126,42 @@ describe('topFrame', () => {
   it('swapSides flips which team renders left', () => {
     const html = topFrame({ ...opts, swapSides: true });
     expect(html.indexOf('ICE')).toBeLessThan(html.indexOf('FIRE'));
+  });
+  it('accepts an explicit currentMapName, overriding the inline current-status scan', () => {
+    // No map is status 'current' here — without opts.currentMapName the map
+    // pill would go blank (the inline fallback only scans for 'current').
+    const html = topFrame({
+      ...opts,
+      maps: [{ name: 'Busan', status: 'completed', winner: 'team1' }],
+      currentMapName: 'Nepal',
+    });
+    expect(html).toContain('Nepal');
+  });
+});
+
+describe('topFrame color semantics under swapSides', () => {
+  // Full 6-digit hex here (not the '#f00'/'#00f' shorthand used above) so
+  // the asserted rgba(...) strings are exact and unambiguous.
+  const optsFull = {
+    team1: { name: 'FIRE', logo: 'a.png', score: 2, color: '#ff0000' },
+    team2: { name: 'ICE', logo: 'b.png', score: 1, color: '#0000ff' },
+    eventName: 'ELMT League', bestOf: 5,
+    maps: [{ name: 'Busan', status: 'completed', winner: 'team1' }],
+    hubText: '2·1',
+  };
+  it('left plate wash comes from the team now on the left (team2 under swap), right from team1', () => {
+    const html = topFrame({ ...optsFull, swapSides: true });
+    const idxBlue = html.indexOf('rgba(0,0,255');
+    const idxRed = html.indexOf('rgba(255,0,0');
+    expect(idxBlue).toBeGreaterThan(-1);
+    expect(idxRed).toBeGreaterThan(-1);
+    expect(idxBlue).toBeLessThan(idxRed);
+  });
+  it('mapPips keeps TRUE team colors regardless of swapSides (never screen-side-flipped)', () => {
+    const html = topFrame({ ...optsFull, swapSides: true });
+    // map winner is 'team1' -> its pip must stay team1's true color (#ff0000)
+    // even though team1 is now rendering on the right.
+    expect(html).toContain('background:#ff0000');
   });
 });
 

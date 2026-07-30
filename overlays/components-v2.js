@@ -202,9 +202,16 @@ function mapPips(opts) {
   var team1Color = opts.team1Color || '';
   var team2Color = opts.team2Color || '';
 
+  // Stale data can carry more map entries than the series' bestOf (a
+  // corrected/lowered bestOf after maps were already recorded). Truncate to
+  // bestOf real pips rather than overflowing the fixed-width row; when no
+  // bestOf is given at all, fall back to showing every map (original
+  // behavior, used by callers that don't track a series length).
+  var realCount = opts.bestOf ? Math.min(maps.length, bestOf) : maps.length;
+
   var html = '<div class="v2-pips">';
   var i;
-  for (i = 0; i < maps.length; i++) {
+  for (i = 0; i < realCount; i++) {
     var map = maps[i] || {};
     var abbrev = _mapAbbrev(map.name);
     var cls = 'v2-pip';
@@ -240,8 +247,18 @@ function mapPips(opts) {
 // regardless of import/require ordering as long as the global is set
 // before topFrame() actually runs.
 /* global pinwheelSVG */
+var _pinwheelWarned = false;
 function _pinwheel(opts) {
-  return (typeof pinwheelSVG !== 'undefined') ? pinwheelSVG(opts) : '';
+  if (typeof pinwheelSVG !== 'undefined') return pinwheelSVG(opts);
+  // Loud in the dev console (missing <script src="pinwheel.js"> is a real
+  // authoring mistake worth surfacing), but still graceful on air — the
+  // medallion just renders blank instead of throwing. Warn once per page
+  // load so a busy overlay refreshing every state tick doesn't spam it.
+  if (!_pinwheelWarned && typeof console !== 'undefined' && console.warn) {
+    console.warn('components-v2.js: pinwheelSVG global is not defined — is pinwheel.js loaded before this script?');
+    _pinwheelWarned = true;
+  }
+  return '';
 }
 
 // One hero-ban wing (v7 mockup): a row of banTile()s in the team's color,
@@ -267,7 +284,14 @@ function _banWing(bans, teamColor) {
 //
 // opts: { team1, team2 (each {name, logo, score, color}), eventName,
 //   bestOf, maps, banWings ({team1:[], team2:[]} or null/absent),
-//   hubText, swapSides }
+//   hubText, swapSides, currentMapName }
+//
+// leftColor/rightColor and hubText are interpolated RAW into pinwheelSVG's
+// output (fill/stroke/filter attributes and the hub <text> respectively) —
+// topFrame does not escape or otherwise sanitize them, per pinwheelSVG's
+// own documented contract that callers must pass trusted, pre-sanitized
+// values (team theme colors and series scores like '2·1', never raw
+// FACEIT strings).
 function topFrame(opts) {
   opts = opts || {};
   var team1 = opts.team1 || {};
@@ -301,11 +325,19 @@ function topFrame(opts) {
     rightWingHtml = _banWing(rightBans, rightColor);
   }
 
-  var currentMapName = '';
-  for (var i = 0; i < maps.length; i++) {
-    if (maps[i] && maps[i].status === 'current') {
-      currentMapName = maps[i].name || '';
-      break;
+  // opts.currentMapName lets callers (e.g. the Task 4 HUD) inject a richer
+  // fallback than this inline scan — findCurrentMap()'s live -> next
+  // upcoming -> last played order — so the map pill doesn't go blank
+  // between maps when nothing is 'current' yet/anymore. Falls back to a
+  // plain "first map with status === 'current'" scan when omitted.
+  var currentMapName = opts.currentMapName;
+  if (!currentMapName) {
+    currentMapName = '';
+    for (var i = 0; i < maps.length; i++) {
+      if (maps[i] && maps[i].status === 'current') {
+        currentMapName = maps[i].name || '';
+        break;
+      }
     }
   }
 
