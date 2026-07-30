@@ -13,6 +13,10 @@ describe('banTile', () => {
     expect(html).toContain('v2-ban-tile');
     expect(html).not.toContain('<img');
   });
+  it('includes the slash overlay div', () => {
+    const html = banTile({ portrait: 'http://localhost:3001/cache/x.png', heroName: 'Genji', teamColor: '#f00' });
+    expect(html).toContain('v2-ban-slash');
+  });
 });
 
 describe('teamPlate', () => {
@@ -25,6 +29,11 @@ describe('teamPlate', () => {
   it('escapes team names (no HTML injection from FACEIT names)', () => {
     const html = teamPlate({ side: 'left', name: '<img onerror=x>', logo: '', score: 0, color: '#f00' });
     expect(html).not.toContain('<img onerror');
+    expect(html).toContain('&lt;img onerror');
+  });
+  it('renders a score of 0 (null-guard should not blank it out)', () => {
+    const html = teamPlate({ side: 'left', name: 'ELMT FIRE', logo: '', score: 0, color: '#f00' });
+    expect(html).toContain('>0<');
   });
   it('renders petal linework svg when linework: true is passed', () => {
     const html = teamPlate({ side: 'right', name: 'ELMT WATER', logo: '', score: 1, color: '#00f', linework: true });

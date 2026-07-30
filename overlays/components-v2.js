@@ -77,21 +77,27 @@ function safeImg(src, attrs) {
 }
 
 // Hero ban tile (mobile legibility floor: 56px, enforced by .v2-ban-tile in
-// theme-v2.css). `opts.portrait` is expected ALREADY PROXIED by the caller —
-// the server pre-proxies hero portraits at the data-fetch layer — so this
-// function does NOT call proxyImg/safeImg on it; doing so would double-wrap
-// an already-proxied URL.
+// theme-v2.css). `opts.portrait` is normally ALREADY PROXIED by the caller —
+// the server pre-proxies hero portraits at the data-fetch layer — so routing
+// it through _proxyImg here is normally a pass-through, not a transform
+// (_proxyImg is idempotent: localhost/relative /cache paths are untouched,
+// only raw external URLs get rewritten). We still call it defensively so
+// "unproxied external images are structurally impossible in v2 markup"
+// (audit item 8) holds even if a caller ever forgets to pre-proxy.
 function banTile(opts) {
   opts = opts || {};
-  var portrait = opts.portrait || '';
+  var portrait = _proxyImg(opts.portrait || '');
   var heroName = opts.heroName || '';
   var teamColor = opts.teamColor || '';
 
   var tileInner;
   if (heroName) {
+    // Pure red (not --elmt-red, which is an hsl brand accent) is intentional
+    // here — the ban slash reads as a universal "denied" signal, distinct
+    // from team/brand color.
     tileInner =
       '<img class="v2-ban-tile-img" src="' + escapeHtml(portrait) + '" alt="' + escapeHtml(heroName) + '">' +
-      '<div class="v2-ban-slash" style="position:absolute;inset:0;background-image:linear-gradient(45deg, transparent 46%, ' + _hexToAlpha('#ff0000', 0.85) + ' 49%, ' + _hexToAlpha('#ff0000', 0.85) + ' 51%, transparent 54%);"></div>';
+      '<div class="v2-ban-slash" style="position:absolute;inset:0;background-image:linear-gradient(45deg, transparent 46%, rgba(255,0,0,0.85) 49%, rgba(255,0,0,0.85) 51%, transparent 54%);"></div>';
   } else {
     tileInner = '<div class="v2-ban-tile-empty"></div>';
   }
