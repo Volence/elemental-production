@@ -190,7 +190,8 @@
       const t2 = state.teams?.team2?.name || '';
       const event = state.eventTitle || state.matchTitle || '';
       const vis = state.countdown?.visible !== false ? '1' : '0';
-      return `${t1}|${t2}|${event}|${schedule.length}|${schedule.map(m => m.team1 + m.team2).join(',')}|${vis}`;
+      const scheduleKey = schedule.map(m => [m.team1, m.team2, m.team1Logo, m.team2Logo, m.time, m.label].join('~')).join(',');
+      return `${t1}|${t2}|${event}|${schedule.length}|${scheduleKey}|${vis}`;
     }
 
     function update(state) {
@@ -224,13 +225,13 @@
         const isNext = i === 0;
         return `<div class="match-row ${isNext ? 'up-next' : ''}">
           <div class="team-left">
-            ${match.team1Logo ? `<img class="team-logo" src="${match.team1Logo}">` : '<div class="team-logo" style="background:#333;border-radius:50%"></div>'}
+            ${match.team1Logo ? `<img class="team-logo" src="${proxyImg(match.team1Logo)}">` : '<div class="team-logo" style="background:#333;border-radius:50%"></div>'}
             <span class="team-name">${match.team1 || 'TBD'}</span>
           </div>
           <span class="vs">—</span>
           <div class="team-right">
             <span class="team-name">${match.team2 || 'TBD'}</span>
-            ${match.team2Logo ? `<img class="team-logo" src="${match.team2Logo}">` : '<div class="team-logo" style="background:#333;border-radius:50%"></div>'}
+            ${match.team2Logo ? `<img class="team-logo" src="${proxyImg(match.team2Logo)}">` : '<div class="team-logo" style="background:#333;border-radius:50%"></div>'}
           </div>
           <div class="match-info">
             <span class="match-time">${isNext ? '' : (match.time || '')}</span>

@@ -237,7 +237,7 @@
     function update(state) {
       var renderKey = JSON.stringify([
         state.teams, state.maps, state.casters, state.casterLayout,
-        state.players, state.bestOf, state.eventName, state.schedule, state.theme
+        state.players, state.bestOf, state.eventName, state.perMapBans, state.theme
       ]);
       if (renderKey === lastRenderKey) return;
       lastRenderKey = renderKey;

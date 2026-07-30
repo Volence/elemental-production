@@ -130,7 +130,7 @@
         <div class="player-card">
           <div class="player-name" style="color:${teamColor}">${playerName}</div>
           <div class="player-detail">
-            ${teamLogo ? `<img class="player-team-logo" src="${teamLogo}">` : ''}
+            ${teamLogo ? `<img class="player-team-logo" src="${proxyImg(teamLogo)}">` : ''}
             ${teamName ? `<span class="player-team" style="color:${teamColor}">${teamName}</span>` : ''}
             ${role ? `<span class="player-role" style="background:${roleColor}20;color:${roleColor}">${role}</span>` : ''}
           </div>

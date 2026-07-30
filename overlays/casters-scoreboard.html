@@ -223,14 +223,15 @@
     }
 
     var lastRenderKey = '';
+    var lastState = null;
     function update(state) {
+      lastState = state;
       var renderKey = JSON.stringify([
         state.teams, state.maps, state.casters, state.casterLayout,
         state.playerStats, state.bestOf, state.eventName, state.theme,
         state.selectedMapIdx, state.heroBans, state.perMapBans
       ]);
       if (renderKey === lastRenderKey) return;
-      lastRenderKey = renderKey;
       applyTheme(state);
       const el = document.getElementById('root');
       const stats = state.playerStats;
@@ -240,6 +241,7 @@
       const t2Color = t2?.color || '#ef4444';
 
       if (!stats || stats.length === 0 || !t1?.name) {
+        lastRenderKey = renderKey;
         el.innerHTML = `
           <div class="branding">
             <img class="org-logo" src="./org.png">
@@ -282,6 +284,7 @@
       }
       const round = stats[idx];
       if (!round || !round.teams || round.teams.length < 2) return;
+      lastRenderKey = renderKey;
 
       // Map selector
       const mapBtns = stats.map((r, i) => {
@@ -443,6 +446,8 @@
 
     window.switchMap = function(idx) {
       currentMap = idx;
+      lastRenderKey = null;
+      if (lastState) update(lastState);
     };
 
     loadHeroes().then(() => stateSync(update));

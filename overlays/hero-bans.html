@@ -94,12 +94,7 @@
     let heroData = [];
 
     async function loadHeroes() {
-      if (window.__HERO_DATA__ && window.__HERO_DATA__.length) {
-        heroData = window.__HERO_DATA__;
-        return;
-      }
-      const res = await fetch(`${API}/api/heroes`);
-      heroData = await res.json();
+      heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
     }
 
     var lastRenderKey = '';
