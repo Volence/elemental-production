@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { pickBestBucket, ELMT_ACCENT_FALLBACK } from '../lib/color-extract.js';
 
 const BUILTIN_FONTS = [
   'Bebas Neue', 'Oswald', 'Inter', 'Roboto', 'Montserrat',
@@ -328,27 +329,13 @@ function TeamColorSection({ label, color, auto, logoUrl, api, onColorChange, onE
         buckets[key].satScore += s;
       }
 
-      let best = null, bestScore = 0;
-      for (const b of Object.values(buckets)) {
-        const score = b.satScore * Math.sqrt(b.count);
-        if (score > bestScore) { bestScore = score; best = b; }
-      }
-
-      if (best && best.count > 0) {
-        const r = Math.round(best.r / best.count);
-        const g = Math.round(best.g / best.count);
-        const b = Math.round(best.b / best.count);
-        const hex = '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
-        setExtractedColor(hex);
-        onExtractedColor(hex);
-      } else {
-        setExtractedColor('#6b7280');
-        onExtractedColor('#6b7280');
-      }
+      const hex = pickBestBucket(buckets);
+      setExtractedColor(hex);
+      onExtractedColor(hex);
     };
     img.onerror = () => {
-      setExtractedColor('#6b7280');
-      onExtractedColor('#6b7280');
+      setExtractedColor(ELMT_ACCENT_FALLBACK);
+      onExtractedColor(ELMT_ACCENT_FALLBACK);
     };
     img.src = needsProxy ? `${api}/api/proxy-image?url=${encodeURIComponent(logoUrl)}` : logoUrl;
   }, [auto, logoUrl]);
