@@ -23,6 +23,7 @@ const defaultState = {
   heroBans: { team1: [], team2: [] },
   perMapBans: [], // [{ ban1: { name, role, image }, ban2: { name, role, image }, picker: 'team1'|'team2' }]
   selectedMapIdx: -1, // producer-selected map for ban/stat display; -1 = auto (live map)
+  activeBanMapIdx: -1, // DERIVED (getActiveBanIdx): which map's bans heroBans was resolved from; -1 = none. Overlays label the Ban Reveal map from this instead of re-deriving client-side. Kept in lockstep with heroBans (see faceit-merge deriveActiveBanState).
   banSwaps: [], // per-map ⇄ ban-side corrections (true = swap team1Ban/team2Ban), survives FACEIT auto-sync
   mapPickers: [], // per-map manual picker overrides ('team1'|'team2'|'none'), survives FACEIT auto-sync
   players: { team1: [], team2: [] },

@@ -271,7 +271,7 @@
       return [
         t1.name, t1.logo, t1.score, t1.color,
         t2.name, t2.logo, t2.score, t2.color,
-        maps, perMapBans,
+        maps, perMapBans, state.activeBanMapIdx,
         state.bestOf, state.eventName,
         theme.team1Color, theme.team2Color
       ];
@@ -442,14 +442,21 @@
 
       document.querySelector('#mp-header .slot-content').innerHTML = headerHtml(t1, t2, t1color, t2color, state.eventName);
 
-      // Which column shows hero bans: the live ('current') map, else the last
-      // PLAYED (completed) map — so a finished/decided series still shows its
-      // final map's bans on the board. The white glow + LIVE chip stay
-      // current-only (mp-col-current class / liveChipHtml), so a last-played
-      // column shows bans WITHOUT looking live.
-      var banColIdx = -1;
-      for (var bc = 0; bc < maps.length; bc++) { if (maps[bc] && maps[bc].status === 'current') { banColIdx = bc; break; } }
-      if (banColIdx < 0) { for (var bd = maps.length - 1; bd >= 0; bd--) { if (maps[bd] && maps[bd].status === 'completed') { banColIdx = bd; break; } } }
+      // Which column gets the LARGER (84px) ban tiles — the "active" map. Prefer
+      // the server's DERIVED resolver answer (state.activeBanMapIdx, from
+      // getActiveBanIdx) so the board's emphasized column stays in lockstep with
+      // the Ban Reveal: same map is highlighted here and labeled there, and it
+      // also honors the producer-selected map + the between-maps upcoming window
+      // that the local heuristic below can't see. Fall back to the local
+      // current-else-last-completed scan for pre-fix servers/persisted states
+      // with no activeBanMapIdx. (This only sizes tiles; every played column
+      // still shows its bans regardless.)
+      var banColIdx = (typeof state.activeBanMapIdx === 'number' && state.activeBanMapIdx >= 0)
+        ? state.activeBanMapIdx : -1;
+      if (banColIdx < 0) {
+        for (var bc = 0; bc < maps.length; bc++) { if (maps[bc] && maps[bc].status === 'current') { banColIdx = bc; break; } }
+        if (banColIdx < 0) { for (var bd = maps.length - 1; bd >= 0; bd--) { if (maps[bd] && maps[bd].status === 'completed') { banColIdx = bd; break; } } }
+      }
 
       var ctx = { t1: t1, t2: t2, t1color: t1color, t2color: t2color, bestOf: bestOf, banColIdx: banColIdx };
       var colsHtml = '';

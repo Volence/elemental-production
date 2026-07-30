@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTeamsUpdate, buildMapsUpdate, getActiveBanIdx, computeHeroBans, heroNameToKey, deriveHeroBansUpdate } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, getActiveBanIdx, computeHeroBans, computeActiveBan, heroNameToKey, deriveActiveBanState } from './faceit-merge.js';
 
 const faction1 = { id: 'f1', name: 'Alpha', avatar: 'a.png', roster: [] };
 const faction2 = { id: 'f2', name: 'Beta', avatar: 'b.png', roster: [] };
@@ -161,50 +161,99 @@ describe('computeHeroBans', () => {
   });
 });
 
-describe('deriveHeroBansUpdate', () => {
+describe('computeActiveBan', () => {
+  const banEntry = (t1, t2) => ({
+    team1Ban: t1 ? { name: t1 } : null,
+    team2Ban: t2 ? { name: t2 } : null,
+  });
+
+  it('returns the resolved index alongside the heroBans derived from it', () => {
+    const maps = [{ status: 'completed' }, { status: 'current' }];
+    const perMapBans = [banEntry('Ana', 'Sombra'), banEntry('Genji', 'Mercy')];
+    expect(computeActiveBan(perMapBans, maps)).toEqual({ idx: 1, heroBans: { team1: ['genji'], team2: ['mercy'] } });
+  });
+
+  it('finished/decided series: idx is the last PLAYED map, not a trailing decider', () => {
+    const maps = [
+      { status: 'completed' }, { status: 'completed' }, { status: 'completed' },
+      { status: 'upcoming' }, { status: 'upcoming' },
+    ];
+    const perMapBans = [banEntry('Ana', 'Ana'), banEntry('Ana', 'Ana'), banEntry('Genji', 'Mercy')];
+    // idx 2 (last completed) — this is the value the Ban Reveal chip labels from,
+    // fixing the "MAP 5 · decider" mismatch while the bans were map 3's.
+    expect(computeActiveBan(perMapBans, maps)).toEqual({ idx: 2, heroBans: { team1: ['genji'], team2: ['mercy'] } });
+  });
+
+  it('idx is -1 when there is no resolvable map', () => {
+    expect(computeActiveBan([], [])).toEqual({ idx: -1, heroBans: { team1: [], team2: [] } });
+  });
+});
+
+describe('deriveActiveBanState', () => {
   const banEntry = (t1, t2) => ({
     team1Ban: t1 ? { name: t1 } : null,
     team2Ban: t2 ? { name: t2 } : null,
   });
   const notOverridden = () => false;
 
-  it('boot-recompute: persisted perMapBans + stale-empty heroBans → resolved heroBans', () => {
+  it('boot-recompute: stale-empty heroBans + no activeBanMapIdx → resolved heroBans AND idx', () => {
     const state = {
       maps: [{ status: 'completed' }, { status: 'completed' }],
       perMapBans: [banEntry('Ana', 'Sombra'), banEntry('Genji', 'Mercy')],
       selectedMapIdx: -1,
       heroBans: { team1: [], team2: [] }, // the owner's stale persisted value
+      // activeBanMapIdx absent (pre-fix persisted state)
     };
-    expect(deriveHeroBansUpdate(state, notOverridden)).toEqual({ team1: ['genji'], team2: ['mercy'] });
+    expect(deriveActiveBanState(state, notOverridden)).toEqual({
+      heroBans: { team1: ['genji'], team2: ['mercy'] },
+      activeBanMapIdx: 1,
+    });
   });
 
-  it('PATCH-recompute: moving selectedMapIdx re-derives to that map', () => {
+  it('PATCH-recompute: moving selectedMapIdx re-derives BOTH heroBans and idx', () => {
     const state = {
       maps: [{ status: 'completed' }, { status: 'current' }],
       perMapBans: [banEntry('Reaper', 'Moira'), banEntry('DVa', 'Ana')],
       selectedMapIdx: 0,
-      heroBans: { team1: ['dva'], team2: ['ana'] }, // was the live map
+      heroBans: { team1: ['dva'], team2: ['ana'] }, // was the live map (idx 1)
+      activeBanMapIdx: 1,
     };
-    expect(deriveHeroBansUpdate(state, notOverridden)).toEqual({ team1: ['reaper'], team2: ['moira'] });
+    expect(deriveActiveBanState(state, notOverridden)).toEqual({
+      heroBans: { team1: ['reaper'], team2: ['moira'] },
+      activeBanMapIdx: 0,
+    });
   });
 
-  it('respects the heroBans override — returns null so setState leaves the producer value', () => {
+  it('writes idx even when heroBans is unchanged (two maps, identical bans, active map moved)', () => {
+    const state = {
+      maps: [{ status: 'completed' }, { status: 'current' }],
+      perMapBans: [banEntry('Ana', 'Ana'), banEntry('Ana', 'Ana')],
+      selectedMapIdx: -1,
+      heroBans: { team1: ['ana'], team2: ['ana'] }, // already matches
+      activeBanMapIdx: 0, // but stale — active map is now idx 1 (current)
+    };
+    expect(deriveActiveBanState(state, notOverridden)).toEqual({ activeBanMapIdx: 1 });
+  });
+
+  it('override freeze: heroBans override freezes the idx derivation too — returns null', () => {
     const state = {
       maps: [{ status: 'current' }],
       perMapBans: [banEntry('Genji', 'Mercy')],
       selectedMapIdx: -1,
-      heroBans: { team1: ['ana'], team2: ['ana'] }, // producer-set, must not be clobbered
+      heroBans: { team1: ['ana'], team2: ['ana'] }, // producer-pinned
+      activeBanMapIdx: 5, // producer-pinned map — must NOT be re-derived
     };
-    expect(deriveHeroBansUpdate(state, (p) => p === 'heroBans')).toBeNull();
+    expect(deriveActiveBanState(state, (p) => p === 'heroBans')).toBeNull();
   });
 
-  it('returns null (no write) when the derived value already matches state', () => {
+  it('returns null (no write) when both heroBans and idx already match', () => {
     const state = {
       maps: [{ status: 'current' }],
       perMapBans: [banEntry('Genji', 'Mercy')],
       selectedMapIdx: -1,
       heroBans: { team1: ['genji'], team2: ['mercy'] },
+      activeBanMapIdx: 0,
     };
-    expect(deriveHeroBansUpdate(state, notOverridden)).toBeNull();
+    expect(deriveActiveBanState(state, notOverridden)).toBeNull();
   });
 });

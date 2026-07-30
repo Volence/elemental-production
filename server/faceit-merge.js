@@ -91,19 +91,30 @@ export function heroNameToKey(name) {
 }
 
 /**
- * DERIVE heroBans (the {team1:[key],team2:[key]} the HUD wings + Ban Reveal read)
- * from (perMapBans, maps, selectedMapIdx). This is the single source of truth for
- * heroBans — every producer/sync path funnels through it so heroBans can never
- * drift out of sync with perMapBans (which the scoreboard reads directly).
+ * DERIVE the active-ban view — BOTH the resolved map index and the heroBans
+ * ({team1:[key],team2:[key]}) — from (perMapBans, maps, selectedMapIdx). Single
+ * source of truth: every producer/sync path funnels through this so the map
+ * index (which map's bans are "active"), heroBans (HUD wings + Ban Reveal), and
+ * perMapBans (scoreboard) can never drift apart. `idx` is getActiveBanIdx's
+ * answer (-1 when there's no resolvable map) — exposed as derived state so the
+ * overlays can label the active map without re-deriving the resolver client-side.
  */
-export function computeHeroBans(perMapBans, maps, selectedMapIdx = -1) {
+export function computeActiveBan(perMapBans, maps, selectedMapIdx = -1) {
   perMapBans = perMapBans || [];
   const idx = getActiveBanIdx(maps, selectedMapIdx, perMapBans);
   const activeBans = idx >= 0 ? perMapBans[idx] : null;
   return {
-    team1: activeBans?.team1Ban ? [heroNameToKey(activeBans.team1Ban.name)] : [],
-    team2: activeBans?.team2Ban ? [heroNameToKey(activeBans.team2Ban.name)] : [],
+    idx,
+    heroBans: {
+      team1: activeBans?.team1Ban ? [heroNameToKey(activeBans.team1Ban.name)] : [],
+      team2: activeBans?.team2Ban ? [heroNameToKey(activeBans.team2Ban.name)] : [],
+    },
   };
+}
+
+/** heroBans-only convenience wrapper over computeActiveBan (same single derive). */
+export function computeHeroBans(perMapBans, maps, selectedMapIdx = -1) {
+  return computeActiveBan(perMapBans, maps, selectedMapIdx).heroBans;
 }
 
 function sameHeroBans(a, b) {
@@ -112,17 +123,27 @@ function sameHeroBans(a, b) {
 }
 
 /**
- * DERIVED-CONSISTENCY reconcile for heroBans against a *fully-merged* state
- * object. Returns a fresh heroBans to write, or null to leave state untouched
- * (either the producer holds the heroBans override, or the derived value already
- * matches). Used at server boot (persisted state may carry stale/empty heroBans
- * while perMapBans is populated) and after any PATCH that touches
- * maps/perMapBans/selectedMapIdx/banSwaps. Mirrors the sync paths' override gate
- * exactly — never clobbers a producer heroBans override.
+ * DERIVED-CONSISTENCY reconcile for the active-ban view against a *fully-merged*
+ * state object. Returns a partial update ({heroBans?, activeBanMapIdx}) to write,
+ * or null to leave state untouched (producer holds the heroBans override, or the
+ * derived view already matches). Used at server boot (persisted state may carry
+ * stale/empty heroBans + no activeBanMapIdx while perMapBans is populated) and
+ * after any PATCH that touches maps/perMapBans/selectedMapIdx/banSwaps.
+ *
+ * activeBanMapIdx is COUPLED to the heroBans override on purpose: heroBans and
+ * the index it was resolved from are one fact. If a producer pins heroBans
+ * manually, freezing the index too keeps the overlay's "MAP n" label matching
+ * the pinned bans instead of silently tracking a different map. So the same
+ * isOverridden('heroBans') gate freezes both.
  */
-export function deriveHeroBansUpdate(state, isOverridden) {
+export function deriveActiveBanState(state, isOverridden) {
   if (isOverridden && isOverridden('heroBans')) return null;
-  const next = computeHeroBans(state.perMapBans, state.maps, state.selectedMapIdx);
-  if (sameHeroBans(next, state.heroBans)) return null;
-  return next;
+  const { idx, heroBans } = computeActiveBan(state.perMapBans, state.maps, state.selectedMapIdx);
+  const curIdx = Number.isInteger(state.activeBanMapIdx) ? state.activeBanMapIdx : -1;
+  const bansChanged = !sameHeroBans(heroBans, state.heroBans);
+  const idxChanged = idx !== curIdx;
+  if (!bansChanged && !idxChanged) return null;
+  const update = { activeBanMapIdx: idx };
+  if (bansChanged) update.heroBans = heroBans;
+  return update;
 }

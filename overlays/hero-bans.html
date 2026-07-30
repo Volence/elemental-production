@@ -281,7 +281,7 @@
         t1.name, t1.color,
         t2.name, t2.color,
         hb.team1, hb.team2,
-        maps,
+        maps, state.activeBanMapIdx,
         theme.team1Color, theme.team2Color
       ];
     }
@@ -317,9 +317,19 @@
       // Heading: crest + map-context chip are DATA, written into the shell
       // wrapper's .slot-content every render (the wrapper's own entrance
       // animation is untouched by this — see shell()).
+      //
+      // Label the map from state.activeBanMapIdx — the server's DERIVED resolver
+      // answer (getActiveBanIdx), so the chip always names the SAME map whose
+      // bans are shown below (fixes the finished-series mismatch where the chip
+      // named the trailing decider while the bans were the last-played map's).
+      // Fall back to the old findCurrentMap path for pre-fix servers/persisted
+      // states that have no activeBanMapIdx (-1/undefined).
       var maps = state.maps || [];
       var chipHtml = '';
-      if (maps.length > 0) {
+      var abIdx = (typeof state.activeBanMapIdx === 'number') ? state.activeBanMapIdx : -1;
+      if (abIdx >= 0 && maps[abIdx] && maps[abIdx].name) {
+        chipHtml = '<div class="hb-map-chip">MAP ' + (abIdx + 1) + ' · ' + escapeHtml(maps[abIdx].name) + '</div>';
+      } else if (maps.length > 0) {
         var mapIdx = findCurrentMapIndex(maps);
         var currentMap = findCurrentMap(maps);
         if (currentMap.name) {

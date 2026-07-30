@@ -24,7 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
-import { buildTeamsUpdate, buildMapsUpdate, computeHeroBans, deriveHeroBansUpdate } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, computeActiveBan, deriveActiveBanState } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
 
@@ -771,24 +771,28 @@ function buildPerMapBans(rawBans, maps, banSwaps = [], mapPickers = []) {
   });
 }
 
-// computeHeroBans + getActiveBanIdx now live in faceit-merge.js (pure +
+// computeActiveBan + getActiveBanIdx now live in faceit-merge.js (pure +
 // unit-tested). getActiveBanIdx resolves selected → current →
 // next-upcoming-with-bans → last-played, so a finished/decided series still
-// exposes its final map's bans.
+// exposes its final map's bans; computeActiveBan returns that idx alongside the
+// heroBans derived from it.
 
 /**
- * Keep heroBans DERIVED-CONSISTENT with (perMapBans, maps, selectedMapIdx) on the
- * live state. heroBans is derived state: the scoreboard reads perMapBans directly,
- * but the HUD wings + Ban Reveal read heroBans — if it goes stale (server restart
- * against a persisted file, a PATCH that only moved map status, a match loaded
- * before this fix) those scenes go empty while the scoreboard still shows bans.
- * Call after any state change that can move the active ban map. Respects the
- * heroBans override exactly like the sync paths (never clobbers a producer value).
+ * Keep the active-ban view (heroBans + activeBanMapIdx) DERIVED-CONSISTENT with
+ * (perMapBans, maps, selectedMapIdx) on the live state. These are derived state:
+ * the scoreboard reads perMapBans directly, but the HUD wings + Ban Reveal read
+ * heroBans and the Ban Reveal labels its map from activeBanMapIdx — if they go
+ * stale (server restart against a persisted file, a PATCH that only moved map
+ * status, a match loaded before this fix) those scenes go empty/mislabeled while
+ * the scoreboard still shows bans. Call after any state change that can move the
+ * active ban map. Respects the heroBans override exactly like the sync paths
+ * (never clobbers a producer value; the index is frozen with it — see
+ * deriveActiveBanState).
  */
 function reconcileHeroBans() {
-  const heroBans = deriveHeroBansUpdate(getState(), isOverridden);
-  if (heroBans) setState({ heroBans });
-  return heroBans;
+  const update = deriveActiveBanState(getState(), isOverridden);
+  if (update) setState(update);
+  return update;
 }
 
 app.post('/api/faceit/match', async (req, res) => {
@@ -821,7 +825,7 @@ app.post('/api/faceit/match', async (req, res) => {
 
     // Fresh match load: producer corrections from the previous match don't apply
     const perMapBans = buildPerMapBans(details.perMapBans, maps);
-    const heroBans = computeHeroBans(perMapBans, maps);
+    const activeBan = computeActiveBan(perMapBans, maps);
 
     // Build update object, skipping overridden fields
     const update = {
@@ -856,7 +860,10 @@ app.post('/api/faceit/match', async (req, res) => {
     }
     update.playerStats = stats;
     update.perMapBans = perMapBans;
-    if (!isOverridden('heroBans')) update.heroBans = heroBans;
+    if (!isOverridden('heroBans')) {
+      update.heroBans = activeBan.heroBans;
+      update.activeBanMapIdx = activeBan.idx;
+    }
 
     // Compute score from completed maps to avoid FACEIT reporting partial
     // scores mid-control-map (e.g. Lijiang Tower objective wins)
@@ -932,7 +939,9 @@ app.post('/api/faceit/refresh', async (req, res) => {
     const update = {};
     update.perMapBans = perMapBans;
     if (!isOverridden('heroBans')) {
-      update.heroBans = computeHeroBans(perMapBans, maps, currentState.selectedMapIdx);
+      const activeBan = computeActiveBan(perMapBans, maps, currentState.selectedMapIdx);
+      update.heroBans = activeBan.heroBans;
+      update.activeBanMapIdx = activeBan.idx;
     }
     if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
     if (!isOverridden('maps')) {
@@ -1030,7 +1039,7 @@ async function faceitPollTick() {
     // picker) so an auto-sync tick never reverts them
     const perMapBans = buildPerMapBans(details.perMapBans, maps,
       currentState.banSwaps || [], currentState.mapPickers || []);
-    const heroBans = computeHeroBans(perMapBans, maps, currentState.selectedMapIdx);
+    const activeBan = computeActiveBan(perMapBans, maps, currentState.selectedMapIdx);
 
     // Build update, respecting overrides; unlike the one-shot loader, colors are preserved and overridden maps still advance progress
     const update = {};
@@ -1046,7 +1055,10 @@ async function faceitPollTick() {
     }
     update.playerStats = stats;
     update.perMapBans = perMapBans;
-    if (!isOverridden('heroBans')) update.heroBans = heroBans;
+    if (!isOverridden('heroBans')) {
+      update.heroBans = activeBan.heroBans;
+      update.activeBanMapIdx = activeBan.idx;
+    }
 
     // Compute score from merged maps (includes manual wins via forward-only logic)
     const computedScore1 = maps.filter(m => m.winner === 'team1').length;
@@ -1813,6 +1825,7 @@ app.post('/api/reset', (req, res) => {
   const resetData = {
     swapSides: false,
     heroBans: { team1: [], team2: [] },
+    activeBanMapIdx: -1,
     playerStats: [],
     perMapBans: [],
     banSwaps: [],
