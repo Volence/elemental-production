@@ -58,6 +58,14 @@ const noCacheHeaders = (res) => {
   res.setHeader('Expires', '0');
 };
 
+// Only overlay HTML needs no-cache (OBS must always pick up fresh markup +
+// injected bootstrap state). Static assets served alongside it — PNGs,
+// fonts — should stay cacheable so the browser doesn't re-fetch multi-MB
+// art on every scene switch/reload.
+const noCacheForHtmlOnly = (res, filePath) => {
+  if (filePath.endsWith('.html')) noCacheHeaders(res);
+};
+
 // Serve overlay HTML files with injected initial state (so OBS doesn't need to fetch)
 const overlaysDir = path.join(__dirname, '..', 'overlays');
 
@@ -76,6 +84,10 @@ function getImageDataUri(filename) {
   return null;
 }
 
+// Never inline large background art — scenes reference these by URL so the
+// browser caches ONE copy instead of a base64 clone per scene (~8MB each).
+const INLINE_EXCLUDE = new Set(['ELMT_BG_1920x1080.png', 'LeftTeam_1.png', 'RightTeam_1.png']);
+
 app.get('/overlays/:file', async (req, res) => {
   const filePath = path.join(overlaysDir, req.params.file);
   if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
@@ -83,8 +95,9 @@ app.get('/overlays/:file', async (req, res) => {
   // For non-HTML files, serve directly. Pass { root } so `send` resolves the
   // dotfile check against the relative name, not the absolute path — AppImages
   // mount under /tmp/.mount_* (a dot-dir), which otherwise 404s every asset.
+  // No no-cache headers here — static images should be cacheable (see
+  // noCacheForHtmlOnly above).
   if (!req.params.file.endsWith('.html')) {
-    noCacheHeaders(res);
     return res.sendFile(req.params.file, { root: overlaysDir });
   }
 
@@ -93,6 +106,7 @@ app.get('/overlays/:file', async (req, res) => {
 
   // Replace all local image references: ./file.png, 'file.png', "file.png"
   html = html.replace(/(?:\.\/)?([A-Za-z0-9_-]+\.(?:png|jpg|jpeg|svg))/g, (match, filename) => {
+    if (INLINE_EXCLUDE.has(filename)) return match;  // served by URL, not inlined
     const dataUri = getImageDataUri(filename);
     return dataUri || match;  // Keep original if file doesn't exist in overlays dir
   });
@@ -130,7 +144,7 @@ window.__HERO_DATA__ = ${heroJson};
   res.type('html').send(html);
 });
 // Serve non-HTML overlay assets (images, etc.) as static
-app.use('/overlays', express.static(overlaysDir, { setHeaders: noCacheHeaders }));
+app.use('/overlays', express.static(overlaysDir, { setHeaders: noCacheForHtmlOnly }));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { setHeaders: noCacheHeaders }));
 app.use('/fonts', express.static(FONTS_DIR));
 app.use('/cache', express.static(CACHE_DIR));
