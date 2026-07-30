@@ -42,9 +42,14 @@ That's it. Do **not** hand-move the camera sources (see "Do not hand-move").
   | Casters Flythrough | flythrough (dual) | Caster 1 (left), Caster 2 (right) |
   | Interview | interview (single) | Interviewee |
 
-  Each camera uses a **bounds box** (OBS "Scale to inner bounds") whose top-left
+  Each camera uses a **bounds box** (OBS "Scale to outer bounds") whose top-left
   corner and size match the overlay cutout, so any 1920×1080 camera source is
-  scaled to fit the window with correct aspect. The items are **locked**.
+  scaled to **fill** the window edge-to-edge. The cams are 16:9 and the desk
+  cutouts are slightly wider-than-tall, so a small amount of the feed's left/right
+  edges spills past the window — that overflow is hidden behind the opaque overlay
+  outside the cutout, giving a clean full-bleed cam with **no letterbox bands**. A
+  slight side-crop of the 16:9 feed is expected and intentional. The items are
+  **locked**.
 
 - The collection is renamed to **Elemental Production v2**.
 
@@ -101,15 +106,43 @@ and only ever touches the mapped camera transforms plus the collection name.
 
 ---
 
+## Producer heads-ups
+
+- **Cams FILL their windows (full-bleed, slight side-crop).** v2 uses OBS
+  "Scale to outer bounds", so each 16:9 camera fills its cutout with no letterbox
+  bands; a little of the feed's left/right edges is cropped by the window and
+  hidden behind the overlay. This is intentional — frame your talent slightly
+  looser so heads sit comfortably inside the visible window.
+
+- **Between Matches ships with NO cam source.** The Between Matches overlay draws
+  a wide single-cam cutout, but the scene currently contains only a Replay media
+  source, not a live camera — so nothing is baked there. If you want a live camera
+  in Between Matches, add a **Caster 1** browser-source to that scene and re-run
+  the generator (`node scripts/build-scene-collection-v2.mjs`); it will snap the
+  new source into the reserved 1690×900 wide window automatically.
+
+---
+
 ## Rollback
 
 The v1 files in the repo have been **replaced in place** by v2, but your
 **existing OBS scene collection is not touched until you import** — so the
 rollback is simply: keep using your current (pre-v2) collection, or re-import the
-v1 file. If you need the v1 JSON after updating the repo, recover it from git:
+v1 file. If you need the v1 JSON after updating the repo, recover it from git.
+
+Find the last commit before the v2 bake — the commit **just before** the v2 work
+on this branch is **`ce44c89`** (the branch parent), so its version of the file is
+the pre-v2 v1. To list the file's history yourself:
 
 ```
-git show <v1-commit>:data/obs-scene-collection.json > /tmp/obs-scene-collection-v1.json
+git log --oneline -- data/obs-scene-collection.json
+```
+
+then pick the commit before "scene collection v2 — cam sources baked …" and
+export that file:
+
+```
+git show ce44c89:data/obs-scene-collection.json > /tmp/obs-scene-collection-v1.json
 ```
 
 then **Scene Collection → Import** that file. Your v2 collection remains

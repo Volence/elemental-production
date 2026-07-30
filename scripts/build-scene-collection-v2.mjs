@@ -4,8 +4,15 @@
 // Offline tool. Bakes the caster/interview cam browser-sources in the OBS scene
 // collections so they sit EXACTLY behind the overlay cutout windows defined once
 // in overlays/cam-layout.js (CAM_LAYOUTS). Each mapped scene's cam scene-item is
-// given a bounds box (OBS_BOUNDS_SCALE_INNER) whose top-left = rect x/y and whose
-// size = rect w/h, fitting the 1920x1080 browser source inside the cutout.
+// given a bounds box (OBS_BOUNDS_SCALE_OUTER) whose top-left = rect x/y and whose
+// size = rect w/h, so the 1920x1080 browser source FILLS the cutout edge-to-edge.
+//
+// Why SCALE_OUTER (3) and not SCALE_INNER (2): the cams are 16:9 but the desk
+// cutouts are ~16:10, so inner-fit would letterbox ~18px of visible bands INSIDE
+// the transparent window. The opaque overlay covers everything OUTSIDE the
+// cutout, so SCALE_OUTER's overflow is harmlessly masked behind the overlay and
+// the cam fills the window full-bleed (a slight side-crop of the 16:9 feed is
+// expected and intentional).
 //
 // Design choices (see docs/scene-collection-v2-migration.md):
 //   * The DUAL layout is baked as the default for every desk/flythrough scene.
@@ -19,6 +26,11 @@
 // Faithful: untouched bytes are preserved exactly (float literals like "1.0"
 // are kept verbatim via a source-preserving parse), so the git diff shows ONLY
 // the intended transform edits.
+//
+// REQUIRES Node >= 21 (Node 24 recommended): the faithful float-preserving parse
+// relies on the JSON.parse reviver's `context.source` (added in Node 21). On
+// older Node the script aborts early (see assertReviverSourceSupport) rather
+// than emit noisy 1.0 -> 1 float diffs across untouched values.
 //
 // Usage: node scripts/build-scene-collection-v2.mjs [--check]
 //   --check  Report what WOULD change and exit non-zero if the files are stale,
@@ -46,10 +58,12 @@ const CAM_LAYOUTS = loadCamLayouts();
 
 const COLLECTION_NAME_V2 = 'Elemental Production v2';
 
-// OBS scene-item bounds type: OBS_BOUNDS_SCALE_INNER fits the source inside the
-// box preserving aspect. bounds_alignment 0 = centered in the box; item
-// alignment 5 = top-left, so pos is the box's top-left corner.
-const OBS_BOUNDS_SCALE_INNER = 2;
+// OBS scene-item bounds type. OBS_BOUNDS_SCALE_OUTER (3) scales the source to
+// COVER the box preserving aspect — the source fills the window edge-to-edge and
+// any overflow (the 16:9-into-16:10 side spill) is masked by the opaque overlay
+// outside the cutout. bounds_alignment 0 = centered in the box; item alignment
+// 5 = top-left, so pos is the box's top-left corner.
+const OBS_BOUNDS_SCALE_OUTER = 3;
 const OBS_ALIGN_TOP_LEFT = 5;
 const OBS_ALIGN_CENTER = 0;
 
@@ -75,6 +89,26 @@ const FILES = [
 // untouched values (e.g. "1.0") round-trip byte-for-byte. -------------------
 class RawNum {
   constructor(raw) { this.raw = raw; }
+}
+
+// The float-preserving parse depends on the reviver's `context.source` (Node
+// >= 21). If it is unavailable, parseLossless silently collapses "1.0" -> "1"
+// and would rewrite many untouched values, so abort loudly instead.
+function assertReviverSourceSupport() {
+  let ok = false;
+  JSON.parse('1.0', (k, v, ctx) => {
+    if (ctx && typeof ctx.source === 'string') ok = true;
+    return v;
+  });
+  if (!ok) {
+    console.error(
+      'ERROR: this Node runtime lacks JSON.parse reviver context.source ' +
+      '(need Node >= 21; Node 24 recommended). Current: ' + process.version + '.\n' +
+      'Refusing to run: without it the generator would emit noisy 1.0 -> 1 ' +
+      'float diffs across untouched scene-collection values.'
+    );
+    process.exit(2);
+  }
 }
 
 function parseLossless(text) {
@@ -112,7 +146,7 @@ function stringifyLossless(value, indent) {
 function applyTransform(item, rect) {
   item.pos = { x: rect.x, y: rect.y };
   item.bounds = { x: rect.w, y: rect.h };
-  item.bounds_type = OBS_BOUNDS_SCALE_INNER;
+  item.bounds_type = OBS_BOUNDS_SCALE_OUTER;
   item.bounds_alignment = OBS_ALIGN_CENTER;
   item.alignment = OBS_ALIGN_TOP_LEFT;
   // Scale is ignored by OBS once bounds are set; reset to a neutral 1.0 so a
@@ -158,8 +192,10 @@ function processCollection(obj) {
 }
 
 function main() {
+  assertReviverSourceSupport();
   const check = process.argv.includes('--check');
   let anyStale = false;
+  const problems = []; // scene-missing / rect-missing across all files
 
   for (const file of FILES) {
     const orig = fs.readFileSync(file, 'utf8');
@@ -171,6 +207,7 @@ function main() {
 
     const baked = changes.filter((c) => c.status === 'baked');
     const absent = changes.filter((c) => c.status === 'source-absent');
+    const missing = changes.filter((c) => c.status === 'scene-missing' || c.status === 'rect-missing');
     console.log(`\n${file}`);
     console.log(`  collection name -> "${COLLECTION_NAME_V2}"`);
     for (const c of baked) {
@@ -179,9 +216,25 @@ function main() {
     for (const c of absent) {
       console.log(`  skip   ${c.scene} / ${c.cam}  (source not present in scene; rect ${c.rect.w}x${c.rect.h} reserved)`);
     }
+    // A missing SCENE or missing RECT means the mapping no longer matches the
+    // collection (e.g. a scene was renamed in OBS) — surface it loudly so it
+    // can never silently no-op, and fail the run.
+    for (const c of missing) {
+      const what = c.status === 'scene-missing'
+        ? `scene "${c.scene}" not found in collection (renamed or removed?)`
+        : `no rect for ${c.scene} / ${c.cam} in CAM_LAYOUTS (bad SCENE_MAP index?)`;
+      console.error(`  WARN   ${what}`);
+      problems.push(`${file}: ${what}`);
+    }
     console.log(`  ${stale ? 'STALE -> ' + (check ? 'would write' : 'writing') : 'up to date (no change)'}`);
 
     if (stale && !check) fs.writeFileSync(file, out);
+  }
+
+  if (problems.length) {
+    console.error(`\nERROR: ${problems.length} mapping problem(s) — SCENE_MAP is out of sync with the collections:`);
+    for (const p of problems) console.error('  - ' + p);
+    process.exit(3);
   }
 
   if (check && anyStale) {
@@ -197,4 +250,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   main();
 }
 
-export { parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, SCENE_MAP, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_INNER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };
+export { parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, assertReviverSourceSupport, SCENE_MAP, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_OUTER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };

@@ -1053,7 +1053,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 501,
@@ -1083,7 +1083,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 501,
@@ -1395,7 +1395,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 580,
@@ -1425,7 +1425,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 580,
@@ -1536,7 +1536,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 580,
@@ -1566,7 +1566,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 580,
@@ -1677,7 +1677,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 580,
@@ -1707,7 +1707,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 580,
@@ -1818,7 +1818,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 580,
@@ -1848,7 +1848,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 580,
@@ -2151,7 +2151,7 @@
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 2,
+            "bounds_type": 3,
             "bounds_alignment": 0,
             "bounds": {
               "x": 760,

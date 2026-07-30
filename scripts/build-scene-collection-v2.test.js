@@ -7,11 +7,12 @@ import {
   applyTransform,
   processCollection,
   loadCamLayouts,
+  assertReviverSourceSupport,
   SCENE_MAP,
   CAM_LAYOUTS,
   RawNum,
   COLLECTION_NAME_V2,
-  OBS_BOUNDS_SCALE_INNER,
+  OBS_BOUNDS_SCALE_OUTER,
   OBS_ALIGN_TOP_LEFT,
   OBS_ALIGN_CENTER,
   FILES,
@@ -51,7 +52,7 @@ describe('applyTransform math', () => {
     expect(item.pos).toEqual({ x: 330, y: 120 });
     expect(num(item.bounds.x)).toBe(580);
     expect(num(item.bounds.y)).toBe(362);
-    expect(item.bounds_type).toBe(OBS_BOUNDS_SCALE_INNER); // 2 = OBS_BOUNDS_SCALE_INNER
+    expect(item.bounds_type).toBe(OBS_BOUNDS_SCALE_OUTER); // 3 = OBS_BOUNDS_SCALE_OUTER (full-bleed, overflow masked by overlay)
     expect(item.alignment).toBe(OBS_ALIGN_TOP_LEFT); // 5 = top-left → pos is the box corner
     expect(item.bounds_alignment).toBe(OBS_ALIGN_CENTER); // 0 = content centered in box
     expect(item.locked).toBe(true);
@@ -63,6 +64,23 @@ describe('applyTransform math', () => {
     expect(item.scale.x).toBeInstanceOf(RawNum);
     expect(item.scale.x.raw).toBe('1.0');
     expect(num(item.scale.x)).toBe(1);
+  });
+});
+
+describe('guardrails', () => {
+  it('reviver context.source is supported on this runtime (Node >= 21)', () => {
+    // The assert exits the process on failure; on a supported runtime it is a
+    // no-op. We assert it does NOT throw/exit here (Node 24 in CI).
+    expect(() => assertReviverSourceSupport()).not.toThrow();
+  });
+
+  it('reports scene-missing when a mapped scene is absent (renamed scene guard)', () => {
+    const obj = { name: 'x', sources: [] }; // no scenes at all
+    const changes = processCollection(obj);
+    const missing = changes.filter((c) => c.status === 'scene-missing');
+    // Every SCENE_MAP entry should be flagged missing, none baked.
+    expect(missing.length).toBe(Object.keys(SCENE_MAP).length);
+    expect(changes.some((c) => c.status === 'baked')).toBe(false);
   });
 });
 
@@ -106,7 +124,7 @@ describe('regenerated collections', () => {
           const rect = rects[idx];
           expect(item.pos).toEqual({ x: rect.x, y: rect.y });
           expect(item.bounds).toEqual({ x: rect.w, y: rect.h });
-          expect(item.bounds_type).toBe(OBS_BOUNDS_SCALE_INNER);
+          expect(item.bounds_type).toBe(OBS_BOUNDS_SCALE_OUTER);
           expect(item.alignment).toBe(OBS_ALIGN_TOP_LEFT);
           expect(item.bounds_alignment).toBe(OBS_ALIGN_CENTER);
           expect(item.locked).toBe(true);
