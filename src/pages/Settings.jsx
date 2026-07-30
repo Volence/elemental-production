@@ -50,6 +50,13 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
   const [bgMusicError, setBgMusicError] = useState('');
 
   // Season Map Pool editor (feeds state.mapPool → Map Pool overlay/scene).
+  // Stadium-only maps carry normal competitive gamemodes in the OverFast
+  // catalog (no distinguishing field), so they'd leak into the picker —
+  // curated exclusion list, verified against the OW wiki / OWCS 2026 usage
+  // (Aatlis + Neon Junction ARE real competitive maps and stay listed).
+  const STADIUM_ONLY_MAPS = new Set([
+    'Arena Victoriae', 'Gogadoro', 'Wuxing University', 'Place Lacroix', 'Redwood Dam',
+  ]);
   const [allMaps, setAllMaps] = useState([]);
   const [mapPoolSel, setMapPoolSel] = useState(() => new Set(state.mapPool || []));
   const [mapPoolDirty, setMapPoolDirty] = useState(false);
@@ -332,7 +339,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
               <div key={mode}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)', marginBottom: 6 }}>{mode}</div>
                 <div style={{ display: 'grid', gap: 4 }}>
-                  {allMaps.filter(m => (m.gamemodes || []).includes(mode)).map(m => (
+                  {allMaps.filter(m => (m.gamemodes || []).includes(mode) && !STADIUM_ONLY_MAPS.has(m.name)).map(m => (
                     <label key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', cursor: 'pointer' }}>
                       <input
                         type="checkbox"

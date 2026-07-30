@@ -70,7 +70,9 @@ export function scanDirectory(dir) {
       return [];
     }
     cachedFiles = fs.readdirSync(dir)
-      .filter(f => /\.(mp4|webm)$/i.test(f))
+      // .mov added (owner QA batch 3: the producer's recorder outputs QuickTime;
+      // OBS's ffmpeg media source plays it fine). m4v for the same container family.
+      .filter(f => /\.(mp4|webm|mov|m4v)$/i.test(f))
       .map(f => ({ filename: f, compressed: compress(f) }));
     return cachedFiles;
   } catch (e) {

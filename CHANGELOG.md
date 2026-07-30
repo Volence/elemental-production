@@ -153,6 +153,20 @@ Third round of owner feedback on the v2 package:
   added to the live collection via obs-websocket (no re-import needed) and
   to the generator as an idempotent ensure step (RawNum-safe deep copy).
 
+- **Map Intro legibility scrim.** The flythrough behind Map Intro is
+  arbitrary footage; a bright frame could wash out the eyebrow/title. A
+  center radial scrim now guarantees local contrast behind the beat while
+  fading to nothing at the edges (verified against a worst-case white
+  background); eyebrow contrast bumped.
+- **`.mov` flythroughs recognized.** The flythrough directory scan accepts
+  `.mov`/`.m4v` alongside `.mp4`/`.webm` (the producer's recorder outputs
+  QuickTime; OBS's ffmpeg source plays it natively).
+- **Stadium maps filtered from the Season Map Pool editor.** Stadium-only
+  maps (Arena Victoriae, Gogadoro, Wuxing University, Place Lacroix,
+  Redwood Dam) carry normal competitive gamemodes in the OverFast catalog,
+  so they leaked into the picker; curated exclusion list added. Aatlis and
+  Neon Junction were verified as real OWCS 2026 competitive maps and stay.
+
 ### Owner QA batch 2
 
 Second round of owner feedback on the v2 package:
