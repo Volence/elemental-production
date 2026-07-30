@@ -448,6 +448,7 @@ export default function MatchHub({ state, updateState, api }) {
                 'teams.team2.name': 'Team 2 Name',
                 'teams.team1.score': 'Team 1 Score',
                 'teams.team2.score': 'Team 2 Score',
+                'eventName': 'Event Name',
                 'teams.team1.logo': 'Team 1 Logo',
                 'teams.team2.logo': 'Team 2 Logo',
                 'maps': 'Maps',
