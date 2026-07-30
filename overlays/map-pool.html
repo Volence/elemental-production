@@ -182,20 +182,30 @@
       var words = String(n).split(/\s+/).filter(function (w) {
         return ['the', 'team', 'a', 'an'].indexOf(w.toLowerCase()) === -1;
       });
-      return (words[0] || String(n).split(/\s+/)[0] || '').slice(0, 8);
+      // 12-char cap covers real org names ("Extinction" is 10); anything
+      // longer ellipsizes via the badge's own max-width CSS rather than
+      // truncating mid-word here.
+      return (words[0] || String(n).split(/\s+/)[0] || '').slice(0, 12);
     }
 
-    function cardHtml(name, series, t1, t2, delay) {
+    // Card states follow the FACEIT one-map-per-mode rule (owner QA batch 3
+    // release sweep, matching the OWCS reference): once a mode column has a
+    // picked/played map, the PICKED map stays lit (it's the story of that
+    // column — badge + score/LIVE tag on top), and its unpicked SIBLINGS gray
+    // out (no longer selectable this series, barring a 6-map tie — and in
+    // that edge both picked maps light up, which this per-map logic handles
+    // naturally). `modeTaken` = some map in this column matched the series.
+    function cardHtml(name, series, modeTaken, t1, t2, delay) {
       var cat = mapDataByName[normMapName(name)] || {};
       var img = proxied(cat.screenshot);
       var cls = 'mpo-card';
       var overlays = '';
 
-      if (series && series.status === 'completed') {
-        cls += ' mpo-card-out';
-      } else if (series && (series.status === 'current' || series.status === 'in_progress')) {
+      if (series && (series.status === 'current' || series.status === 'in_progress')) {
         cls += ' mpo-card-live';
         overlays += '<div class="mpo-live-tag">LIVE</div>';
+      } else if (!series && modeTaken) {
+        cls += ' mpo-card-out';
       }
 
       if (series && series.picker === 'team1') {
@@ -297,9 +307,18 @@
             if (modes.indexOf(mode) !== -1) names.push(pool[p]);
           }
           if (names.length === 0) continue;
+          // One pass to learn whether this mode column is already "taken"
+          // (some map here was picked/played in the series) before rendering.
+          var entries = [];
+          var modeTaken = false;
+          for (var e = 0; e < names.length; e++) {
+            var se = seriesEntry(maps, names[e]);
+            entries.push(se);
+            if (se) modeTaken = true;
+          }
           var cards = '';
           for (var c = 0; c < names.length; c++) {
-            cards += cardHtml(names[c], seriesEntry(maps, names[c]), t1, t2, 0.15 + colIdx * 0.06 + c * 0.05);
+            cards += cardHtml(names[c], entries[c], modeTaken, t1, t2, 0.15 + colIdx * 0.06 + c * 0.05);
           }
           cols += '<div class="mpo-col">' +
             '<div class="mpo-mode" style="animation: fadeIn 0.4s ease-out ' + (0.12 + colIdx * 0.06).toFixed(2) + 's both;">' + escapeHtml(mode) + '</div>' +

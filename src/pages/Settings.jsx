@@ -653,6 +653,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
         {[
           { name: 'Starting Soon', url: `http://localhost:3001/overlays/starting-soon.html` },
           { name: 'Map Pick', url: `http://localhost:3001/overlays/map-pick.html` },
+          { name: 'Map Pool', url: `http://localhost:3001/overlays/map-pool.html` },
           { name: 'Map Intro', url: `http://localhost:3001/overlays/map-intro.html` },
           { name: 'Gameplay HUD', url: `http://localhost:3001/overlays/gameplay-hud.html` },
           { name: 'Casters', url: `http://localhost:3001/overlays/casters.html` },
