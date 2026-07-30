@@ -6,10 +6,13 @@
       "name": "Starting"
     },
     {
-      "name": "Map Pick"
+      "name": "Casters"
     },
     {
       "name": "Map Pool"
+    },
+    {
+      "name": "Map Pick"
     },
     {
       "name": "Ban Reveal"
@@ -22,9 +25,6 @@
     },
     {
       "name": "Gameplay"
-    },
-    {
-      "name": "Casters"
     },
     {
       "name": "Casters Lobby"

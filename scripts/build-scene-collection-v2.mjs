@@ -426,6 +426,29 @@ function itemRank(name) {
   return 2; // audio-only / anything else — draws nothing, rides on top
 }
 
+// ---- Canonical scene order (owner QA batch 3 release sweep) ---------------
+// The owner's preferred show-flow order for the OBS scene list. Any scene not
+// listed here (a producer's custom scene) keeps its relative position at the
+// END of the list. Idempotent: reordering an already-ordered list is a no-op.
+const CANONICAL_SCENE_ORDER = [
+  'Starting', 'Casters', 'Map Pool', 'Map Pick', 'Ban Reveal', 'Map Intro',
+  'Casters Flythrough', 'Gameplay', 'Casters Lobby', 'Casters Scoreboard',
+  'Map Score', 'Between Matches', 'BRB', 'Interview', 'Series Winner', 'Ending',
+];
+
+function enforceSceneOrder(obj) {
+  const order = obj.scene_order || [];
+  const rank = new Map(CANONICAL_SCENE_ORDER.map((n, i) => [n, i]));
+  const before = order.map((o) => o.name).join('|');
+  // Stable sort: known scenes by canonical rank, unknown scenes after them
+  // (Infinity) preserving their relative order.
+  order.sort((a, b) =>
+    (rank.has(a.name) ? rank.get(a.name) : Infinity) -
+    (rank.has(b.name) ? rank.get(b.name) : Infinity));
+  const after = order.map((o) => o.name).join('|');
+  return { status: before === after ? 'scene-order ok' : 'scene-order fixed' };
+}
+
 function enforceItemOrder(obj) {
   const changed = [];
   for (const s of obj.sources || []) {
@@ -494,6 +517,11 @@ function processCollection(obj) {
   // (AFTER the ensure steps so newly added items are covered too).
   const itemOrder = enforceItemOrder(obj);
   changes.push({ scene: '(all)', cam: null, status: itemOrder.status });
+
+  // Enforce the owner's canonical scene-list order (after the ensure steps'
+  // positional inserts — this pass is the final authority on ordering).
+  const sceneOrder = enforceSceneOrder(obj);
+  changes.push({ scene: '(all)', cam: null, status: sceneOrder.status });
 
   const scenes = (obj.sources || []).filter((s) => s && s.id === 'scene');
   const byName = new Map(scenes.map((s) => [s.name, s]));

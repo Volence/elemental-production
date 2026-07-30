@@ -178,11 +178,12 @@ describe('regenerated collections', () => {
       const item = scene.settings.items.find((it) => it.name === 'Ban Reveal BS');
       expect(item.source_uuid).toBe(bs.uuid);
       expect(item.bounds).toEqual({ x: 1920, y: 1080 });
-      // scene_order (owner QA batch 3): Map Pool slots between Map Pick and
-      // Ban Reveal — the pick/ban comms flow reads Pick -> Pool -> Reveal.
+      // scene_order (owner QA batch 3): the owner's canonical show-flow
+      // order — Casters second, Map Pool BEFORE Map Pick, then Ban Reveal.
       const order = obj.scene_order.map((o) => o.name);
-      expect(order[order.indexOf('Map Pick') + 1]).toBe('Map Pool');
-      expect(order[order.indexOf('Map Pick') + 2]).toBe('Ban Reveal');
+      expect(order.slice(0, 6)).toEqual([
+        'Starting', 'Casters', 'Map Pool', 'Map Pick', 'Ban Reveal', 'Map Intro',
+      ]);
     }
   });
 

@@ -369,7 +369,28 @@
       var t1 = teams.team1 || {};
       var t2 = teams.team2 || {};
       var itemsHtml;
-      if (schedule.length) {
+      if (schedule.length === 1) {
+        // A single scheduled match gets the same horizontal strip as the
+        // no-schedule fallback (owner QA batch 3 release sweep: one entry
+        // through the 3-up stacked path fills the whole band with the old
+        // awkward corner-label layout). Accent colors resolve by matching
+        // the scheduled names against the loaded teams; unknown teams get a
+        // neutral cap — the logos carry identity.
+        var m1 = schedule[0];
+        var theme1 = state.theme || {};
+        var nameEq = function (a, b) {
+          return a && b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+        };
+        var NEUTRAL = 'rgba(255,255,255,0.25)';
+        var c1 = nameEq(m1.team1, t1.name) ? (theme1.team1Color || t1.color || NEUTRAL)
+          : (nameEq(m1.team1, t2.name) ? (theme1.team2Color || t2.color || NEUTRAL) : NEUTRAL);
+        var c2 = nameEq(m1.team2, t2.name) ? (theme1.team2Color || t2.color || NEUTRAL)
+          : (nameEq(m1.team2, t1.name) ? (theme1.team1Color || t1.color || NEUTRAL) : NEUTRAL);
+        itemsHtml = nextStripHtml(
+          { name: m1.team1, logo: m1.team1Logo },
+          { name: m1.team2, logo: m1.team2Logo },
+          c1, c2);
+      } else if (schedule.length) {
         var nextIdx = -1;
         for (var i = 0; i < schedule.length; i++) {
           if (!schedule[i].completed) { nextIdx = i; break; }

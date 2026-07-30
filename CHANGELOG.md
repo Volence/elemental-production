@@ -218,6 +218,15 @@ Third round of owner feedback on the v2 package:
 - **`.mov` flythroughs recognized.** The flythrough directory scan accepts
   `.mov`/`.m4v` alongside `.mp4`/`.webm` (the producer's recorder outputs
   QuickTime; OBS's ffmpeg source plays it natively).
+- **Canonical scene-list order.** The generator now enforces the owner's
+  show-flow scene order (Starting, Casters, Map Pool, Map Pick, Ban Reveal,
+  Map Intro, Casters Flythrough, Gameplay, desk scenes, Between Matches,
+  BRB, Interview, Series Winner, Ending); unknown producer scenes keep
+  their relative order at the end.
+- **Single-match schedule uses the UP NEXT strip.** A schedule with exactly
+  one entry now renders the horizontal UP NEXT strip (accent colors matched
+  by team name, neutral for unknown teams) instead of falling into the 3-up
+  stacked panel layout that looked broken at full width.
 - **Deterministic scene-item z-order.** The generator now stable-sorts every
   scene's items into the v2 convention — video feeds (game capture,
   flythrough, replay, cams) at the bottom, the overlay browser source above

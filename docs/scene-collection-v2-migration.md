@@ -85,8 +85,9 @@ created idempotently by the generator; re-running never duplicates it.
 
 ## Map Pool scene + pick/ban audio (owner QA batch 3)
 
-- v2 also includes a **Map Pool** scene (between **Map Pick** and **Ban
-  Reveal**) with a **Map Pool BS** browser source pointed at
+- v2 also includes a **Map Pool** scene (the scene list follows the owner's
+  canonical show-flow order: Starting, Casters, **Map Pool**, Map Pick,
+  Ban Reveal, Map Intro, …) with a **Map Pool BS** browser source pointed at
   `overlays/map-pool.html` — the season pool board. Configure the pool once in
   the dashboard under **Settings → Season Map Pool**; it persists across
   restarts.
@@ -96,9 +97,8 @@ created idempotently by the generator; re-running never duplicates it.
   pick/ban block.
 - If you already imported an earlier v2 collection, these were also injected
   into the live collection via obs-websocket — you only need to **drag "Map
-  Pool" between "Map Pick" and "Ban Reveal"** in the scene list (the scene
-  list order can't be set remotely). A fresh import has the order right
-  already.
+  Pool" into its slot** in the scene list (the scene list order can't be set
+  remotely). A fresh import has the canonical order right already.
 
 ---
 
