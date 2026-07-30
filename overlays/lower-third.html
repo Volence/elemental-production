@@ -3,19 +3,59 @@
 <head>
   <meta charset="UTF-8">
   <title>Lower Third Overlay</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap">
+  <!-- Broadcast v2 (Plan 3 Task 7): visual-only restyle onto the v2 pill +
+       gradient-underline language (spec §6 "Interview / Lower third: pill +
+       underline language... from the site's chip vocabulary" — same anatomy
+       interview.html's .iv-name-pill/.iv-name-underline already established
+       for this package). No CDN font link (Geist via fonts-v2.css's
+       --font-v2, hardcoded here rather than reading theme.fontFamily — see
+       KEY note below for what that costs the key). This scene was already
+       on overlay-core (Plan 1's proving ground for defineOverlay before
+       Plan 2 wrote the shell/render convention this rewrite otherwise
+       follows) — the runtime wiring below is UNCHANGED from that Plan 1
+       version, only the CSS classes/markup and key contents moved.
+
+       STATIC MARKUP, UNCHANGED DISCIPLINE: the #lt markup below is still
+       fully static (never rebuilt) — only textContent and the "visible"
+       class get mutated per state, so there's still no shell to build; the
+       existing DOM IS the shell, same as before this restyle. `el:
+       document.body` remains correct for the same reason it was before:
+       this scene has no #root and never uses overlay-core's trailing render
+       container (empty, unstyled, doesn't affect the absolutely-positioned
+       #lt). Scenes with a positioned/animated #root should pass THAT
+       element as el instead, per the note this file has carried since Plan 1.
+
+       KEY RE-DERIVATION (the actual point of this restyle, spec-wise): the
+       pre-restyle CSS read t.lowerThirdBg (via --lower-third-gradient, the
+       left accent bar's background) and t.fontFamily (via --font-body), so
+       both were tracked in the key alongside d.visible/d.title/d.subtitle.
+       This restyle (a) drops the accent bar entirely in favor of the v2
+       gradient underline (.v2-underline, always --grad4, never team- or
+       theme-driven), and (b) hardcodes font-family: var(--font-v2) instead
+       of var(--font-body) — so NEITHER t.lowerThirdBg NOR t.fontFamily is
+       read by anything in this document anymore. Keeping them in the key
+       would mean "keyed but not read": a theme.fontFamily/lowerThirdBg
+       change alone would force a repaint (replaying the CSS transition on
+       an unrelated identical-looking node) for a property this scene's
+       render() no longer touches. So both are REMOVED here — the key is
+       now exactly [d.visible, d.title, d.subtitle], matching applyTheme()
+       still being called every render (harmless — it sets globals this
+       document doesn't consume, same as before) but not gating on any of
+       them. If a future restyle reintroduces a theme-driven visual here,
+       add its leaf back to the key at the same time, not after. -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: transparent; overflow: hidden; width: 1920px; height: 1080px; }
+    body {
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
+    }
 
     .lower-third {
       position: absolute;
       bottom: 120px;
       left: 60px;
-      display: flex;
-      align-items: stretch;
       opacity: 0;
       transform: translateX(-20px);
       transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -26,43 +66,43 @@
       transform: translateX(0);
     }
 
-    .lt-accent {
-      width: 4px;
-      background: var(--lower-third-gradient, linear-gradient(180deg, #6366f1, #a78bfa));
-      border-radius: 2px 0 0 2px;
-    }
-
-    .lt-content {
-      background: rgba(0, 0, 0, 0.82);
-      backdrop-filter: blur(20px);
-      padding: 12px 24px;
-      border-radius: 0 8px 8px 0;
-      min-width: 250px;
+    /* Pill + underline anatomy (interview.html's .iv-name-pill/.iv-name-
+       underline precedent) — v2-panel supplies background/border/radius;
+       this scene owns padding/min-width and the underline's positioning
+       within the pill only. */
+    .lt-pill {
+      position: relative;
+      padding: 16px 32px 20px;
+      min-width: 260px;
     }
 
     .lt-title {
-      font-family: var(--font-body, 'Inter', sans-serif);
-      font-size: 22px;
+      font-size: 30px;
       font-weight: 800;
-      color: white;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #fff;
       line-height: 1.2;
     }
 
+    /* Mobile legibility floor (theme-v2.css: labels >=22px). */
     .lt-subtitle {
-      font-family: var(--font-body, 'Inter', sans-serif);
-      font-size: 13px;
+      font-size: 24px;
+      font-weight: 700;
       color: rgba(255,255,255,0.6);
-      margin-top: 2px;
+      margin-top: 4px;
+      letter-spacing: 0.3px;
     }
+
+    .lt-underline { position: absolute; left: 20px; right: 20px; bottom: 6px; }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
   <div id="lt" class="lower-third">
-    <div class="lt-accent"></div>
-    <div class="lt-content">
+    <div id="lt-pill" class="lt-pill v2-panel">
       <div id="lt-title" class="lt-title"></div>
       <div id="lt-subtitle" class="lt-subtitle"></div>
+      <span class="v2-underline lt-underline"></span>
     </div>
   </div>
 
@@ -70,29 +110,14 @@
   <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    // The #lt markup above is fully static (never rebuilt) — only textContent
-    // and the "visible" class get mutated per state, so there's no shell to
-    // build; the existing DOM IS the shell. The runtime's trailing render
-    // container lands as the last child of <body>, after #lt — an empty,
-    // unstyled sibling that doesn't affect the absolutely-positioned lower
-    // third, so no wrapper element is needed here.
-    // NOTE for scenes copying this migration: el: document.body is right
-    // ONLY because this scene has no #root and never uses the render
-    // container. Scenes with a positioned/animated #root should pass that
-    // element as el so the container and any shell chrome live inside
-    // state-sync's animation-replay scope (replayAnimation walks #root).
     defineOverlay({
       el: document.body,
       key: function(state) {
-        var t = state.theme || {};
         var d = state.lowerThird || {};
-        // Only the theme leaves this scene's CSS actually reads
-        // (--lower-third-gradient, --font-body) are tracked here; applyTheme
-        // also sets many other custom properties nothing in this document
-        // consumes, so changes to those must not force a re-render.
-        // Array/object entries (like lowerThirdBg) are fine — the key array
-        // is JSON-serialized for comparison, so deep changes are caught.
-        return [d.visible, d.title, d.subtitle, t.lowerThirdBg, t.fontFamily];
+        // See file-header "KEY RE-DERIVATION": no theme leaf is read by
+        // this document's CSS anymore, so only the data this scene
+        // actually displays is tracked.
+        return [d.visible, d.title, d.subtitle];
       },
       render: function(state) {
         applyTheme(state);
