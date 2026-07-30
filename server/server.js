@@ -62,6 +62,12 @@ const noCacheHeaders = (res) => {
 // injected bootstrap state). Static assets served alongside it — PNGs,
 // fonts — should stay cacheable so the browser doesn't re-fetch multi-MB
 // art on every scene switch/reload.
+// NOTE: for single-segment paths like /overlays/ELMT_BG_1920x1080.png, the
+// app.get('/overlays/:file', ...) route below matches first and handles the
+// response itself (it never calls next()), so this static mount — and this
+// setHeaders callback — never actually runs for those requests. It's
+// defense-in-depth for nested paths only (e.g. /overlays/sub/dir/file.png).
+// The PNG's real Cache-Control comes from the route's non-HTML branch.
 const noCacheForHtmlOnly = (res, filePath) => {
   if (filePath.endsWith('.html')) noCacheHeaders(res);
 };
@@ -69,8 +75,12 @@ const noCacheForHtmlOnly = (res, filePath) => {
 // Serve overlay HTML files with injected initial state (so OBS doesn't need to fetch)
 const overlaysDir = path.join(__dirname, '..', 'overlays');
 
-// Pre-encode overlay images as base64 data URIs so OBS browser sources don't need network fetches
-// (OBS's embedded Chromium can't reliably load secondary resources from localhost)
+// Pre-encode small overlay images as base64 data URIs for robustness — OBS's
+// embedded Chromium is unreliable fetching external/CDN resources, so
+// inlining sidesteps that entirely for images. Large background art is the
+// exception: it's excluded (see INLINE_EXCLUDE below) and served as a
+// cacheable localhost URL instead, since inlining an 8MB PNG into every
+// scene's HTML is worse than one same-origin fetch OBS can actually cache.
 const overlayImageCache = {};
 function getImageDataUri(filename) {
   if (overlayImageCache[filename]) return overlayImageCache[filename];
@@ -98,6 +108,15 @@ app.get('/overlays/:file', async (req, res) => {
   // No no-cache headers here — static images should be cacheable (see
   // noCacheForHtmlOnly above).
   if (!req.params.file.endsWith('.html')) {
+    // Large background art (INLINE_EXCLUDE) never changes at a given filename
+    // — it's swapped by renaming/replacing the asset, not by edits in place —
+    // so it's safe to mark immutable and skip revalidation round-trips on
+    // every scene load. Everything else (theme-helpers.js, theme-v2.css,
+    // state-sync.js, etc.) changes across app releases and must keep the
+    // default sendFile revalidation behavior (max-age=0 + ETag).
+    if (INLINE_EXCLUDE.has(req.params.file)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
     return res.sendFile(req.params.file, { root: overlaysDir });
   }
 
