@@ -3,298 +3,356 @@
 <head>
   <meta charset="UTF-8">
   <title>Casters Map Score</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap">
+  <!-- Broadcast v2 (Plan 3 Task 4): a RESKIN of the v1 map-score scene onto
+       the casters.html cam-scene template. Chrome (petal texture + cutout
+       cam frames + event header) and the deck's LOOK are v2; the DATA
+       machinery (loadMaps dep + retry, local getMapScreenshot matching) is
+       preserved, just re-expressed on overlay-core. The old scene stacked
+       cams VERTICALLY at scene-local 420x230/560x480 sizes and squeezed the
+       score table into the remaining flex space — that layout and those
+       sizes are GONE. Cams are now the same horizontal-duo cutout frames as
+       every other desk scene (CAM_LAYOUTS.desk), and the map-score strip is
+       an independent deck below them, exactly like the scoreboard/lobby
+       decks — the deck's width/position no longer depends on how much room
+       the cam column left beside it.
+
+       Cutout invariant (see casters.html for the long form): caster browser
+       sources sit BEHIND this overlay; the petal texture lives on #cd-bg
+       with a luminance mask punching transparent cam windows at exactly
+       CAM_LAYOUTS.desk's coordinates — the SAME rects as casters.html/
+       casters-scoreboard.html/casters-lobby.html. ?bg=transparent is NOT
+       supported here (casters.html-only); this scene always paints the
+       texture.
+
+       "layout 0 -> centered full-width strip" (preserved v1 behavior): v1
+       achieved this by giving the score panel a flex sibling (the cam
+       column) that vanished at layout 0, so the panel's flex:1 filled the
+       freed width. In the v2 skeleton the deck was NEVER a flex sibling of
+       the cams (cams are absolutely-positioned cutouts, not laid out in
+       flow) — the deck panel is always its own fixed width, centered by
+       #cd-deck's width:fit-content + margin:auto. So "centered full-width"
+       falls out for free at every layout; only the deck's vertical `top`
+       still depends on layout (same per-layout top values as scoreboard/
+       lobby, since the desk cam rects are identical). -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      background: transparent; overflow: hidden;
-      width: 1920px; height: 1080px;
-      font-family: var(--font-body, 'Inter', sans-serif); color: white;
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
+    }
+    #root { position: relative; width: 1920px; height: 1080px; }
+
+    /* Petal-texture cutout layer (mask set in render from the live layout). */
+    #cd-bg { position: absolute; inset: 0; }
+
+    /* Positioned wrapper slots (built ONCE by shell). Centered wrappers use
+       width:fit-content + margin:auto rather than left:50%+translateX so the
+       slideDown/slideUp entrance transforms don't clobber the centering. */
+    #cd-header { position: absolute; top: 40px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
+    #cd-cams { position: absolute; inset: 0; }
+    /* render() sets the exact `top` per layout (same per-layout values as
+       casters-scoreboard.html/casters-lobby.html — identical desk cam rects,
+       so the same headroom applies). CSS default is the single-cam value.
+       Cam frames never move; only the deck panel is repositioned. */
+    #cd-deck { position: absolute; top: 610px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
+
+    /* ── Map-score deck panel ──────────────────────────────────────────── */
+    .ms-panel { width: 1560px; padding: 16px 26px; }
+    .ms-empty { padding: 30px; text-align: center; color: rgba(255,255,255,0.4); font-size: 20px; font-weight: 600; }
+
+    /* Teams header: logo/name/score flanking a centered title, mirrors the
+       scoreboard's sb-header anatomy. Names sit at the ≥28px mobile floor
+       for key match text. */
+    .ms-teams-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px; padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .ms-team { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+    .ms-team.right { flex-direction: row-reverse; }
+    .ms-team-logo { width: 44px; height: 44px; border-radius: var(--panel-radius); object-fit: cover; flex: none; }
+    .ms-team-name {
+      font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ms-team-score { font-size: 36px; font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
+    .ms-title-block { flex: none; text-align: center; padding: 0 24px; }
+    .ms-title {
+      font-size: 20px; font-weight: 800; color: rgba(255,255,255,0.4);
+      text-transform: uppercase; letter-spacing: 3px; white-space: nowrap;
     }
 
-    .container {
-      position: relative; width: 1920px; height: 1080px;
-      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    /* Compact series overview (mapPips) — a quick-glance row above the
+       detailed per-map strip; optional per the plan, included since the
+       component is a one-line reuse and reads well at a glance. */
+    .ms-pips-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 14px; }
+    .ms-pips-label {
+      font-size: 14px; font-weight: 800; color: rgba(255,255,255,0.35);
+      text-transform: uppercase; letter-spacing: 2px;
     }
 
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    /* Per-map slots — EACH slot is its own v2-panel (not one shared row
+       inside a panel), padded to bestOf so the strip never reflows as the
+       series progresses (same padding technique as casters-lobby's map
+       row). mapStripClass's class name drives the win/live treatment;
+       colors come in via an inline border-color (winner's TRUE team color,
+       never swapSides-flipped — same invariant as lobby/scoreboard). */
+    .ms-maps-row { display: flex; gap: 12px; }
+    .ms-map-slot {
+      flex: 1; min-width: 0; position: relative; overflow: hidden;
+      background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+    }
+    .ms-map-slot.current { border-color: rgba(255,255,255,0.85); box-shadow: 0 0 16px rgba(255,255,255,0.25); }
+    .ms-map-slot.won-t1 .ms-map-thumb, .ms-map-slot.won-t2 .ms-map-thumb { filter: brightness(0.5) saturate(0.55); }
+    .ms-map-thumb { width: 100%; height: 96px; object-fit: cover; display: block; background: rgba(255,255,255,0.04); }
+    .ms-map-winner-logo {
+      position: absolute; top: 8px; right: 8px; width: 26px; height: 26px;
+      border-radius: var(--panel-radius); object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.85); z-index: 2;
+    }
+    .ms-map-info { padding: 8px 10px; }
+    .ms-map-name {
+      font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ms-map-mode {
+      font-size: 13px; color: rgba(255,255,255,0.45); text-transform: uppercase;
+      letter-spacing: 1px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ms-map-score { font-size: 20px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
 
-    /* ── Branding ── */
-    .branding {
-      position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 18px;
-    }
-    .branding .org-logo { width: 56px; height: 56px; object-fit: contain; }
-    .branding .divider { width: 3px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 2px; }
-    .branding .event-name {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 32px; letter-spacing: 3px; line-height: 1.1;
-    }
-
-    /* ── Caster cam slots ── */
-    .caster-area { display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; }
-    .caster-slot {
-      border: 2px solid rgba(255,255,255,0.06);
-      border-radius: 10px;
-      background: rgba(0,0,0,0.3);
-    }
-    .caster-label {
-      text-align: center; margin-top: 6px;
-      font-size: 14px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1.5px; text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-    }
-
-    /* ── Main layout ── */
-    .main-layout {
-      position: absolute; top: 120px; left: 60px; right: 60px; bottom: 160px;
-      display: flex; gap: 24px; align-items: flex-start;
-    }
-    .main-layout.centered { justify-content: center; }
-
-    /* ── Score panel ── */
-    .score-panel {
-      flex: 1; min-width: 0;
-      display: flex; flex-direction: column; justify-content: center;
-    }
-    .score-panel.full-width { max-width: 1200px; }
-
-    .match-title {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 26px; letter-spacing: 3px;
-      color: rgba(255,255,255,0.4); text-transform: uppercase;
-      margin-bottom: 16px;
-    }
-
-    .score-table {
-      background: rgba(0,0,0,0.45);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    .score-row {
-      display: grid;
-      grid-template-columns: 48px 1fr repeat(var(--map-count, 5), 56px) 70px;
-      align-items: center;
-      padding: 0 16px; height: 56px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-    }
-    .score-row:last-child { border-bottom: none; }
-
-    .score-row.header {
-      height: 36px; font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 1px;
-      color: rgba(255,255,255,0.3);
-    }
-
-    .team-logo-cell img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-    .team-name-cell { font-weight: 700; font-size: 16px; padding-left: 8px; }
-    .map-cell {
-      text-align: center; font-weight: 800; font-size: 14px;
-    }
-    .map-cell.win { color: #22c55e; }
-    .map-cell.loss { color: var(--accent, #ef4444); opacity: 0.6; }
-    .map-cell.pending { color: rgba(255,255,255,0.15); }
-    .map-cell.current { color: #f59e0b; }
-
-    .series-cell {
-      text-align: center; font-size: 28px; font-weight: 900;
-      letter-spacing: 2px;
-    }
-
-    .header .map-cell { font-size: 9px; }
-    .header .series-cell { font-size: 11px; }
-
-    /* ── Bottom info bar ── */
-    .bottom-bar {
-      position: absolute; bottom: 60px; left: 60px; right: 60px;
-      display: flex; justify-content: center; gap: 40px;
-      
-    }
-
-    .map-thumb {
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
-      opacity: 0.4;
-    }
-    .map-thumb.active { opacity: 1; }
-    .map-thumb img { width: 120px; height: 70px; object-fit: cover; border-radius: 6px; }
-    .map-thumb .map-label {
-      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
-    }
-    .map-thumb.active .map-label { color: #f59e0b; }
+    /* Hide overlay-core's trailing volatile container (this scene renders into
+       each shell wrapper's .slot-content instead). Every shell child is id'd,
+       so this only matches that container. */
+    #root > div:not([id]) { display: none; }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
+  <div id="root"></div>
 
   <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./cam-layout.js"></script>
+  <script src="./bg-helper.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
-    const API = 'http://localhost:3001';
-    let mapData = [];
+    var API = 'http://localhost:3001';
+    var mapData = [];
 
-    async function loadMaps() {
-      // Local API (cached server-side) — external fetches fail intermittently in OBS browser sources
-      mapData = await fetch(`${API}/api/maps`).then(r => r.json()).catch(() => []);
-      if (!Array.isArray(mapData)) mapData = [];
+    // Dep: map screenshots for the strip thumbnails (server pre-caches these;
+    // local matching below is scene-local, kept verbatim from v1/lobby).
+    function loadMaps() {
+      return fetch(API + '/api/maps')
+        .then(function (r) { return r.json(); })
+        .then(function (d) { mapData = Array.isArray(d) ? d : []; })
+        .catch(function () { mapData = []; });
     }
 
+    // Local API (cached server-side) match against a map name — scene-local
+    // matching kept verbatim from v1.
     function getMapScreenshot(mapName, faceitImage) {
       if (!mapName) return proxyImg(faceitImage);
-      const normalized = mapName.toLowerCase().trim();
-      const match = mapData.find(m =>
-        m.name.toLowerCase() === normalized ||
-        m.key === normalized.replace(/[^a-z0-9]+/g, '-')
-      );
+      var normalized = mapName.toLowerCase().trim();
+      var slug = normalized.replace(/[^a-z0-9]+/g, '-');
+      var match = null;
+      for (var i = 0; i < mapData.length; i++) {
+        var m = mapData[i];
+        if (!m || !m.name) continue;
+        if (m.name.toLowerCase() === normalized || m.key === slug) { match = m; break; }
+      }
       return proxyImg(match ? match.screenshot : faceitImage);
     }
 
-    let lastState = null;
+    function scoreOf(team) {
+      return (team.score === undefined || team.score === null) ? 0 : team.score;
+    }
+    function normalizeLayout(v) {
+      return (v === undefined || v === null) ? 2 : v;
+    }
 
-    var lastRenderKey = '';
-    function update(state) {
-      var renderKey = JSON.stringify([
-        state.teams, state.maps, state.casters, state.casterLayout,
-        state.bestOf, state.eventName, state.theme
-      ]);
-      if (renderKey === lastRenderKey) return;
-      lastRenderKey = renderKey;
+    // ── shell: builds the persistent chrome exactly ONCE ────────────────────
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'casters-map-score-v2');
+      root.innerHTML =
+        '<div id="cd-bg"></div>' +
+        '<div id="cd-header" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-cams" style="animation: fadeIn 0.5s ease-out 0.15s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-deck" style="animation: slideUp 0.5s ease-out 0.25s both;">' +
+          '<div class="slot-content"></div></div>';
+      applyTextureBg(document.getElementById('cd-bg'));
+    }
+
+    // ── key: v1 read-set (teams, maps, casters names, casterLayout, bestOf,
+    // eventName, theme team colors). maps is reduced to the leaves the strip
+    // actually reads (image/roundScore included — this deck draws both). ────
+    function key(state) {
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var casters = (state.casters || []).map(function (c) { return c && c.name; });
+      var maps = (state.maps || []).map(function (m) {
+        return [m.name, m.mode, m.status, m.image, m.winner, m.roundScore];
+      });
+      return [
+        t1.name, t1.logo, t1.color, scoreOf(t1),
+        t2.name, t2.logo, t2.color, scoreOf(t2),
+        casters, state.casterLayout,
+        maps, state.bestOf, state.eventName,
+        theme.team1Color, theme.team2Color
+      ];
+    }
+
+    function renderChrome(state, camRects) {
+      document.querySelector('#cd-header .slot-content').innerHTML =
+        eventHeader({ eventName: state.eventName || 'FACEIT Season 8', subtitle: 'MAP SCORE' });
+
+      var casters = state.casters || [];
+      var camsHtml = '';
+      for (var i = 0; i < camRects.length; i++) {
+        var caster = casters[i] || {};
+        camsHtml += camFrame({ rect: camRects[i], name: caster.name || '' });
+      }
+      document.querySelector('#cd-cams .slot-content').innerHTML = camsHtml;
+    }
+
+    function teamHeaderHtml(team, color, side) {
+      var sideClass = side === 'right' ? ' right' : '';
+      var logoHtml = team.logo ? safeImg(team.logo, { 'class': 'ms-team-logo', alt: team.name || '' }) : '';
+      return '<div class="ms-team' + sideClass + '">' + logoHtml +
+        '<div class="ms-team-name" style="color:' + escapeHtml(color) + '">' + escapeHtml(team.name || '') + '</div>' +
+        '<div class="ms-team-score" style="color:' + escapeHtml(color) + '">' + scoreOf(team) + '</div>' +
+        '</div>';
+    }
+
+    // One per-map slot: thumbnail + name/mode/roundScore, win/live state via
+    // mapStripClass (class name only — colors are inline from the TRUE
+    // winning team's color, never swapSides-flipped).
+    function mapSlotHtml(m, i, ctx) {
+      var stateClass = mapStripClass(m, i, ctx.currentIdx);
+      var mapImg = getMapScreenshot(m.name, m.image);
+      var winnerColor = m.winner === 'team1' ? ctx.t1Color : (m.winner === 'team2' ? ctx.t2Color : '');
+
+      var imgHtml = mapImg
+        ? '<img class="ms-map-thumb" src="' + escapeHtml(mapImg) + '" alt="' + escapeHtml(m.name || '') + '">'
+        : '<div class="ms-map-thumb" style="display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,0.2)">&mdash;</div>';
+
+      var winnerLogo = '';
+      if (m.winner) {
+        var wt = m.winner === 'team1' ? ctx.t1 : ctx.t2;
+        if (wt.logo) winnerLogo = safeImg(wt.logo, { 'class': 'ms-map-winner-logo', alt: wt.name || '' });
+      }
+
+      var scoreHtml = m.roundScore ? '<div class="ms-map-score">' + escapeHtml(m.roundScore) + '</div>' : '';
+      var borderStyle = (stateClass === 'won-t1' || stateClass === 'won-t2') && winnerColor
+        ? ' style="border-color:' + escapeHtml(hexToAlpha(winnerColor, 0.6)) + '"' : '';
+
+      return '<div class="ms-map-slot ' + stateClass + '"' + borderStyle + '>' +
+        imgHtml + winnerLogo +
+        '<div class="ms-map-info">' +
+          '<div class="ms-map-name">' + escapeHtml(m.name || ('MAP ' + (i + 1))) + '</div>' +
+          '<div class="ms-map-mode">' + escapeHtml(m.mode || '') + '</div>' +
+          scoreHtml +
+        '</div>' +
+        '</div>';
+    }
+
+    function render(state) {
       applyTheme(state);
-      lastState = state;
-      const el = document.getElementById('root');
-      const t1 = state.teams?.team1;
-      const t2 = state.teams?.team2;
-      const maps = state.maps || [];
-      const layout = state.casterLayout ?? 2;
 
-      if (!t1?.name) {
-        el.innerHTML = `
-          <div class="branding">
-            <img class="org-logo" src="./org.png">
-            <div class="divider"></div>
-            <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
-          </div>
-          <div class="main-layout centered">
-            <div class="score-panel full-width">
-              <div style="padding:24px;text-align:center;color:rgba(255,255,255,0.2);font-size:14px">
-                Load a match to see scores
-              </div>
-            </div>
-          </div>`;
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var t1Color = theme.team1Color || t1.color || '#3b82f6';
+      var t2Color = theme.team2Color || t2.color || '#ef4444';
+
+      var layout = normalizeLayout(state.casterLayout);
+      var camRects = layout === 0 ? [] : (layout === 1 ? CAM_LAYOUTS.desk.single : CAM_LAYOUTS.desk.dual);
+      applyCutoutMask(document.getElementById('cd-bg'), camRects);
+      renderChrome(state, camRects);
+
+      // Deck top per layout (see scoreboard/lobby note): dual cams end higher
+      // than single; layout 0 has no cams. Cam frames never move.
+      document.getElementById('cd-deck').style.top =
+        layout === 0 ? '170px' : (layout === 1 ? '610px' : '545px');
+
+      var deck = document.querySelector('#cd-deck .slot-content');
+
+      if (!t1.name) {
+        deck.innerHTML = '<div class="ms-panel v2-panel"><div class="ms-empty">' +
+          'Load a match to see scores</div></div>';
         return;
       }
 
-      const mapCount = Math.max(maps.length, state.bestOf || 3);
+      var maps = state.maps || [];
+      var bestOf = state.bestOf || maps.length || 5;
+      var currentIdx = findCurrentMapIndex(maps);
 
-      // Build header row
-      const headerCells = maps.map((m, i) =>
-        `<div class="map-cell">${m.name?.split(' ').pop() || `M${i+1}`}</div>`
-      ).join('');
-      // Pad remaining
-      const padCells = Array(Math.max(0, mapCount - maps.length)).fill(0)
-        .map((_, i) => `<div class="map-cell">M${maps.length + i + 1}</div>`).join('');
-
-      // Build team rows
-      const makeRow = (team, teamKey, color) => {
-        const mapCells = maps.map((m, i) => {
-          if (m.status === 'completed') {
-            const won = m.winner === teamKey;
-            return `<div class="map-cell ${won ? 'win' : 'loss'}">${won ? 'W' : 'L'}</div>`;
-          } else if (m.status === 'current') {
-            return `<div class="map-cell current">●</div>`;
-          } else {
-            return `<div class="map-cell pending">—</div>`;
-          }
-        }).join('');
-        const pad = Array(Math.max(0, mapCount - maps.length)).fill(0)
-          .map(() => `<div class="map-cell pending">—</div>`).join('');
-        return `<div class="score-row" style="--map-count:${mapCount}">
-          <div class="team-logo-cell">${team.logo ? `<img src="${proxyImg(team.logo)}">` : ''}</div>
-          <div class="team-name-cell" style="color:${color}">${team.name}</div>
-          ${mapCells}${pad}
-          <div class="series-cell" style="color:${color}">${team.score || 0}</div>
-        </div>`;
-      };
-
-      // Map thumbnails at bottom with OverFast screenshots
-      const thumbs = maps.map((m, i) => {
-        const isCurrent = m.status === 'current';
-        const isLast = i === maps.length - 1 && maps.every(mm => mm.status === 'completed');
-        const mapImg = getMapScreenshot(m.name, m.image);
-        return `<div class="map-thumb ${isCurrent || isLast ? 'active' : ''}">
-          ${mapImg ? `<img src="${mapImg}">` : `<div style="width:120px;height:70px;background:rgba(255,255,255,0.05);border-radius:6px"></div>`}
-          <div class="map-label">${m.name || `Map ${i+1}`}</div>
-          ${m.roundScore ? `<div style="font-size:9px;color:rgba(255,255,255,0.5)">${m.roundScore}</div>` : ''}
-        </div>`;
-      }).join('');
-
-      // Build caster cam area based on layout
-      let casterHtml = '';
-      if (layout >= 1) {
-        const camW = layout === 1 ? 560 : 420;
-        const camH = layout === 1 ? 480 : 230;
-        const c1Name = state.casters?.[0]?.name || 'Caster 1';
-        casterHtml += `<div class="caster-area">
-          <div>
-            <div class="caster-slot" style="width:${camW}px;height:${camH}px"></div>
-            <div class="caster-label">${c1Name}</div>
-          </div>`;
-        if (layout >= 2) {
-          const c2Name = state.casters?.[1]?.name || 'Caster 2';
-          casterHtml += `<div>
-            <div class="caster-slot" style="width:${camW}px;height:${camH}px"></div>
-            <div class="caster-label">${c2Name}</div>
-          </div>`;
-        }
-        casterHtml += `</div>`;
+      // Map slots padded to bestOf so the strip never reflows as the series fills.
+      var slots = [];
+      for (var i = 0; i < bestOf; i++) {
+        slots.push(maps[i] || { name: null, mode: null, status: 'upcoming', image: null, winner: null, roundScore: null });
       }
+      var ctx = { t1: t1, t2: t2, t1Color: t1Color, t2Color: t2Color, currentIdx: currentIdx };
+      var slotsHtml = slots.map(function (m, idx) { return mapSlotHtml(m, idx, ctx); }).join('');
 
-      el.innerHTML = `
-        <div class="branding">
-          <img class="org-logo" src="./org.png">
-          <div class="divider"></div>
-          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
-        </div>
+      deck.innerHTML =
+        '<div class="ms-panel v2-panel">' +
+          '<div class="ms-teams-row">' +
+            teamHeaderHtml(t1, t1Color, 'left') +
+            '<div class="ms-title-block"><div class="ms-title">Match Score</div></div>' +
+            teamHeaderHtml(t2, t2Color, 'right') +
+          '</div>' +
+          '<div class="ms-pips-row"><span class="ms-pips-label">Series</span>' +
+            mapPips({ maps: maps, bestOf: bestOf, team1Color: t1Color, team2Color: t2Color }) +
+          '</div>' +
+          '<div class="ms-maps-row">' + slotsHtml + '</div>' +
+        '</div>';
 
-        <div class="main-layout ${layout === 0 ? 'centered' : ''}">
-          ${casterHtml}
-          <div class="score-panel ${layout === 0 ? 'full-width' : ''}">
-            <div class="match-title">Match Score</div>
-            <div class="score-table" style="--map-count:${mapCount}">
-              <div class="score-row header" style="--map-count:${mapCount}">
-                <div></div><div></div>
-                ${headerCells}${padCells}
-                <div class="series-cell">Series</div>
-              </div>
-              ${makeRow(t1, 'team1', t1.color || '#3b82f6')}
-              ${makeRow(t2, 'team2', t2.color || '#ef4444')}
-            </div>
-          </div>
-        </div>
-
-        <div class="bottom-bar">${thumbs}</div>
-      `;
+      // Single-cam layout grows the cam frame; zoom-shrink the DECK PANEL only
+      // (cam frames never move — the OBS caster sources are aligned to them).
+      fitPanelToCanvas(deck.querySelector('.ms-panel'));
     }
-    stateSync(function(s) { lastState = s; update(s); });
 
-    // Map screenshots load in the background — retry until available, then
-    // force a re-render (the renderKey cache would otherwise skip it)
-    function loadMapsWithRetry() {
-      loadMaps().then(() => {
+    var handle = defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render,
+      deps: [loadMaps]
+    });
+
+    // Map screenshots load in the background (loadMaps is also a `deps`
+    // entry, so this only does work when that first attempt came back
+    // empty). Retry every 5s while mapData is empty; forceRender on first
+    // success (map images aren't keyed — resolution happens at render time
+    // off mapData), then stop. Same escape hatch as casters-lobby.html.
+    var mapsRetryTimer = setInterval(function () {
+      if (mapData.length > 0) { clearInterval(mapsRetryTimer); return; }
+      loadMaps().then(function () {
         if (mapData.length > 0) {
-          lastRenderKey = '';
-          if (lastState) update(lastState);
-        } else {
-          setTimeout(loadMapsWithRetry, 5000);
+          clearInterval(mapsRetryTimer);
+          handle.forceRender();
         }
       });
-    }
-    loadMapsWithRetry();
+    }, 5000);
+
+    // The first render can land while Geist is still loading (fallback-font
+    // metrics are TALLER) and/or during the deck's entrance animation;
+    // fitPanelToCanvas then over-shrinks and, on a static scene, that zoom
+    // sticks. Re-fit once the font is ready AND once more after the entrance
+    // settles — a fresh render at steady state measures correctly.
+    function refitDeck() { handle.forceRender(); }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitDeck);
+    setTimeout(refitDeck, 1200);
   </script>
 </body>
 </html>

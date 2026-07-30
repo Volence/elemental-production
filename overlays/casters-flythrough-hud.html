@@ -3,152 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <title>Casters Flythrough HUD</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap">
+  <!-- Broadcast v2 (Plan 3 Task 4): the OVER-VIDEO cam-scene variant. Unlike
+       casters.html/casters-scoreboard.html/casters-lobby.html/
+       casters-map-score.html, this scene paints NOTHING opaque at all — it
+       sits on top of the map flythrough video (an OBS media source), so
+       there is no petal texture, no #cd-bg layer, and no cutout mask
+       (there's nothing to punch a hole IN; the whole page is already
+       transparent). bg-helper.js is therefore not loaded — this scene has
+       no use for applyTextureBg/applyCutoutMask. The old scene had no dark
+       gradient wash either (compare map-intro.html, which keeps one because
+       ITS v1 predecessor had one) — legibility over the moving video instead
+       comes from eventHeader's and camFrame's own opaque panel-bg chips
+       (dark solid, not translucent-over-a-wash), same as the old scene's
+       per-element rgba(0,0,0,0.45-0.55) + backdrop-blur chips. No deck (the
+       flythrough IS the visual; this overlay is frame + names + title only).
+
+       Cam frames: CAM_LAYOUTS.flythrough (legacy OBS-measured coordinates,
+       preserved verbatim in cam-layout.js — NOT the desk rects). The old
+       hardcoded per-caster rainbow gradient accent bars are gone; camFrame's
+       built-in gradient-4 underline replaces them (same swap casters.html
+       made for its own old rainbow bars). -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      background: transparent; overflow: hidden;
-      width: 1920px; height: 1080px;
-      font-family: var(--font-body, 'Inter', sans-serif); color: white;
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
     }
+    #root { position: relative; width: 1920px; height: 1080px; }
 
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    /* Positioned wrapper slots (built ONCE by shell). #cd-header uses
+       width:fit-content + margin:auto rather than left:50%+translateX so the
+       slideDown entrance transform doesn't clobber the centering (same
+       gotcha documented on casters.html's #cd-header). */
+    #cd-header { position: absolute; top: 40px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
+    /* Cam frames sit directly in canvas coordinates (CAM_LAYOUTS rects are
+       already 1920x1080-space) — plain full-canvas positioning context. */
+    #cd-cams { position: absolute; inset: 0; }
 
-    /* ── Caster frame ── */
-    .caster-frame {
-      position: absolute;
-      animation: fadeIn 0.6s ease-out both;
-    }
-
-    .frame-border {
-      border: 2.5px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    /* Subtle inner shadow for depth */
-    .frame-border::after {
-      content: '';
-      position: absolute; inset: 0;
-      box-shadow: inset 0 0 30px rgba(0,0,0,0.3);
-      border-radius: 8px;
-      pointer-events: none;
-    }
-
-    /* Rainbow accent bar under the frame */
-    .accent-bar {
-      height: 3px;
-      border-radius: 0 0 4px 4px;
-      margin-top: -1px;
-    }
-
-    /* Caster name label — readable over moving backgrounds */
-    .caster-name {
-      text-align: center;
-      margin-top: 8px;
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 32px;
-      letter-spacing: 4px;
-      color: white;
-      background: rgba(0,0,0,0.55);
-      padding: 4px 20px;
-      border-radius: 6px;
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
-    }
-
-    /* ── Branding top-center ── */
-    .branding {
-      position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 18px;
-      background: rgba(0,0,0,0.45);
-      padding: 8px 24px;
-      border-radius: 8px;
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      animation: fadeIn 0.6s ease-out 0.3s both;
-    }
-    .branding .org-logo { width: 56px; height: 56px; object-fit: contain; }
-    .branding .divider { width: 3px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 2px; }
-    .branding .event-name {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 32px; letter-spacing: 3px; line-height: 1.1;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
-    }
+    /* Hide overlay-core's trailing volatile container (this scene renders into
+       each shell wrapper's .slot-content instead). Every shell child is id'd,
+       so this only matches that container. */
+    #root > div:not([id]) { display: none; }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
   <div id="root"></div>
 
+  <!-- No bg-helper.js: this scene never builds a texture/cutout layer. No
+       pinwheel.js: neither eventHeader nor camFrame use pinwheelSVG. -->
   <script src="./theme-helpers.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./cam-layout.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    const API = 'http://localhost:3001';
-
-    var lastRenderKey = '';
-    function update(state) {
-      var renderKey = JSON.stringify([
-        state.casters, state.casterLayout, state.eventName, state.theme
-      ]);
-      if (renderKey === lastRenderKey) return;
-      lastRenderKey = renderKey;
-      applyTheme(state);
-      const el = document.getElementById('root');
-      const layout = state.casterLayout ?? 2;
-      const c1Name = state.casters?.[0]?.name || 'Caster 1';
-      const c2Name = state.casters?.[1]?.name || 'Caster 2';
-
-      // Gradient accent bars
-      const t1Gradient = 'linear-gradient(90deg, #2563eb, #06b6d4, #22c55e)';
-      const t2Gradient = 'linear-gradient(90deg, #22c55e, #ef4444, #f97316)';
-
-      // Frame dimensions from OBS transform measurements:
-      // Caster 1: x=353, y=270, w=501 (1920-353-1066), h=282 (1080-270-528)
-      // Caster 2: x=1074, y=270, w=501 (1920-1074-345), h=282 (1080-270-528)
-      const c1X = 353, c1Y = 270, c1W = 501;
-      const c2X = 1074, c2Y = 270, c2W = 501;
-      const frameH = 282;
-
-      let html = '';
-
-      // Branding
-      html += `
-        <div class="branding">
-          <img class="org-logo" src="./org.png">
-          <div class="divider"></div>
-          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
-        </div>`;
-
-      if (layout >= 1) {
-        // Caster 1 — upper-left area
-        html += `
-          <div class="caster-frame" style="left: ${c1X}px; top: ${c1Y}px;">
-            <div class="frame-border" style="width: ${c1W}px; height: ${frameH}px;"></div>
-            <div class="accent-bar" style="background: ${t1Gradient}; width: ${c1W}px;"></div>
-            <div class="caster-name">${c1Name}</div>
-          </div>`;
-      }
-
-      if (layout >= 2) {
-        // Caster 2 — upper-right area
-        html += `
-          <div class="caster-frame" style="left: ${c2X}px; top: ${c2Y}px;">
-            <div class="frame-border" style="width: ${c2W}px; height: ${frameH}px;"></div>
-            <div class="accent-bar" style="background: ${t2Gradient}; width: ${c2W}px;"></div>
-            <div class="caster-name">${c2Name}</div>
-          </div>`;
-      }
-
-      el.innerHTML = html;
+    function normalizeLayout(v) {
+      return (v === undefined || v === null) ? 2 : v;
     }
 
-    stateSync(update);
+    // ── shell: builds the persistent chrome exactly ONCE ────────────────────
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'casters-flythrough-v2');
+      root.innerHTML =
+        '<div id="cd-header" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-cams" style="animation: fadeIn 0.5s ease-out 0.15s both;">' +
+          '<div class="slot-content"></div></div>';
+    }
+
+    // ── key: casters names, casterLayout, eventName, theme team colors (v1
+    // read-set — no teams/maps at all, this scene draws no deck). ───────────
+    function key(state) {
+      var theme = state.theme || {};
+      var casters = (state.casters || []).map(function (c) { return c && c.name; });
+      return [casters, state.casterLayout, state.eventName, theme.team1Color, theme.team2Color];
+    }
+
+    function render(state) {
+      applyTheme(state);
+
+      var casters = state.casters || [];
+      var layout = normalizeLayout(state.casterLayout);
+      var camRects = layout === 0 ? [] : (layout === 1 ? CAM_LAYOUTS.flythrough.single : CAM_LAYOUTS.flythrough.dual);
+
+      document.querySelector('#cd-header .slot-content').innerHTML =
+        eventHeader({ eventName: state.eventName || 'FACEIT Season 8', subtitle: 'CASTED BY' });
+
+      var camsHtml = '';
+      for (var i = 0; i < camRects.length; i++) {
+        var caster = casters[i] || {};
+        camsHtml += camFrame({ rect: camRects[i], name: caster.name || '' });
+      }
+      document.querySelector('#cd-cams .slot-content').innerHTML = camsHtml;
+    }
+
+    defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render
+    });
   </script>
 </body>
 </html>
