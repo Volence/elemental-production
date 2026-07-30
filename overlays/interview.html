@@ -156,9 +156,14 @@
 
     function cardHtml(iv) {
       var teamColor = iv.teamColor || '';
-      var wash = teamColor ? hexToAlpha(teamColor, 0.22) : 'transparent';
-      var pillBorder = teamColor || 'rgba(255,255,255,0.25)';
-      var pillStyle = 'border-color:' + escapeHtml(pillBorder) +
+      // hexToAlpha() is a pass-through for non-'#'-prefixed input (see its
+      // own guard) — teamColor is untrusted (FACEIT-sourced), so its output
+      // still needs escapeHtml() before splicing into a style attribute,
+      // same defense-in-depth convention as banArtTile()/teamPlate() in
+      // components-v2.js.
+      var wash = escapeHtml(teamColor ? hexToAlpha(teamColor, 0.22) : 'transparent');
+      var pillBorder = escapeHtml(teamColor || 'rgba(255,255,255,0.25)');
+      var pillStyle = 'border-color:' + pillBorder +
         ';background-image:linear-gradient(100deg,' + wash + ',transparent 70%)';
 
       var nameHtml = '<div class="iv-name-pill" style="' + pillStyle + '">' +
