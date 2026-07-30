@@ -218,6 +218,13 @@ Third round of owner feedback on the v2 package:
 - **`.mov` flythroughs recognized.** The flythrough directory scan accepts
   `.mov`/`.m4v` alongside `.mp4`/`.webm` (the producer's recorder outputs
   QuickTime; OBS's ffmpeg source plays it natively).
+- **Deterministic scene-item z-order.** The generator now stable-sorts every
+  scene's items into the v2 convention — video feeds (game capture,
+  flythrough, replay, cams) at the bottom, the overlay browser source above
+  them, audio-only sources on top — and the same ordering was applied to the
+  live collection over obs-websocket. This fixes the long-standing Between
+  Matches defect where the overlay sat below the Replay source, leaving the
+  replay's overspill unmasked.
 - **Stadium maps filtered from the Season Map Pool editor.** Stadium-only
   maps (Arena Victoriae, Gogadoro, Wuxing University, Place Lacroix,
   Redwood Dam) carry normal competitive gamemodes in the OverFast catalog,
