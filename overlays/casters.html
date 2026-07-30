@@ -3,151 +3,283 @@
 <head>
   <meta charset="UTF-8">
   <title>Casters</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap">
+  <!-- Broadcast v2: same stack as gameplay-hud.html/hero-bans.html — no Google
+       Fonts (Geist via @font-face in fonts-v2.css); theme-v2.css/fonts-v2.css/
+       animations.css own tokens + shared component-internal styles; this
+       file's own <style> owns scene-local layout. This is the Plan 3 Task 2
+       cam-scene TEMPLATE — Tasks 3-4's caster variants copy this skeleton and
+       only swap the deck.
+
+       Layout A (design spec §5 / casters-layout.html mockup, option A —
+       option B's rail is REJECTED): two equal cams high-center, transparent
+       CUTOUTS (camFrame() — hairline border, gradient-underline base edge, a
+       name pill hanging off the bottom), event header top-center, a matchup
+       deck below the cams. The old hardcoded rainbow accent bars are gone —
+       v2 uses camFrame's built-in gradient-4 underline instead.
+
+       THE CUTOUT INVARIANT: caster/interviewee browser sources sit BEHIND
+       this overlay in OBS, so anywhere this page paints opaque pixels the
+       cam is hidden. Every other v2 scene calls applyTextureBg(root) directly
+       on #root — that would paint the petal texture straight over the cam
+       windows too. Instead the texture lives on a DEDICATED layer (#cd-bg,
+       a shell-built, id'd sibling of the cam/header/deck wrappers, never
+       #root itself) with a CSS mask: an inline data: SVG (white rect = keep,
+       black rect = hole, one hole per active cam rect) punches transparent
+       windows at exactly CAM_LAYOUTS.desk's coordinates. Rebuilt (well,
+       re-pointed — see updateCutoutMask()) whenever casterLayout changes,
+       via style.setProperty on the SAME persistent #cd-bg node — same
+       "touch a custom property on a persistent shell node, don't rebuild
+       the node" pattern hero-bans.html's wash divs use for team-color
+       changes. ?bg=transparent (preserved from the old scene, used for
+       flythrough-style embeds) skips building #cd-bg entirely — frames and
+       deck still render over a fully transparent page. -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      background: transparent; overflow: hidden;
-      width: 1920px; height: 1080px;
-      font-family: var(--font-body, 'Inter', sans-serif); color: white;
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
     }
+    #root { position: relative; width: 1920px; height: 1080px; }
 
+    /* Petal-texture cutout layer (see the cutout invariant comment above).
+       Full canvas; the mask (set in render, not here — it depends on the
+       live casterLayout) punches the transparent cam windows. Absent
+       entirely under ?bg=transparent. */
+    #cd-bg { position: absolute; inset: 0; }
 
-    .container {
-      position: relative; width: 1920px; height: 1080px;
-      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
-    }
-    .container.transparent-bg {
-      background: transparent !important;
-    }
+    /* ── Three positioned wrapper slots (built ONCE by shell) ────────────
+       Centered wrappers use width:fit-content + margin:auto rather than
+       left:50%+translateX(-50%): the slideDown/slideUp shell entrances
+       animate `transform`, and its `both` fill would otherwise clobber a
+       translateX and de-center the wrapper permanently (same gotcha
+       documented on gameplay-hud's #hud-center / map-intro's #mi-deck). */
+    #cd-header { position: absolute; top: 40px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
+    /* Cam frames sit directly in canvas coordinates (CAM_LAYOUTS rects are
+       already 1920x1080-space) — this wrapper is a plain full-canvas
+       positioning context, not itself animated independently of its rects
+       (camFrame's own inline geometry IS the positioning). */
+    #cd-cams { position: absolute; inset: 0; }
+    #cd-deck { position: absolute; bottom: 7%; left: 0; right: 0; margin: 0 auto; width: fit-content; }
 
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-    /* ── Branding top-center ── */
-    .branding {
-      position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+    /* ── Matchup deck (layout-0 "no frames" case still shows this, centered
+       under where the cams would be — deck position never depends on
+       casterLayout) ── */
+    .cd-deck-panel {
       display: flex; align-items: center; gap: 20px;
+      background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+      padding: 12px 24px;
     }
-    .branding .org-logo { width: 72px; height: 72px; object-fit: contain; }
-    .branding .divider { width: 3px; height: 54px; background: rgba(255,255,255,0.2); border-radius: 2px; }
-    .branding .event-name {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 38px; letter-spacing: 3px; line-height: 1.1;
+    .cd-deck-team { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .cd-deck-team-right { flex-direction: row-reverse; }
+    .cd-deck-logo {
+      width: 32px; height: 32px; border-radius: var(--panel-radius);
+      object-fit: cover; flex: none; border: 1px solid rgba(255,255,255,0.15);
     }
-
-    /* ── Caster area ── */
-    .caster-area {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -45%);
-      display: flex; gap: 30px;
-      
+    .cd-deck-swatch { width: 32px; height: 32px; border-radius: var(--panel-radius); flex: none; }
+    .cd-deck-name {
+      font-size: 28px; font-weight: 800; color: #fff; text-transform: uppercase;
+      letter-spacing: 0.5px; white-space: nowrap;
     }
-
-    .caster-col {
-      display: flex; flex-direction: column; align-items: center; gap: 0;
-    }
-
-    .caster-slot {
-      width: 580px; height: 340px;
-      border: 2px solid rgba(255,255,255,0.06);
-      border-radius: 10px 10px 0 0;
-      background: rgba(0,0,0,0.4);
+    .cd-deck-hub { display: flex; align-items: center; flex: none; }
+    .cd-deck-sep { color: rgba(255,255,255,0.3); font-size: 22px; flex: none; }
+    .cd-next-chip {
+      color: rgba(255,255,255,0.6); font-weight: 700; font-size: 22px;
+      letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; flex: none;
     }
 
-    /* Team-colored accent bar under each cam */
-    .accent-bar {
-      width: 580px; height: 5px;
-      border-radius: 0 0 4px 4px;
-    }
-
-    .caster-name {
-      margin-top: 14px;
-      font-size: 18px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 2px;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    }
+    /* overlay-core appends its volatile render container as #root's LAST
+       child (after everything shell builds). This scene never uses it —
+       render() writes into each wrapper's persistent .slot-content instead
+       (the render-vs-reflow split, same as the other v2 scenes) — so the
+       trailing, id-less container is hidden. Every shell child above
+       (#cd-bg/#cd-header/#cd-cams/#cd-deck) carries an id, so this only
+       matches that container. */
+    #root > div:not([id]) { display: none; }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
+  <div id="root"></div>
 
+  <!-- Script order matters: helpers + SVG + component builders + the cam
+       geometry constants must all be global before overlay-core wires the
+       render loop. NO ?./?? in the inline script (OBS Chromium 103 floor);
+       var/function/string-concat style for consistency with the other v2
+       scenes. -->
   <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./cam-layout.js"></script>
+  <script src="./bg-helper.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
-    const API = 'http://localhost:3001';
-    var lastRenderKey = '';
-    function update(state) {
-      var renderKey = JSON.stringify([
-        state.teams?.team1?.color, state.teams?.team2?.color,
-        state.casters, state.casterLayout, state.eventName, state.theme
-      ]);
-      if (renderKey === lastRenderKey) return;
-      lastRenderKey = renderKey;
+    var API = 'http://localhost:3001';
+
+    function scoreOf(team) {
+      return (team.score === undefined || team.score === null) ? 0 : team.score;
+    }
+
+    // One deck-scale team block: logo/swatch + name. `side` mirrors the row
+    // (logo outer, name inner toward the hub) — same left/right convention as
+    // components-v2.js's teamPlate()/map-intro's teamBlockHtml().
+    function teamBlockHtml(team, color, side) {
+      var sideClass = side === 'right' ? ' cd-deck-team-right' : '';
+      var logoHtml = team.logo
+        ? safeImg(team.logo, { 'class': 'cd-deck-logo', alt: team.name || '' })
+        : '<div class="cd-deck-swatch" style="background:' + escapeHtml(color) + '"></div>';
+      return '<div class="cd-deck-team' + sideClass + '">' + logoHtml +
+        '<div class="cd-deck-name">' + escapeHtml(team.name || '') + '</div></div>';
+    }
+
+    // Builds a data: SVG mask image for the cutout layer: a full-canvas white
+    // rect (mask default = keep, per CSS luminance masking) with one BLACK
+    // rect per active cam rect punched on top (mask = hole). 1920x1080 native
+    // size matches the canvas 1:1 so `mask-size:100% 100%` never distorts it.
+    // Empty `rects` -> a white-only mask is never even requested by the
+    // caller (see updateCutoutMask) so this always has >=1 hole when called.
+    function camMaskDataUri(rects) {
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">' +
+        '<rect width="1920" height="1080" fill="white"/>';
+      for (var i = 0; i < rects.length; i++) {
+        var r = rects[i];
+        svg += '<rect x="' + r.x + '" y="' + r.y + '" width="' + r.w + '" height="' + r.h + '" fill="black"/>';
+      }
+      svg += '</svg>';
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    // Re-points #cd-bg's mask to the given rect set. Called from render (not
+    // shell): the active rects depend on casterLayout, which is DATA, but
+    // this only ever touches style properties on the persistent #cd-bg node
+    // — never rebuilds it — so it can't interfere with the node's own
+    // (nonexistent) entrance animation. No rects (layout 0, or ?bg=transparent
+    // where #cd-bg doesn't exist) -> no mask -> the texture (if present)
+    // covers the full canvas with no holes.
+    //
+    // mask-mode MUST be forced to 'luminance' (+ the legacy -webkit-mask-
+    // source-type equivalent) — verified against a real Chromium build
+    // while implementing this: an image mask source's default mode per the
+    // current CSS Masking spec is 'alpha', not luminance, so a mask image
+    // whose white/black rects are BOTH fully opaque (alpha 1 everywhere, the
+    // whole point of "white keep / black hole") masks NOTHING under the
+    // default mode — every pixel stays fully visible, no cutout at all.
+    // Explicit luminance mode is what makes white=visible/black=hidden work.
+    function updateCutoutMask(rects) {
+      var bgEl = document.getElementById('cd-bg');
+      if (!bgEl) return;
+      if (rects.length === 0) {
+        bgEl.style.removeProperty('mask-image');
+        bgEl.style.removeProperty('-webkit-mask-image');
+        return;
+      }
+      var maskUrl = 'url("' + camMaskDataUri(rects) + '")';
+      bgEl.style.setProperty('mask-image', maskUrl);
+      bgEl.style.setProperty('-webkit-mask-image', maskUrl);
+      bgEl.style.setProperty('mask-size', '100% 100%');
+      bgEl.style.setProperty('-webkit-mask-size', '100% 100%');
+      bgEl.style.setProperty('mask-mode', 'luminance');
+      bgEl.style.setProperty('-webkit-mask-source-type', 'luminance');
+    }
+
+    // ── shell: builds the persistent chrome exactly ONCE ────────────────────
+    // #cd-bg (texture + cutout mask target) is built here but its mask is set
+    // by render (depends on casterLayout). The three slot wrappers carry the
+    // ONLY entrance animations (state-sync's replayAnimation re-runs them on
+    // OBS show/hide); render() only ever rewrites their .slot-content, so
+    // they never replay on a data tick. data-shell-marker proves the shell
+    // ran once, same convention as the other v2 scenes.
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'casters-v2');
+      var transparent = new URLSearchParams(window.location.search).get('bg') === 'transparent';
+      var bgHtml = transparent ? '' : '<div id="cd-bg"></div>';
+      root.innerHTML =
+        bgHtml +
+        '<div id="cd-header" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-cams" style="animation: fadeIn 0.5s ease-out 0.15s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-deck" style="animation: slideUp 0.5s ease-out 0.25s both;">' +
+          '<div class="slot-content"></div></div>';
+      if (!transparent) applyTextureBg(document.getElementById('cd-bg'));
+    }
+
+    // ── key: EXACTLY the state leaves render reads ──────────────────────────
+    // maps is reduced to [status, name] per entry — that's all findCurrentMap
+    // needs (the deck's NEXT chip). casters is reduced to just the names —
+    // camUrl/visible aren't rendered by this overlay (the cam feed itself is
+    // an OBS source behind the cutout, not something this page draws).
+    function key(state) {
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var casters = (state.casters || []).map(function (c) { return c && c.name; });
+      var maps = (state.maps || []).map(function (m) { return [m.status, m.name]; });
+      return [
+        t1.name, t1.logo, t1.color, scoreOf(t1),
+        t2.name, t2.logo, t2.color, scoreOf(t2),
+        casters, state.casterLayout,
+        maps, state.eventName,
+        theme.team1Color, theme.team2Color
+      ];
+    }
+
+    function render(state) {
       applyTheme(state);
-      const el = document.getElementById('root');
-      // Support ?bg=transparent for flythrough scenes
-      const isTransparent = new URLSearchParams(window.location.search).get('bg') === 'transparent';
-      if (isTransparent) el.classList.add('transparent-bg');
-      const t1Color = state.teams?.team1?.color || '#3b82f6';
-      const t2Color = state.teams?.team2?.color || '#ef4444';
-      const c1Name = state.casters?.[0]?.name || 'Caster 1';
-      const c2Name = state.casters?.[1]?.name || 'Caster 2';
-      const layout = state.casterLayout ?? 2;
 
-      // Rainbow accent bars matching the original design
-      const t1Gradient = 'linear-gradient(90deg, #2563eb, #06b6d4, #22c55e)';
-      const t2Gradient = 'linear-gradient(90deg, #22c55e, #ef4444, #f97316)';
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var t1color = theme.team1Color || t1.color || '#3b82f6';
+      var t2color = theme.team2Color || t2.color || '#ef4444';
 
-      // Build caster columns based on layout count
-      let castersHTML = '';
-      if (layout >= 1) {
-        // Single caster = wider + centered, dual = normal side-by-side
-        const slotWidth = layout === 1 ? 700 : 580;
-        const slotHeight = layout === 1 ? 410 : 340;
-        castersHTML += `
-          <div class="caster-col">
-            <div class="caster-slot" style="width:${slotWidth}px;height:${slotHeight}px"></div>
-            <div class="accent-bar" style="background:${t1Gradient};width:${slotWidth}px"></div>
-            <div class="caster-name">${c1Name}</div>
-          </div>`;
+      var casters = state.casters || [];
+      var layout = (state.casterLayout === undefined || state.casterLayout === null) ? 2 : state.casterLayout;
+      var camRects = layout === 0 ? [] : (layout === 1 ? CAM_LAYOUTS.desk.single : CAM_LAYOUTS.desk.dual);
+
+      updateCutoutMask(camRects);
+
+      // ── header: event name + gradient underline, top-center ────────────
+      document.querySelector('#cd-header .slot-content').innerHTML =
+        eventHeader({ eventName: state.eventName || 'FACEIT Season 8', subtitle: 'CASTED BY' });
+
+      // ── cam frames: one camFrame() per active rect, casters[i].name in
+      // its pill (layout 0 -> camRects is empty -> no frames at all) ──────
+      var camsHtml = '';
+      for (var i = 0; i < camRects.length; i++) {
+        var caster = casters[i] || {};
+        camsHtml += camFrame({ rect: camRects[i], name: caster.name || '' });
       }
-      if (layout >= 2) {
-        castersHTML += `
-          <div class="caster-col">
-            <div class="caster-slot"></div>
-            <div class="accent-bar" style="background:${t2Gradient}"></div>
-            <div class="caster-name">${c2Name}</div>
-          </div>`;
-      }
+      document.querySelector('#cd-cams .slot-content').innerHTML = camsHtml;
 
-      el.innerHTML = `
-        <div class="branding">
-          <img class="org-logo" src="./org.png">
-          <div class="divider"></div>
-          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
-        </div>
-
-        <div class="caster-area">
-          ${castersHTML}
-        </div>
-      `;
+      // ── matchup deck: team blocks flanking a pinwheel hub carrying the
+      // TRUE series score, + a NEXT: <map> chip when findCurrentMap has one
+      // (mirrors gameplay-hud/map-intro's hubText + currentMapName pattern) ──
+      var maps = state.maps || [];
+      var current = findCurrentMap(maps);
+      var hubText = scoreOf(t1) + '·' + scoreOf(t2);
+      var nextHtml = current.name
+        ? '<span class="cd-deck-sep">|</span><div class="cd-next-chip">NEXT: ' + escapeHtml(current.name) + '</div>'
+        : '';
+      document.querySelector('#cd-deck .slot-content').innerHTML =
+        '<div class="cd-deck-panel">' +
+          teamBlockHtml(t1, t1color, 'left') +
+          '<div class="cd-deck-hub">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 48, hubText: hubText }) + '</div>' +
+          teamBlockHtml(t2, t2color, 'right') +
+          nextHtml +
+        '</div>';
     }
 
-    // Lighten/darken a hex color
-    function adjustColor(hex, amount) {
-      hex = hex.replace('#', '');
-      const r = Math.min(255, Math.max(0, parseInt(hex.substring(0, 2), 16) + amount));
-      const g = Math.min(255, Math.max(0, parseInt(hex.substring(2, 4), 16) + amount));
-      const b = Math.min(255, Math.max(0, parseInt(hex.substring(4, 6), 16) + amount));
-      return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
-    }
-    stateSync(update);
+    defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render
+    });
   </script>
 </body>
 </html>
