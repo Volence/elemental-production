@@ -96,7 +96,9 @@ function banTile(opts) {
   // different fixed size (e.g. the 84px map-board tiles) — scene CSS still
   // owns everything else about the tile's look.
   var sizeStyle = size ? ('width:' + size + 'px;height:' + size + 'px;') : '';
-  var nameStyle = size ? (' style="font-size:' + Math.round(size * 0.2) + 'px;"') : '';
+  // Non-default sizes scale the name plate's width too — theme-v2.css's
+  // .v2-ban-tile-name max-width matches only the 56px default tile.
+  var nameStyle = size ? (' style="font-size:' + Math.round(size * 0.2) + 'px;max-width:' + size + 'px;"') : '';
 
   var tileInner;
   if (heroName) {

@@ -150,14 +150,8 @@
     /* Live-column hero bans (map-pick-bans.html, variant A — recommended):
        only the live column shows bans, at the 84px mobile-floor size. */
     .mp-col-bans { display: flex; justify-content: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
-    /* banTile()'s .v2-ban-tile-name (theme-v2.css) hardcodes max-width:56px to
-       match its own default tile size — the `size` option it exposes only
-       scales the tile/font, not this width, so a longer hero name (e.g.
-       "SOMBRA") truncates at this scene's 84px tiles ("SOM…"). Fixing that at
-       the component is out of this task's file scope (theme-v2.css's default
-       is shared by every 56px consumer); scoped override here since map-pick
-       is the only non-default (84px) consumer today. */
-    .mp-col-bans .v2-ban-tile-name { max-width: 84px; }
+    /* Name width at 84px tiles comes from banTile's size option (inline
+       max-width) — no scene override needed. */
   </style>
 </head>
 <body>
@@ -380,8 +374,12 @@
           pickPillHtml = '<div class="mp-pick-pill" style="background:' + escapeHtml(hexToAlpha(pickerColor, 0.22)) +
             ';border:1px solid ' + escapeHtml(hexToAlpha(pickerColor, 0.55)) +
             ';color:' + escapeHtml(pickerColor) + '">' + pillText + '</div>';
-        } else {
+        } else if (isDecider) {
           pickPillHtml = '<div class="mp-pick-pill mp-pick-pill-neutral">DECIDER</div>';
+        } else {
+          // Mid-series map with picker data not yet set: empty pill slot, not
+          // a misleading DECIDER label.
+          pickPillHtml = '';
         }
 
         var bansHtml = '';
