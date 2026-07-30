@@ -35,22 +35,17 @@ function makeStateSync() {
   return s;
 }
 
-// Flush the microtask queue a few times so the deps Promise.all chain settles.
-const flush = async () => {
-  for (let i = 0; i < 5; i++) await Promise.resolve();
-};
-
 describe('overlay-core defineOverlay', () => {
   // Contract 1: render fires on first state, and again only when key changes.
   it('renders on first state and re-renders only when key output changes', async () => {
     const el = makeEl();
     const render = vi.fn();
     const sync = makeStateSync();
-    defineOverlay(
+    const handle = defineOverlay(
       { el, key: (s) => [s.score], render },
       { _stateSync: sync.fn }
     );
-    await flush();
+    await handle.ready;
 
     sync.push({ score: 1 });
     expect(render).toHaveBeenCalledTimes(1);
@@ -69,11 +64,11 @@ describe('overlay-core defineOverlay', () => {
     const render = vi.fn();
     const sync = makeStateSync();
     let ok = false;
-    defineOverlay(
+    const handle = defineOverlay(
       { el, key: (s) => [s.v], render, validate: () => ok },
       { _stateSync: sync.fn }
     );
-    await flush();
+    await handle.ready;
 
     sync.push({ v: 7 }); // invalid → skipped, key NOT committed
     expect(render).toHaveBeenCalledTimes(0);
@@ -87,11 +82,11 @@ describe('overlay-core defineOverlay', () => {
     const el = makeEl();
     const render = vi.fn();
     const sync = makeStateSync();
-    defineOverlay(
+    const handle = defineOverlay(
       { el, key: (s) => [s.v], render, validate: () => undefined },
       { _stateSync: sync.fn }
     );
-    await flush();
+    await handle.ready;
     sync.push({ v: 1 });
     expect(render).toHaveBeenCalledTimes(1);
   });
@@ -104,15 +99,18 @@ describe('overlay-core defineOverlay', () => {
     const sync = makeStateSync();
     let resolveDep;
     const dep = () => new Promise((r) => { resolveDep = r; });
-    defineOverlay(
+    const handle = defineOverlay(
       { el, key: (s) => [s.v], render, deps: [dep] },
       { _stateSync: sync.fn }
     );
-    await flush();
+    // handle.ready cannot be awaited here — it only resolves once the dep does.
+    // A single microtask lets any already-settled chain run; the dep is still
+    // pending, so nothing should be wired yet.
+    await Promise.resolve();
     expect(sync.fn).not.toHaveBeenCalled(); // deps still pending
 
     resolveDep([]);
-    await flush();
+    await handle.ready;
     expect(sync.fn).toHaveBeenCalledTimes(1); // wired after deps
 
     sync.push({ v: 1 });
@@ -125,11 +123,11 @@ describe('overlay-core defineOverlay', () => {
     const sync = makeStateSync();
     const badDep = () => Promise.reject(new Error('network down'));
     const goodDep = () => Promise.resolve('ok');
-    defineOverlay(
+    const handle = defineOverlay(
       { el, key: (s) => [s.v], render, deps: [badDep, goodDep] },
       { _stateSync: sync.fn }
     );
-    await flush();
+    await handle.ready;
 
     expect(sync.fn).toHaveBeenCalledTimes(1); // failure did not block registration
     sync.push({ v: 1 });
@@ -146,7 +144,7 @@ describe('overlay-core defineOverlay', () => {
       { el, key: (s) => [s.v], render },
       { _stateSync: sync.fn }
     );
-    await flush();
+    await handle.ready;
 
     sync.push({ v: 1 });
     expect(render).toHaveBeenCalledTimes(1);
@@ -165,7 +163,7 @@ describe('overlay-core defineOverlay', () => {
       { el, key: (s) => [s.v], render },
       { _stateSync: sync.fn }
     );
-    await flush();
+    await handle.ready;
     expect(() => handle.forceRender()).not.toThrow();
     expect(render).toHaveBeenCalledTimes(0);
   });
@@ -179,11 +177,11 @@ describe('overlay-core defineOverlay', () => {
       expect(shell).toHaveBeenCalledTimes(1); // shell ran before render
     });
     const sync = makeStateSync();
-    defineOverlay(
+    const handle = defineOverlay(
       { el, key: (s) => [s.v], render, shell },
       { _stateSync: sync.fn }
     );
-    await flush();
+    await handle.ready;
 
     sync.push({ v: 1 });
     sync.push({ v: 2 });
@@ -199,11 +197,11 @@ describe('overlay-core defineOverlay', () => {
       container.innerHTML = 'volatile-' + state.v;
     });
     const sync = makeStateSync();
-    defineOverlay(
+    const handle = defineOverlay(
       { el, key: (s) => [s.v], render },
       { _stateSync: sync.fn }
     );
-    await flush();
+    await handle.ready;
 
     sync.push({ v: 1 });
     const container = render.mock.calls[0][1];
@@ -221,11 +219,30 @@ describe('overlay-core defineOverlay', () => {
   it('wires itself into stateSync exactly once', async () => {
     const el = makeEl();
     const sync = makeStateSync();
-    defineOverlay(
+    const handle = defineOverlay(
       { el, key: (s) => [s.v], render: () => {} },
       { _stateSync: sync.fn }
     );
-    await flush();
+    await handle.ready;
     expect(sync.fn).toHaveBeenCalledTimes(1);
+  });
+
+  // Re-entrancy: a render that calls its own handle.forceRender() must render
+  // once and NOT recurse to a stack overflow (guard for the 17-scene rollout).
+  it('a render that calls forceRender does not recurse (re-entrancy guard)', async () => {
+    const el = makeEl();
+    let handle;
+    const render = vi.fn(() => {
+      handle.forceRender(); // re-entrant: must be ignored while rendering
+    });
+    const sync = makeStateSync();
+    handle = defineOverlay(
+      { el, key: (s) => [s.v], render },
+      { _stateSync: sync.fn }
+    );
+    await handle.ready;
+
+    expect(() => sync.push({ v: 1 })).not.toThrow();
+    expect(render).toHaveBeenCalledTimes(1);
   });
 });

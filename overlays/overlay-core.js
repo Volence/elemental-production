@@ -7,7 +7,9 @@
  * entrance animations replaying on every data change). This unifies all of it.
  *
  *   defineOverlay({
- *     el:       Element | function() -> Element   (mount root; shell lives here)
+ *     el:       Element | function() -> Element   (REQUIRED; mount root — shell
+ *                                                   builds into it and the render
+ *                                                   container is appended inside)
  *     key:      function(state) -> array          (JSON.stringify'd; key EXACTLY
  *                                                   what render reads)
  *     render:   function(state, container)        (fires only when key changes
@@ -19,6 +21,16 @@
  *                                                   entrance-animated chrome that
  *                                                   must NOT rebuild on data)
  *   }, opts) -> { forceRender: fn, ready: Promise }
+ *
+ * Render container: created once and appended as the LAST CHILD of `el`, AFTER
+ * everything `shell` builds. Scene CSS must position that trailing container
+ * (it holds all of render's volatile output) — the first migrator (Task 6)
+ * needs to account for this ordering.
+ *
+ * Error handling: if key() or render() throws, the exception surfaces to
+ * state-sync.js's per-callback try/catch — it's logged, the frame is dropped,
+ * and the next poll retries. `validate` is the first-class way to guard against
+ * malformed/partial state; don't rely on throwing from render for control flow.
  *
  * ES5 classic script: production omits `opts` and defineOverlay wires the global
  * `stateSync(update)` itself. Tests pass `opts._stateSync` to inject a fake.
@@ -51,6 +63,7 @@ function defineOverlay(config, opts) {
   var elValue = null;
   var shellReady = false;
   var container = null;
+  var rendering = false; // re-entrancy latch (see doRender)
 
   function resolveEl() {
     if (!elResolved) {
@@ -81,7 +94,16 @@ function defineOverlay(config, opts) {
 
   function doRender(state) {
     ensureShell();
-    config.render(state, container);
+    // Ignore a re-entrant forceRender() called from inside render itself —
+    // otherwise it would recurse to a stack overflow. render runs once per
+    // commit; a repaint request from within is a no-op.
+    if (rendering) return;
+    rendering = true;
+    try {
+      config.render(state, container);
+    } finally {
+      rendering = false;
+    }
   }
 
   function update(state) {
@@ -122,10 +144,12 @@ function defineOverlay(config, opts) {
   }
 
   var ready = loadDeps().then(function() {
-    // Reset the key after deps settle so the first post-deps frame ALWAYS
-    // repaints — a frame seen before deps finished must not suppress the render
-    // that finally has its data (deps-racing-first-render bug). Defensive:
-    // stateSync is only wired below, so no frame can arrive pre-deps anyway.
+    // Defensive: clear the key before wiring stateSync so the first post-deps
+    // frame ALWAYS repaints. Today stateSync is wired only on the line below,
+    // so no frame can arrive before deps settle — but a future refactor that
+    // wires stateSync earlier (streaming states during dep load) would hit the
+    // deps-racing-first-render bug without this reset (a frame seen pre-deps
+    // must not suppress the render that finally has its data).
     hasKey = false;
     if (stateSyncFn) stateSyncFn(update);
   });
