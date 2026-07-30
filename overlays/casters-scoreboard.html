@@ -473,7 +473,10 @@
           escapeHtml(mapName) + '</button>';
       }).join('');
 
-      var titleName = round.mapName || round.map || 'Match Stats';
+      // Title = the real map name for the displayed round (state.maps is the
+      // source of truth). NEVER round.map — that's a FACEIT hex map id
+      // (e.g. 0X0800000000000827), which the owner saw printed on stream.
+      var titleName = (state.maps && state.maps[idx] && state.maps[idx].name) || 'Match Stats';
       var headerHtml =
         '<div class="sb-header">' +
           '<div class="sb-title-area">' +

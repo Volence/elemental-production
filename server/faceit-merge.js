@@ -43,3 +43,34 @@ export function buildMapsUpdate({ currentMaps, faceitMaps, perMapBans, mapsOverr
     };
   });
 }
+
+/**
+ * Which map's bans should populate heroBans (what the overlays display):
+ *   1. producer-selected map (explicit override), else
+ *   2. the live ('current') map, else
+ *   3. the next 'upcoming' map — but ONLY if its bans are actually revealed
+ *      yet (the map-intro / Ban Reveal window between maps), else
+ *   4. the LAST PLAYED (completed) map — so a finished series still exposes
+ *      its final map's bans.
+ *
+ * Step 3's bans-revealed guard is the fix for the owner-reported bug: a series
+ * decided early (e.g. 3-0 in a Bo5) leaves trailing 'upcoming' maps that were
+ * never played and carry no bans. The old "first upcoming, unconditionally"
+ * rule resolved to one of those phantom maps and returned EMPTY heroBans; now
+ * those fall through to the last completed map instead.
+ */
+export function getActiveBanIdx(maps, selectedMapIdx = -1, perMapBans = []) {
+  maps = maps || [];
+  if (Number.isInteger(selectedMapIdx) && selectedMapIdx >= 0 && selectedMapIdx < maps.length) {
+    return selectedMapIdx;
+  }
+  const currentIdx = maps.findIndex(m => m.status === 'current');
+  if (currentIdx >= 0) return currentIdx;
+  const hasBans = (b) => !!b && (b.team1Ban || b.team2Ban);
+  const upcomingIdx = maps.findIndex(m => m.status === 'upcoming');
+  if (upcomingIdx >= 0 && hasBans(perMapBans[upcomingIdx])) return upcomingIdx;
+  for (let i = maps.length - 1; i >= 0; i--) {
+    if (maps[i].status === 'completed') return i;
+  }
+  return maps.length - 1;
+}

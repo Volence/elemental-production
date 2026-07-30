@@ -19,9 +19,23 @@ var PETALS = [
   { d: 'M 454.059 572.477 C 379.324 585.602 328.613 560.340 290.875 514.348 C 251.367 474.371 212.680 455.562 162.5 448.043 C 167.953 438.215 179.441 420.648 200.430 406.422 C 228 387.738 255.621 385.883 266.961 385.762 C 310.453 383.121 345.754 418.211 372.930 490.703 C 389.176 529.078 418.281 554.211 454.059 572.477 Z', color: 's' },
 ];
 
+// Brand-mode routing: petal PAIR n (spatial quadrant top,right,bottom,left)
+// draws colors[BRAND_PAIR_ORDER[n]] where colors is the canonical brand
+// palette [red, gold, green, blue]. Chosen by rendering against org.png:
+// top→red(0), right→blue(3), bottom→green(2), left→gold(1).
+var BRAND_PAIR_ORDER = [0, 3, 2, 1];
+
 // Build the <svg> markup for the pinwheel. opts:
-//   color1   (string, required) — hex/css color for 'p' group petals
-//   color2   (string, required) — hex/css color for 's' group petals
+//   color1   (string, required unless `colors` given) — color for 'p' petals
+//   color2   (string, required unless `colors` given) — color for 's' petals
+//   colors   (array [c0,c1,c2,c3], optional) — BRAND mode. When present it
+//            overrides color1/color2: callers pass the brand palette in its
+//            canonical order [red, gold, green, blue] (same order as
+//            theme-v2's --grad4) and the four spatial petal PAIRS are routed
+//            (via BRAND_PAIR_ORDER) so the crest reproduces the real elmt.gg
+//            mark — red top, blue right, green bottom, gold left (overlays/
+//            org.png) — instead of a 2-team medallion. Existing color1/color2
+//            callers (no `colors`) are unchanged.
 //   size     (number, optional, default 62) — rendered width/height in px
 //   hubText  (string, optional) — text drawn centered over a dark hub circle.
 //            Interpolated raw into the SVG: callers must pass trusted,
@@ -31,15 +45,25 @@ function pinwheelSVG(opts) {
   opts = opts || {};
   var color1 = opts.color1;
   var color2 = opts.color2;
+  var colors = (opts.colors && opts.colors.length === 4) ? opts.colors : null;
   var size = opts.size || 62;
   var hubText = opts.hubText || '';
   var glow = opts.glow !== false;
+  // Glow hues: two brand colors in brand mode (top+bottom = c0/c2 for a
+  // multi-hue wash), else the two team colors.
+  var glow1 = colors ? colors[0] : color1;
+  var glow2 = colors ? colors[2] : color2;
 
   var paths = '';
   var i;
   for (i = 0; i < PETALS.length; i++) {
     var petal = PETALS[i];
-    var c = petal.color === 'p' ? color1 : color2;
+    // Brand mode: petals form 4 spatial pairs (indices 2k,2k+1) laid out
+    // top / right / bottom / left. Callers pass [red, gold, green, blue];
+    // BRAND_PAIR_ORDER routes each pair to the palette slot that matches
+    // org.png (red top, blue right, green bottom, gold left). Non-brand mode
+    // keeps the classic p→color1 / s→color2 team mapping.
+    var c = colors ? colors[BRAND_PAIR_ORDER[Math.floor(i / 2)]] : (petal.color === 'p' ? color1 : color2);
     paths += '<path d="' + petal.d + '" fill="' + c + '" fill-opacity="0.25" ' +
       'stroke="' + c + '" stroke-width="8" stroke-linejoin="round" />';
   }
@@ -53,7 +77,7 @@ function pinwheelSVG(opts) {
 
   var style = '';
   if (glow) {
-    style = ' style="filter: drop-shadow(0 0 4px ' + color1 + ') drop-shadow(0 0 4px ' + color2 + ');"';
+    style = ' style="filter: drop-shadow(0 0 4px ' + glow1 + ') drop-shadow(0 0 4px ' + glow2 + ');"';
   }
 
   return '<svg viewBox="130 130 740 740" width="' + size + '" height="' + size + '"' + style + '>' +

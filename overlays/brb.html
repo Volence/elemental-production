@@ -125,10 +125,10 @@
   <script>
     var API = 'http://localhost:3001';
 
-    // Brand crest colors — literal hsl() strings mirroring theme-v2.css's
-    // --elmt-red/--elmt-gold (see file-header comment).
-    var BRB_ACCENT_1 = 'hsl(0 85% 60%)';
-    var BRB_ACCENT_2 = 'hsl(45 95% 55%)';
+    // Brand crest palette — literal hsl() strings mirroring theme-v2.css's
+    // --elmt-red/--elmt-gold/--elmt-green/--elmt-blue in canonical order
+    // (see file-header comment). Neutral scene → full 4-color brand mark.
+    var BRB_BRAND = ['hsl(0 85% 60%)', 'hsl(45 95% 55%)', 'hsl(140 70% 50%)', 'hsl(200 90% 55%)'];
 
     // ── shell: builds the persistent chrome exactly ONCE — heading/subtitle/
     // crest are 100% static (never state-driven), so they live here rather
@@ -139,7 +139,7 @@
       root.innerHTML =
         '<div id="brb-content">' +
           '<div id="brb-crest" style="animation: petalBreathe 3s ease-in-out infinite;">' +
-            pinwheelSVG({ color1: BRB_ACCENT_1, color2: BRB_ACCENT_2, size: 96 }) +
+            pinwheelSVG({ colors: BRB_BRAND, size: 96 }) +
           '</div>' +
           '<div class="brb-heading" style="animation: fadeIn 0.7s ease-out 0.15s both;">WE&#39;LL BE RIGHT BACK</div>' +
           '<div class="brb-sub" style="animation: fadeIn 0.7s ease-out 0.25s both;">Please stand by</div>' +

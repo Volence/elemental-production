@@ -178,6 +178,13 @@
   <script>
     var API = 'http://localhost:3001';
 
+    // Waiting-state brand crest palette — literal hsl() strings mirroring
+    // theme-v2.css's --elmt-red/--elmt-gold/--elmt-green/--elmt-blue in
+    // canonical order. Before a winner exists this scene is neutral (no team
+    // yet), so it shows the vector 4-color brand mark. The WINNER state keeps
+    // the winning team's color (pinwheelSVG color1/color2 below).
+    var SW_BRAND = ['hsl(0 85% 60%)', 'hsl(45 95% 55%)', 'hsl(140 70% 50%)', 'hsl(200 90% 55%)'];
+
     // ── shell: builds ONLY the two persistent, animation-free wrappers —
     // see file-header comment for why every visible pixel is render output
     // here instead of shell chrome. ─────────────────────────────────────
@@ -197,7 +204,7 @@
 
     function waitingHtml() {
       return '<div class="sw-waiting" style="animation: fadeIn 0.5s ease-out both;">' +
-        '<img class="sw-waiting-logo" src="./org.png" alt="">' +
+        '<div class="sw-waiting-logo">' + pinwheelSVG({ colors: SW_BRAND, size: 84, glow: false }) + '</div>' +
         '<div>Series in progress&hellip;</div>' +
         '</div>';
     }

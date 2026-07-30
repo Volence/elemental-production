@@ -101,10 +101,10 @@
   <script>
     var API = 'http://localhost:3001';
 
-    // Brand crest colors — literal hsl() strings mirroring theme-v2.css's
-    // --elmt-red/--elmt-gold (see file-header comment).
-    var EOS_ACCENT_1 = 'hsl(0 85% 60%)';
-    var EOS_ACCENT_2 = 'hsl(45 95% 55%)';
+    // Brand crest palette — literal hsl() strings mirroring theme-v2.css's
+    // --elmt-red/--elmt-gold/--elmt-green/--elmt-blue in canonical order
+    // (see file-header comment). Neutral scene → full 4-color brand mark.
+    var EOS_BRAND = ['hsl(0 85% 60%)', 'hsl(45 95% 55%)', 'hsl(140 70% 50%)', 'hsl(200 90% 55%)'];
 
     // ── Static socials row (no state) — same SVG markup as starting-soon.html
     // plus a 4th "Twitter" chip replacing the old 🐦 emoji (see file-header
@@ -134,7 +134,7 @@
       applyTextureBg(root);
       root.innerHTML =
         '<div id="eos-crest" style="animation: scaleIn 0.6s ease-out 0.10s both;">' +
-          pinwheelSVG({ color1: EOS_ACCENT_1, color2: EOS_ACCENT_2, size: 72 }) +
+          pinwheelSVG({ colors: EOS_BRAND, size: 72 }) +
         '</div>' +
         '<div id="eos-content">' +
           '<div class="eos-heading" style="animation: fadeIn 0.7s ease-out 0.15s both;">SEE YOU<br>NEXT TIME!</div>' +

@@ -24,7 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
-import { buildTeamsUpdate, buildMapsUpdate } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, getActiveBanIdx } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
 
@@ -775,25 +775,11 @@ function buildPerMapBans(rawBans, maps, banSwaps = [], mapPickers = []) {
   });
 }
 
-/**
- * Which map's bans should populate heroBans (what the overlays display):
- * producer-selected map first, then the live map, then the next upcoming map
- * (Map Intro is shown between maps, when nothing is 'current' yet), then the
- * last map (series over).
- */
-function getActiveBanIdx(maps, selectedMapIdx = -1) {
-  if (Number.isInteger(selectedMapIdx) && selectedMapIdx >= 0 && selectedMapIdx < maps.length) {
-    return selectedMapIdx;
-  }
-  const currentIdx = maps.findIndex(m => m.status === 'current');
-  if (currentIdx >= 0) return currentIdx;
-  const upcomingIdx = maps.findIndex(m => m.status === 'upcoming');
-  if (upcomingIdx >= 0) return upcomingIdx;
-  return maps.length - 1;
-}
-
+// getActiveBanIdx now lives in faceit-merge.js (pure + unit-tested). It
+// resolves selected → current → next-upcoming-with-bans → last-played, so a
+// finished/decided series still exposes its final map's bans.
 function computeHeroBans(perMapBans, maps, selectedMapIdx = -1) {
-  const idx = getActiveBanIdx(maps, selectedMapIdx);
+  const idx = getActiveBanIdx(maps, selectedMapIdx, perMapBans);
   const activeBans = idx >= 0 ? perMapBans[idx] : null;
   return {
     team1: activeBans?.team1Ban ? [heroNameToKey(activeBans.team1Ban.name)] : [],

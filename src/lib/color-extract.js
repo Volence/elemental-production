@@ -8,6 +8,28 @@ export const ELMT_ACCENT_FALLBACK = '#25aff4'; // hsl(200 90% 55%), the ELMT blu
 
 const MIN_AVG_SATURATION = 0.15; // below this a bucket is "gray" — never a team color
 
+// Legible silver band (channel/lightness 0-255) for the gray-logo fallback:
+// a logo with no vibrant color reads as neutral silver, not the ELMT blue.
+const SILVER_MIN = 0x8a; // 138
+const SILVER_MAX = 0xc8; // 200
+
+const clamp255 = (n) => Math.max(0, Math.min(255, n));
+const toHex = (r, g, b) => '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('');
+
+// Average a bucket's summed RGB into a neutral silver: shift all channels by
+// the same delta so the overall lightness lands inside [SILVER_MIN, SILVER_MAX]
+// while preserving the gray's faint hue tilt (no channel is clamped away
+// unless it overflows 0-255).
+function neutralSilver(bucket) {
+  let r = bucket.r / bucket.count;
+  let g = bucket.g / bucket.count;
+  let b = bucket.b / bucket.count;
+  const lightness = (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+  const target = Math.max(SILVER_MIN, Math.min(SILVER_MAX, lightness));
+  const delta = target - lightness;
+  return toHex(clamp255(Math.round(r + delta)), clamp255(Math.round(g + delta)), clamp255(Math.round(b + delta)));
+}
+
 // Walks a canvas ImageData.data RGBA buffer (Uint8ClampedArray-like: any
 // indexable array of 0-255 values in RGBA order) and quantizes surviving
 // pixels into 16-step RGB buckets, accumulating HSL saturation per bucket.
@@ -34,18 +56,30 @@ export function sampleBuckets(data) {
 
 export function pickBestBucket(buckets) {
   let best = null, bestScore = 0;
+  let grayBest = null, grayBestCount = 0; // dominant near-gray bucket (by count)
   for (const b of Object.values(buckets)) {
     if (b.count === 0) continue; // guards hand-built/synthetic buckets; sampleBuckets never emits a zero-count bucket
     // Dark (l<0.15, filtered in sampleBuckets) or muted (avg sat below
-    // MIN_AVG_SATURATION) brand marks intentionally lose to the ELMT
-    // accent fallback below — an accepted trade-off, not a bug.
-    if (b.satScore / b.count < MIN_AVG_SATURATION) continue; // reject near-gray
+    // MIN_AVG_SATURATION) brand marks don't win the vibrant pick — but a
+    // logo that is ALL gray still deserves a neutral color, not the ELMT
+    // accent (see the gray-logo fallback below).
+    if (b.satScore / b.count < MIN_AVG_SATURATION) {
+      if (b.count > grayBestCount) { grayBestCount = b.count; grayBest = b; }
+      continue; // reject near-gray for the vibrant pick
+    }
     const score = b.satScore * Math.sqrt(b.count);
     if (score > bestScore) { bestScore = score; best = b; }
   }
-  if (!best) return ELMT_ACCENT_FALLBACK;
-  const r = Math.round(best.r / best.count);
-  const g = Math.round(best.g / best.count);
-  const b2 = Math.round(best.b / best.count);
-  return '#' + [r, g, b2].map((c) => c.toString(16).padStart(2, '0')).join('');
+  if (best) {
+    const r = Math.round(best.r / best.count);
+    const g = Math.round(best.g / best.count);
+    const b2 = Math.round(best.b / best.count);
+    return toHex(r, g, b2);
+  }
+  // No vibrant bucket. If the logo has gray pixels (just no saturated ones),
+  // derive a legible silver from the dominant gray bucket so a gray/mono logo
+  // reads as silver — not the ELMT blue. ELMT_ACCENT_FALLBACK is now reserved
+  // for the truly empty (no-buckets) / error paths.
+  if (grayBest) return neutralSilver(grayBest);
+  return ELMT_ACCENT_FALLBACK;
 }

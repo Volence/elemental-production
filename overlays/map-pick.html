@@ -141,7 +141,10 @@
     .mp-col-current .mp-col-name { font-size: 40px; }
 
     .mp-pick-pill {
-      display: inline-block; font-size: 22px; font-weight: 800; letter-spacing: 0.8px;
+      /* 18px is a deliberate exception to the readability floor: the pill is a
+         redundant "<TEAM> PICK" label beside the already-large map name, and
+         the owner asked for it slightly smaller (QA batch 1). */
+      display: inline-block; font-size: 18px; font-weight: 800; letter-spacing: 0.8px;
       padding: 5px 16px; border-radius: var(--panel-radius); margin-top: 8px;
       text-transform: uppercase;
     }
@@ -299,7 +302,7 @@
         '</div>';
     }
 
-    // One map column. `ctx`: { t1, t2, t1color, t2color, bestOf, mapBans }.
+    // One map column. `ctx`: { t1, t2, t1color, t2color, bestOf, mapBans, banColIdx }.
     // States (v4 mockup + map-pick-bans.html variant A):
     //  - completed: team-color border/wash + circled winner logo + roundScore
     //  - current (live): white glow border, LIVE chip, name >=40px, hero bans
@@ -358,7 +361,8 @@
 
       var artHtml = '<div class="mp-col-art">' + artInner + winnerHtml + ifNeededHtml + chipHtml + liveChipHtml + '</div>';
 
-      // Footer: name + picker pill (+ live-column bans). Only rendered once
+      // Footer: name + picker pill (+ bans on the current-or-last-played
+      // column, ctx.banColIdx). Only rendered once
       // the slot actually has a map name — an unconfigured trailing slot
       // (bestOf > maps.length) gets the bare placeholder art and no footer.
       var footHtml = '';
@@ -370,7 +374,6 @@
           var pickerTeam = picker === 'team1' ? ctx.t1 : ctx.t2;
           var pickerColor = picker === 'team1' ? ctx.t1color : ctx.t2color;
           var pillText = escapeHtml(pickerTeam.name || 'TEAM') + ' PICK';
-          if (isCompleted && map.winner === picker) pillText += ' · WON';
           pickPillHtml = '<div class="mp-pick-pill" style="background:' + escapeHtml(hexToAlpha(pickerColor, 0.22)) +
             ';border:1px solid ' + escapeHtml(hexToAlpha(pickerColor, 0.55)) +
             ';color:' + escapeHtml(pickerColor) + '">' + pillText + '</div>';
@@ -383,7 +386,7 @@
         }
 
         var bansHtml = '';
-        if (isCurrent) {
+        if (i === ctx.banColIdx) {
           var b1 = mapBans.team1Ban;
           var b2 = mapBans.team2Ban;
           if (b1 || b2) {
@@ -426,7 +429,16 @@
 
       document.querySelector('#mp-header .slot-content').innerHTML = headerHtml(t1, t2, t1color, t2color, state.eventName);
 
-      var ctx = { t1: t1, t2: t2, t1color: t1color, t2color: t2color, bestOf: bestOf };
+      // Which column shows hero bans: the live ('current') map, else the last
+      // PLAYED (completed) map — so a finished/decided series still shows its
+      // final map's bans on the board. The white glow + LIVE chip stay
+      // current-only (mp-col-current class / liveChipHtml), so a last-played
+      // column shows bans WITHOUT looking live.
+      var banColIdx = -1;
+      for (var bc = 0; bc < maps.length; bc++) { if (maps[bc] && maps[bc].status === 'current') { banColIdx = bc; break; } }
+      if (banColIdx < 0) { for (var bd = maps.length - 1; bd >= 0; bd--) { if (maps[bd] && maps[bd].status === 'completed') { banColIdx = bd; break; } } }
+
+      var ctx = { t1: t1, t2: t2, t1color: t1color, t2color: t2color, bestOf: bestOf, banColIdx: banColIdx };
       var colsHtml = '';
       for (var i = 0; i < bestOf; i++) {
         ctx.mapBans = perMapBans[i];

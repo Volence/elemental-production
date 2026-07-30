@@ -90,7 +90,7 @@
       var camRects = layout === 0 ? [] : (layout === 1 ? CAM_LAYOUTS.flythrough.single : CAM_LAYOUTS.flythrough.dual);
 
       document.querySelector('#cd-header .slot-content').innerHTML =
-        eventHeader({ eventName: state.eventName || 'FACEIT Season 8', subtitle: 'CASTED BY' });
+        eventHeader({ eventName: state.eventName || 'FACEIT Season 8' });
 
       var camsHtml = '';
       for (var i = 0; i < camRects.length; i++) {

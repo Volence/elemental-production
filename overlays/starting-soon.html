@@ -181,12 +181,13 @@
   <script>
     var API = 'http://localhost:3001';
 
-    // Brand crest colors — literal hsl() strings mirroring theme-v2.css's
-    // --elmt-red/--elmt-gold (see file-header comment: pinwheelSVG needs a
-    // literal color string, not a CSS custom property, since it's spliced
-    // into an SVG fill attribute).
-    var SS_ACCENT_1 = 'hsl(0 85% 60%)';
-    var SS_ACCENT_2 = 'hsl(45 95% 55%)';
+    // Brand crest palette — literal hsl() strings mirroring theme-v2.css's
+    // --elmt-red/--elmt-gold/--elmt-green/--elmt-blue in canonical order
+    // (pinwheelSVG needs literal color strings, not CSS custom properties,
+    // since they're spliced into SVG fill/stroke attributes). This is a
+    // neutral (non-team) scene, so the crest shows the full 4-color brand
+    // mark instead of two team colors.
+    var SS_BRAND = ['hsl(0 85% 60%)', 'hsl(45 95% 55%)', 'hsl(140 70% 50%)', 'hsl(200 90% 55%)'];
 
     // ── Static socials row (no state) — built once by shell(), not render(). ──
     function socialsHtml() {
@@ -209,7 +210,7 @@
       applyTextureBg(root);
       root.innerHTML =
         '<div id="ss-hero" style="animation: scaleIn 0.6s ease-out 0.10s both;">' +
-          '<div class="ss-crest">' + pinwheelSVG({ color1: SS_ACCENT_1, color2: SS_ACCENT_2, size: 92 }) + '</div>' +
+          '<div class="ss-crest">' + pinwheelSVG({ colors: SS_BRAND, size: 92 }) + '</div>' +
           '<div class="ss-heading">STARTING SOON</div>' +
           '<div id="ss-cd"><div class="slot-content"></div></div>' +
           '<div id="ss-event"><div class="slot-content"></div></div>' +

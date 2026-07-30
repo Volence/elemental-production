@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTeamsUpdate, buildMapsUpdate } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, getActiveBanIdx } from './faceit-merge.js';
 
 const faction1 = { id: 'f1', name: 'Alpha', avatar: 'a.png', roster: [] };
 const faction2 = { id: 'f2', name: 'Beta', avatar: 'b.png', roster: [] };
@@ -70,5 +70,45 @@ describe('buildMapsUpdate', () => {
     expect(u[0].winner).toBe('team1');
     expect(u[0].roundScore).toBe('2-0');
     expect(u[2].name).toBe('Nepal');
+  });
+});
+
+describe('getActiveBanIdx', () => {
+  const bans = (t1, t2) => ({ team1Ban: t1 ? { name: t1 } : null, team2Ban: t2 ? { name: t2 } : null });
+
+  it('honors an explicit producer-selected map', () => {
+    const maps = [{ status: 'completed' }, { status: 'current' }, { status: 'upcoming' }];
+    expect(getActiveBanIdx(maps, 0)).toBe(0);
+  });
+
+  it('picks the live (current) map when no override', () => {
+    const maps = [{ status: 'completed' }, { status: 'current' }, { status: 'upcoming' }];
+    expect(getActiveBanIdx(maps, -1, [bans('A'), bans('B'), null])).toBe(1);
+  });
+
+  it('picks the next upcoming map between maps when its bans are revealed', () => {
+    const maps = [{ status: 'completed' }, { status: 'upcoming' }, { status: 'upcoming' }];
+    // map 2 (idx 1) bans revealed during the map-intro window
+    expect(getActiveBanIdx(maps, -1, [bans('A', 'B'), bans('C', 'D'), null])).toBe(1);
+  });
+
+  it('falls back to the last PLAYED map when a series is decided early (phantom upcoming maps, no bans)', () => {
+    // Bo5 won 3-0: maps 4 & 5 never played, no bans. Old code returned idx 3
+    // (first upcoming) -> empty heroBans. Now it must return idx 2 (last completed).
+    const maps = [
+      { status: 'completed' }, { status: 'completed' }, { status: 'completed' },
+      { status: 'upcoming' }, { status: 'upcoming' },
+    ];
+    const perMapBans = [bans('A', 'B'), bans('C', 'D'), bans('E', 'F')]; // only played maps
+    expect(getActiveBanIdx(maps, -1, perMapBans)).toBe(2);
+  });
+
+  it('returns the last completed map when every map is completed (finished match)', () => {
+    const maps = [{ status: 'completed' }, { status: 'completed' }, { status: 'completed' }];
+    expect(getActiveBanIdx(maps, -1, [bans('A'), bans('B'), bans('C')])).toBe(2);
+  });
+
+  it('handles an empty maps array without throwing', () => {
+    expect(getActiveBanIdx([], -1, [])).toBe(-1);
   });
 });

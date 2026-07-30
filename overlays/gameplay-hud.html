@@ -46,9 +46,10 @@
     .hud-row .v2-panel { flex: 1 1 auto; min-width: 0; }
     .hud-row .v2-wing  { flex: 0 0 auto; }
 
-    /* Center band: map pill + winner pips sit together to the right of the
-       medallion (component styles for the pieces themselves live in theme-v2.css). */
-    .v2-center-map { display: flex; align-items: center; gap: 10px; flex: none; }
+    /* Center band: winner pips sit to the right of the medallion (component
+       styles for the pieces themselves live in theme-v2.css). The redundant
+       current-map pill was removed in QA batch 1 — the map name already shows
+       on the map board / lower third. */
 
     /* overlay-core appends its volatile render container as #root's LAST child
        (after the shell wrappers). This scene never uses it — render() writes
@@ -207,19 +208,16 @@
         '</div>';
 
       // CENTER band: event pill | pinwheel medallion (TRUE scores in hub, TRUE
-      // team colors) | map pill + winner pips.
+      // team colors) | winner pips. (The current-map pill was removed in QA
+      // batch 1 — it duplicated the map name already shown on the board.)
       var hubText = scoreOf(t1) + '·' + scoreOf(t2); // "2·1"
-      var currentName = findCurrentMap(maps).name || '';
       document.querySelector('#hud-center .slot-content').innerHTML =
         '<div class="v2-center-block">' +
           eventHeader({ eventName: state.eventName || 'MATCH', subtitle: 'BO' + bestOf }) +
           '<div class="v2-medallion">' +
             pinwheelSVG({ color1: t1color, color2: t2color, size: 62, hubText: hubText }) +
           '</div>' +
-          '<div class="v2-center-map">' +
-            '<div class="v2-map-pill">' + escapeHtml(currentName) + '</div>' +
-            mapPips({ maps: maps, bestOf: bestOf, team1Color: t1color, team2Color: t2color }) +
-          '</div>' +
+          mapPips({ maps: maps, bestOf: bestOf, team1Color: t1color, team2Color: t2color }) +
         '</div>';
     }
 
