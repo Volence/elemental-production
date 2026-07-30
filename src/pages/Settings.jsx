@@ -747,6 +747,8 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
           { group: 'Scenes', items: [
             { name: 'Starting', method: 'POST', url: 'http://localhost:3001/api/scene/Starting' },
             { name: 'Map Pick', method: 'POST', url: 'http://localhost:3001/api/scene/Map%20Pick' },
+            { name: 'Map Pool', method: 'POST', url: 'http://localhost:3001/api/scene/Map%20Pool' },
+            { name: 'Ban Reveal', method: 'POST', url: 'http://localhost:3001/api/scene/Ban%20Reveal' },
             { name: 'Map Intro', method: 'POST', url: 'http://localhost:3001/api/scene/Map%20Intro' },
             { name: 'Casters Flythrough', method: 'POST', url: 'http://localhost:3001/api/scene/Casters%20Flythrough' },
             { name: 'Gameplay', method: 'POST', url: 'http://localhost:3001/api/scene/Gameplay' },

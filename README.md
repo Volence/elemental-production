@@ -26,8 +26,17 @@ Grab the latest release from the [Releases](https://github.com/Volence/elemental
 
 1. Download and run the app
 2. Go to **Settings** → enter your OBS WebSocket password
-3. Configure folder paths for flythrough videos and map music
-4. Import the OBS scene collection from `data/Elemental_Production.json`
+3. Configure folder paths for flythrough videos (`.mp4`/`.webm`/`.mov`) and map music
+4. **Settings → Season Map Pool** — tick the maps that are legal this league
+   season (persisted; the Map Pool scene shows a configure hint until you do)
+5. Download the OBS scene collection from **Settings → OBS Scene Setup**
+   (Linux or Windows button) and import it: OBS → Scene Collection → Import.
+   Migrating from an existing setup? See
+   `docs/scene-collection-v2-migration.md` for the `--carry-from` flow that
+   preserves your cam URLs and media file paths.
+6. Check the **pre-flight checklist** at the top of Production Controls
+   before going live — it verifies OBS, scene sources, casters, music,
+   flythroughs, and the map pool in one glance.
 
 ## Development
 

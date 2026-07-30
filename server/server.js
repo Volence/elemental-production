@@ -1391,7 +1391,21 @@ app.get('/api/preflight', async (req, res) => {
     detail: mmMaps.length > 0 ? `${mmMaps.length} maps detected` : 'No folder set — configure in Settings',
   });
 
-  // 7. Cam URLs (optional — warn if casters named but no cam)
+  // 7. Season map pool — the Map Pool scene shows a "configure me" hint
+  // instead of the board until this is set (Settings → Season Map Pool).
+  // Set once per season, persisted; warn-level like cams (a show can run
+  // without the pool board, it just can't SHOW it).
+  const poolCount = (state.mapPool || []).length;
+  checks.push({
+    id: 'map_pool', label: 'Season Map Pool',
+    ok: poolCount > 0,
+    detail: poolCount > 0
+      ? `${poolCount} maps in pool`
+      : 'Not set — Settings → Season Map Pool (Map Pool scene shows a hint until then)',
+    warn: poolCount === 0,
+  });
+
+  // 8. Cam URLs (optional — warn if casters named but no cam)
   const cam1 = state.casters?.[0]?.camUrl;
   const cam2 = state.casters?.[1]?.camUrl;
   const castersNamed = !!(caster1 || caster2);
