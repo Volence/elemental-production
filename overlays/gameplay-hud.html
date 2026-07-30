@@ -42,9 +42,15 @@
     #root > div:not([id]) { display: none; }
 
     /* ── Tier 1 ──────────────────────────────────────────────────────────── */
+    /* Tier 1 is FULLY OPAQUE (owner QA batch 3h): it used to be 0.94 with a
+       0.99 keystone layered on top — under a very bright game moment (a
+       Winston bubble) the single-layer bar bled light while the double-
+       layered center didn't, reading as a mismatched translucent chunk.
+       A persistent broadcast bar reads best flat and solid; only the tier-2
+       strips keep a hint of translucency. */
     .hbar {
       display: flex; align-items: center; height: 54px;
-      background: rgba(8,10,15,0.94);
+      background: rgb(8,10,15);
       border-bottom: 1px solid rgba(255,255,255,0.10);
     }
     .hbar-side { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; padding: 0 16px; }
@@ -102,7 +108,7 @@
       flex: none; align-self: flex-start; height: 72px; padding: 0 24px;
       position: relative;
       display: flex; align-items: center; gap: 14px;
-      background: rgba(8,10,15,0.99);
+      background: rgb(8,10,15);
       border-left: 1px solid rgba(255,255,255,0.16);
       border-right: 1px solid rgba(255,255,255,0.16);
       box-shadow: 0 3px 10px rgba(0,0,0,0.4);
@@ -134,7 +140,7 @@
     /* ── Tier 2 ──────────────────────────────────────────────────────────── */
     .hsub {
       display: flex; align-items: center; height: 38px; padding: 0 16px; gap: 14px;
-      background: rgba(8,10,15,0.82);
+      background: rgba(8,10,15,0.92);
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     .hsub-right { justify-content: flex-end; }
