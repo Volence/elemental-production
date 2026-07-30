@@ -185,6 +185,22 @@
     // the winning team's color (pinwheelSVG color1/color2 below).
     var SW_BRAND = ['hsl(0 85% 60%)', 'hsl(45 95% 55%)', 'hsl(140 70% 50%)', 'hsl(200 90% 55%)'];
 
+    // Darken a hex color by factor f (0..1 of original brightness). The
+    // winner pinwheel's secondary petal group used to be hardcoded WHITE
+    // (owner QA batch 3: "are the side petals just always white?") — now
+    // it's a darker shade of the winner's own color, so the whole crest
+    // reads as the winning team with tonal depth instead of a neutral wing.
+    // Non-hex input (hsl()/rgba() theme values) falls back to a neutral.
+    function swShade(hex, f) {
+      var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+      if (!m) return 'rgba(255,255,255,0.75)';
+      var n = parseInt(m[1], 16);
+      var r = Math.round(((n >> 16) & 255) * f);
+      var g = Math.round(((n >> 8) & 255) * f);
+      var b = Math.round((n & 255) * f);
+      return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
     // ── shell: builds ONLY the two persistent, animation-free wrappers —
     // see file-header comment for why every visible pixel is render output
     // here instead of shell chrome. ─────────────────────────────────────
@@ -229,7 +245,7 @@
         '<div class="sw-label" style="animation: slideDown 0.5s ease-out 0.05s both;">Series Winner</div>' +
         '<div class="sw-logo-wrap">' +
           '<div id="sw-pinwheel" style="animation: swPinwheelSpinUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;">' +
-            pinwheelSVG({ color1: teamColor, color2: '#ffffff', size: 620, glow: false }) +
+            pinwheelSVG({ color1: teamColor, color2: swShade(teamColor, 0.55), size: 620, glow: false }) +
           '</div>' +
           '<div id="sw-glow-burst" style="animation: swGlowBurst 1.3s ease-out 0.15s both;"></div>' +
           logoHtml +
