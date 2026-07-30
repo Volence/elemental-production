@@ -131,7 +131,7 @@ rollback is simply: keep using your current (pre-v2) collection, or re-import th
 v1 file. If you need the v1 JSON after updating the repo, recover it from git.
 
 Find the last commit before the v2 bake — the commit **just before** the v2 work
-on this branch is **`ce44c89`** (the branch parent), so its version of the file is
+on this branch is **`ce44c89`** (the last commit before the collection files were regenerated), so its version of the file is
 the pre-v2 v1. To list the file's history yourself:
 
 ```
