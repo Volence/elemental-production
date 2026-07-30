@@ -91,6 +91,16 @@ export default function Theming({ state, updateState, api, customFonts }) {
   const resetToDefault = async () => {
     setLocal({ ...DEFAULT_THEME });
     await updateState({ theme: { ...DEFAULT_THEME } });
+    // Also release any team-color locks left over from a prior save, so a
+    // "reset" actually resets — otherwise FACEIT sync stays locked out.
+    await fetch(`${api}/api/overrides/clear`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'teams.team1.color' }),
+    });
+    await fetch(`${api}/api/overrides/clear`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'teams.team2.color' }),
+    });
     setDirty(false);
   };
 

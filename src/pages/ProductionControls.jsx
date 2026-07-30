@@ -98,14 +98,14 @@ export default function ProductionControls({ state, updateState, api }) {
   };
 
   // Debounce OBS cam push to avoid spamming setBrowserSource on every keystroke
-  const camDebounceRef = {};
+  const camDebounceRef = useRef({});
   const updateCasterCam = (index, camUrl) => {
     const casters = [...state.casters];
     casters[index] = { ...casters[index], camUrl };
     updateState({ casters });
     // Debounce the OBS push — only send after 800ms of no typing
-    clearTimeout(camDebounceRef[index]);
-    camDebounceRef[index] = setTimeout(async () => {
+    clearTimeout(camDebounceRef.current[index]);
+    camDebounceRef.current[index] = setTimeout(async () => {
       await fetch(`${api}/api/casters/cam`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ index, camUrl }),

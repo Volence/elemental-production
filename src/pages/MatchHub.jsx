@@ -146,6 +146,12 @@ export default function MatchHub({ state, updateState, api }) {
     setOverride(path);
   };
 
+  // Event name edits should lock against FACEIT auto-sync in faceit mode,
+  // otherwise auto-sync overwrites the producer's typed value every ~15s.
+  const setEventName = (value) => (state.mode === 'faceit' && state.faceitMatchId)
+    ? overrideField('eventName', { eventName: value })
+    : updateState({ eventName: value });
+
   const loadMatch = async () => {
     if (!matchUrl.trim()) return;
     setLoading(true);
@@ -340,7 +346,7 @@ export default function MatchHub({ state, updateState, api }) {
             <div style={{ marginBottom: 12 }}>
               <label className="input-label">Event Name</label>
               <input className="input" value={state.eventName || ''} placeholder="e.g. Scrim Night"
-                onChange={e => updateState({ eventName: e.target.value })} />
+                onChange={e => setEventName(e.target.value)} />
             </div>
             <div className="grid-2">
               <div>
@@ -475,7 +481,7 @@ export default function MatchHub({ state, updateState, api }) {
           <div style={{ marginTop: 12 }}>
             <label className="input-label">Event Name</label>
             <input className="input" value={state.eventName || ''} placeholder="e.g. FACEIT Season 8"
-              onChange={e => updateState({ eventName: e.target.value })} />
+              onChange={e => setEventName(e.target.value)} />
           </div>
           <div className="grid-2" style={{ marginTop: 12 }}>
             <div>
@@ -710,12 +716,14 @@ export default function MatchHub({ state, updateState, api }) {
                             e.stopPropagation();
                             const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'completed', winner: 'team1' } : mm);
                             updateState({ maps: updatedMaps, teams: { ...state.teams, team1: { ...state.teams.team1, score: state.teams.team1.score + 1 } } });
+                            if (state.mode === 'faceit' && state.faceitMatchId) setOverride('teams.team1.score', 'teams.team2.score');
                           }}>{state.teams.team1.name} Win</button>
                         <button className="btn btn-sm" style={{ background: 'var(--team2)', color: 'white', fontSize: '0.65rem' }}
                           onClick={(e) => {
                             e.stopPropagation();
                             const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'completed', winner: 'team2' } : mm);
                             updateState({ maps: updatedMaps, teams: { ...state.teams, team2: { ...state.teams.team2, score: state.teams.team2.score + 1 } } });
+                            if (state.mode === 'faceit' && state.faceitMatchId) setOverride('teams.team1.score', 'teams.team2.score');
                           }}>{state.teams.team2.name} Win</button>
                       </>
                     )}
@@ -735,6 +743,7 @@ export default function MatchHub({ state, updateState, api }) {
                                 team2: { ...state.teams.team2, score: state.teams.team2.score + (newWinner === 'team2' ? 1 : -1) },
                               }
                             });
+                            if (state.mode === 'faceit' && state.faceitMatchId) setOverride('teams.team1.score', 'teams.team2.score');
                           }}>⇄ Swap</button>
                         <button className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', fontSize: '0.6rem' }}
                           onClick={(e) => {
@@ -748,6 +757,7 @@ export default function MatchHub({ state, updateState, api }) {
                                 [oldWinner]: { ...state.teams[oldWinner], score: Math.max(0, state.teams[oldWinner].score - 1) },
                               }
                             });
+                            if (state.mode === 'faceit' && state.faceitMatchId) setOverride('teams.team1.score', 'teams.team2.score');
                           }}>↩ Undo</button>
                       </>
                     )}
