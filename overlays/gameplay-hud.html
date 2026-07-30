@@ -81,20 +81,28 @@
       background: #d92626; border-radius: 3px; flex: none;
     }
 
-    /* Center chip: crest + two-line map/series context, gradient underline
-       with a periodic shimmer sweep. Overhangs tier 1 by 4px (bottom border
-       continues past the bar edge) so it reads as the frame's keystone. */
+    /* Center keystone (owner QA batch 3e): a TALL drop block — the frame's
+       centerpiece. The bar is 54px but the keystone runs 96px, hanging below
+       the bar edge into the vertical room the owner pointed out, with the
+       team-color pinwheel crest big and centered above the map/series lines.
+       VERTICAL BUDGET: bottom edge at y=96. The control-mode objective
+       cluster starts ~y118 (measured on the owner's fresh Lijiang capture);
+       the older escort measurement put the payload bar's top at y>=65 for a
+       much wider span — the keystone is only ~420px wide at true center
+       where escort's bar is thinnest, but RE-VERIFY on a payload map and
+       shrink KEYSTONE_H below if it grazes. */
     .hbar-center {
-      flex: none; height: 54px; padding: 0 20px; position: relative;
-      display: flex; align-items: center; gap: 12px;
+      flex: none; align-self: flex-start; height: 96px; padding: 6px 28px 10px;
+      position: relative;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
       background: rgba(8,10,15,0.99);
       border-left: 1px solid rgba(255,255,255,0.16);
       border-right: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 6px 22px rgba(0,0,0,0.45);
     }
-    .hbar-center-stack { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-    .hbar-center-line1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; white-space: nowrap; text-transform: uppercase; }
+    .hbar-center-line1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; line-height: 1.05; white-space: nowrap; text-transform: uppercase; }
     .hbar-center-line2 {
-      font-size: 13px; font-weight: 700; letter-spacing: 2.5px;
+      font-size: 12.5px; font-weight: 700; letter-spacing: 2.5px; line-height: 1.1;
       color: rgba(255,255,255,0.55); white-space: nowrap; text-transform: uppercase;
     }
     .hbar-underline {
@@ -306,14 +314,13 @@
           sideHtml(leftTeam, leftBans, 'left') +
           scoreBox(leftScore, leftColor, leftPop) +
           '<div class="hbar-center">' +
-            // Idle glow on the crest — opacity/filter, safe under the
-            // wrapper's slideDown `both` fill.
+            // The crest is the centerpiece now — big, team-colored, glowing.
+            // Idle glow is opacity/filter, safe under the wrapper's slideDown
+            // `both` fill.
             '<span class="v2-medallion v2-idle-glow">' +
-              pinwheelSVG({ color1: t1color, color2: t2color, size: 30 }) + '</span>' +
-            '<div class="hbar-center-stack">' +
-              '<span class="hbar-center-line1">' + escapeHtml(line1) + '</span>' +
-              '<span class="hbar-center-line2">' + escapeHtml(line2) + '</span>' +
-            '</div>' +
+              pinwheelSVG({ color1: t1color, color2: t2color, size: 48 }) + '</span>' +
+            '<span class="hbar-center-line1">' + escapeHtml(line1) + '</span>' +
+            '<span class="hbar-center-line2">' + escapeHtml(line2) + '</span>' +
             '<span class="hbar-underline v2-underline"></span>' +
           '</div>' +
           scoreBox(rightScore, rightColor, rightPop) +
