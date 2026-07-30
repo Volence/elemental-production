@@ -3,195 +3,325 @@
 <head>
   <meta charset="UTF-8">
   <title>Between Matches</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap">
+  <!-- Broadcast v2 (Plan 3 Task 5): rebuilt on the casters.html cam-scene
+       template — see that file for the long-form cutout invariant writeup.
+       This is a SINGLE-CAM-ONLY scene: CAM_LAYOUTS.wide has only a `single`
+       key (no `dual`), so unlike casters.html/casters-scoreboard.html/
+       casters-lobby.html/casters-map-score.html this scene does NOT branch
+       on state.casterLayout at all — there is exactly one cam window,
+       always CAM_LAYOUTS.wide.single[0]. Do NOT copy the
+       `layout === 1 ? single : dual` selector from the desk scenes here
+       (flagged explicitly by the Task 4 review as a trap for this task).
+
+       CAM RECT: { x:200, y:30, w:1690, h:900 } — bottom edge at y=930,
+       leaving only a 30px strip ABOVE the cam and a 150px strip BELOW it
+       (930-1080) before the canvas edge. That geometry drives two layout
+       decisions that differ from the desk scenes:
+
+       1) NO NAME PILL on the cam frame (camFrame({..., name: ''})). The
+          desk scenes' pills identify WHICH caster is in which seat; this
+          scene has exactly one big "waiting room" cam with no comparable
+          identity to label (it's not a specific named caster's seat, it's
+          just the show camera between matches) — an empty pill would be
+          dead chrome. camFrame() already omits the pill element entirely
+          when name is '' (see components-v2.js), so this falls out for
+          free; no bg=transparent-style branching needed.
+
+       2) The v2 event header (top-center, per spec §5) does NOT fit in the
+          30px strip above the cam — a real header pill (~40-50px tall) is
+          taller than the headroom. Rather than shrink the header illegibly
+          or relocate it off-brand from every other cam scene, it floats
+          near the very top and intentionally overlaps the first ~15-25px
+          of the transparent cutout, reading as a title bar pinned over the
+          top of the camera feed (a standard broadcast treatment for an
+          ambient/waiting-room shot, distinct from the desk scenes where the
+          cams start much lower at y:120 and the header sits cleanly above
+          them with room to spare).
+
+       EVENT TITLE OVERFLOW FIX (spec §5): eventHeader()'s `.v2-event-name`
+       already ellipsizes via `flex:0 1 auto; min-width:0; overflow:hidden`
+       (theme-v2.css) — but that only engages if some ANCESTOR constrains
+       the header's width, same as map-intro's `#mi-top` carry-over fix.
+       `#cd-header` here gets `max-width: 900px` for exactly that reason
+       (this was the scene the overflow bug was originally reported against
+       — spec §5 calls it out by name). Verified in Task 5 with a seeded
+       80+ char event name.
+
+       COUNTDOWN CONTRACT (preserved EXACTLY from the pre-v2 scene, read the
+       old buildKey/update comments before touching this):
+       - Timer node id `bm-timer-text` is unchanged — countdown.js's
+         startLocalTick() writes textContent directly to whatever node this
+         id currently resolves to, once a second, via a SINGLETON interval.
+       - startLocalTick's `el` param is a RESOLVER FUNCTION
+         (`function(){ return document.getElementById('bm-timer-text'); }`),
+         not a captured node reference — required because render() rebuilds
+         `#cd-countdown .slot-content`'s innerHTML (and therefore the actual
+         timer node) on every KEYED repaint; a captured-node reference would
+         go stale the moment that happens. The resolver re-queries live.
+       - `countdown.visible` is part of the render key (the box's very
+         presence is state-driven), but the SECONDS TEXT is deliberately
+         OUTSIDE the defineOverlay key/render cycle — ticking every real
+         second must not depend on a state-sync poll landing in that same
+         second (polls are 1.5-2.5s + jitter, and identical-state polls are
+         suppressed entirely by state-sync.js's own JSON dedup). So this
+         scene wires a SECOND, independent `stateSync()` subscriber
+         (`trackCountdown`, registered alongside — not instead of —
+         defineOverlay's own internal one) purely to keep `latestCountdown`
+         fresh and re-arm startLocalTick's interval whenever the state
+         object actually changes. This is the first defineOverlay scene to
+         also own a live-ticking element; Task 6's countdown full-screens
+         reuse this exact split.
+
+       KEY READ-SET: the pre-v2 buildKey covered schedule
+       (team1/team2/completed/score1/score2/team1Logo/team2Logo), the two
+       team names, eventName, and countdown.visible — but did NOT key
+       schedule.label/time/upNext, nor the teams.teamN.logo used by the
+       empty-schedule FALLBACK panel. Both are real fields render() reads,
+       so both are added to the key here (closing the same "read a field
+       render uses, but don't key it" gap the audit fixed elsewhere for
+       logos generally) rather than reproducing the old omission. -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      background: transparent; overflow: hidden;
-      width: 1920px; height: 1080px;
-      font-family: var(--font-body, 'Inter', sans-serif); color: white;
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
     }
+    #root { position: relative; width: 1920px; height: 1080px; }
 
-    .container {
-      position: relative; width: 1920px; height: 1080px;
-      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    /* Petal-texture cutout layer — mask set in render() from the single
+       fixed CAM_LAYOUTS.wide rect (never varies with state). */
+    #cd-bg { position: absolute; inset: 0; }
+
+    /* ── Positioned wrapper slots (built ONCE by shell) ──────────────────
+       Centered wrappers use width:fit-content + margin:auto rather than
+       left:50%+translateX(-50%) so the slideDown/slideUp entrance
+       transforms never clobber the centering (same gotcha as every other
+       v2 scene's shell wrappers). */
+    #cd-header { position: absolute; top: 18px; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 900px; }
+    #cd-cams { position: absolute; inset: 0; }
+
+    /* Bottom band starts at y:950 — a clean 20px below the cam's y:930
+       bottom edge, so neither the countdown box nor the schedule row ever
+       overlaps the cutout. Both share the same top/bottom so their content
+       baselines line up. */
+    #cd-countdown { position: absolute; left: 24px; top: 950px; bottom: 22px; width: 240px; }
+    #cd-schedule { position: absolute; left: 284px; right: 24px; top: 950px; bottom: 22px; }
+    /* Both wrappers resolve a real height via top+bottom; .slot-content
+       (a plain block child) needs an explicit height:100% to inherit it —
+       height:100% on a descendant only resolves against an ancestor with a
+       DEFINITE (non-auto) height, which top+bottom absolute positioning
+       gives these two wrappers but a bare block child doesn't get for free. */
+    #cd-countdown .slot-content, #cd-schedule .slot-content { height: 100%; }
+
+    /* ── Countdown box ────────────────────────────────────────────────── */
+    .bm-cd-panel {
+      width: 100%; height: 100%; padding: 14px 18px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
     }
-
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Rainbow bar */
-    .rainbow-bar {
-      position: absolute; top: 0; left: 0; right: 0; height: 4px;
-      background: var(--rainbow-gradient, linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316));
-    }
-
-    /* Branding top-left */
-    .branding {
-      position: absolute; top: 28px; left: 40px;
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-    }
-    .branding .org-logo { width: 72px; height: 72px; object-fit: contain; }
-    .branding .event-name {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 14px; letter-spacing: 2px;
+    .bm-cd-label {
+      font-size: 22px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
       color: rgba(255,255,255,0.5);
-      /* Branding column ends where .cam-area starts (left:200px, we sit at
-         left:40px) — wrap long event names instead of running under the cam. */
-      max-width: 150px;
-      text-align: center;
-      line-height: 1.3;
-      overflow-wrap: break-word;
+    }
+    .bm-cd-digits {
+      font-size: 56px; font-weight: 800; letter-spacing: 1px; line-height: 1;
+      font-variant-numeric: tabular-nums;
+      background: var(--grad4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
 
-    /* Webcam area (large center) */
-    .cam-area {
-      position: absolute;
-      left: 200px; top: 30px; right: 30px; bottom: 120px;
-      border: 2px solid rgba(255,255,255,0.04);
-      border-radius: 10px;
-      background: rgba(0,0,0,0.3);
+    /* ── Schedule row ──────────────────────────────────────────────────────
+       Team names sit on their OWN row (logo + name, full panel width) rather
+       than side-by-side in one row — a 3-up strip at the >=28px name floor
+       doesn't leave enough room for two team names AND a score/time AND two
+       logos on a single line without crushing the names down to 3-4 visible
+       characters (measured during Task 5 verification: "Ashen Vale" / "Solar
+       Reach" side-by-side ellipsized to "ASHEN VA…"/"SOLAR RE…" — illegible).
+       Score/time instead rides in the label row, right-aligned, where it has
+       its own line and can't fight the names for width. ── */
+    #cd-schedule .slot-content { display: flex; gap: 14px; }
+    .bm-sched-panel {
+      flex: 1; min-width: 0; position: relative; overflow: hidden;
+      padding: 10px 16px; display: flex; flex-direction: column; justify-content: center; gap: 5px;
     }
+    .bm-sched-panel.bm-upnext { border-color: rgba(255,255,255,0.4); }
+    .bm-sched-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .bm-sched-label {
+      font-size: 22px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+    }
+    .bm-upnext .bm-sched-label { color: #fff; }
+    .bm-sched-score, .bm-sched-time {
+      font-size: 22px; font-weight: 800; flex: none; font-variant-numeric: tabular-nums;
+      color: rgba(255,255,255,0.6); white-space: nowrap;
+    }
+    .bm-sched-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .bm-sched-logo { width: 32px; height: 32px; border-radius: var(--panel-radius); object-fit: cover; flex: none; border: 1px solid rgba(255,255,255,0.15); }
+    .bm-sched-logo-empty { background: rgba(255,255,255,0.08); }
+    .bm-sched-name {
+      font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1;
+    }
+    .bm-upnext-underline { position: absolute; left: 0; right: 0; bottom: 0; }
 
-    /* Countdown (bottom-left) */
-    .countdown-box {
-      position: absolute; bottom: 12px; left: 40px;
-      
-    }
-    .countdown-time {
-      font-family: var(--font-body, 'Oswald', sans-serif);
-      font-size: 52px; font-weight: 700; letter-spacing: 2px;
-      background: var(--accent-gradient, linear-gradient(135deg, #f97316, #ef4444));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-
-    /* Bottom schedule bar */
-    .schedule-bar {
-      position: absolute; bottom: 0; left: 0; right: 0; height: 100px;
-      display: flex; align-items: stretch;
-      background: var(--bg-overlay, rgba(10,10,20,0.9));
-      border-top: 1px solid rgba(255,255,255,0.06);
-      
-    }
-
-    .sched-item {
-      flex: 1; display: flex; align-items: center; justify-content: center;
-      gap: 10px; padding: 0 12px;
-      border-right: 1px solid rgba(255,255,255,0.04);
-      position: relative;
-    }
-    .sched-item:last-child { border-right: none; }
-
-    .sched-item.up-next { background: rgba(249,115,22,0.12); }
-    .sched-item.up-next::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0;
-      height: 3px; background: var(--accent-gradient, linear-gradient(90deg, #f97316, #ef4444));
-    }
-
-    .sched-label {
-      position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
-      font-size: 8px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1px; padding: 2px 8px; border-radius: 2px;
-      white-space: nowrap;
-    }
-    .sched-item.up-next .sched-label {
-      background: var(--accent-gradient, linear-gradient(135deg, #f97316, #ef4444)); color: white;
-    }
-    .sched-item:not(.up-next) .sched-label {
-      background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4);
-    }
-
-    .sched-team-logo { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
-    .sched-team-logo.placeholder { background: rgba(255,255,255,0.08); }
-    .sched-team-name { font-size: 13px; font-weight: 700; white-space: nowrap; }
-    .sched-score { font-size: 18px; font-weight: 800; color: rgba(255,255,255,0.6); }
-    .sched-time { font-size: 16px; font-weight: 700; }
+    /* overlay-core appends its volatile render container as #root's LAST
+       child; this scene never uses it directly (render() writes into each
+       wrapper's persistent .slot-content). Every shell child above carries
+       an id, so this only matches that trailing container. */
+    #root > div:not([id]) { display: none; }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
+  <div id="root"></div>
 
+  <!-- Script order matters: helpers + component builders + cam geometry +
+       countdown engine must all be global before overlay-core wires the
+       render loop. NO ?./?? in the inline script (OBS Chromium 103 floor). -->
   <script src="./theme-helpers.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./cam-layout.js"></script>
+  <script src="./bg-helper.js"></script>
   <script src="./countdown.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    const API = 'http://localhost:3001';
-    let countdownVisible = true;
-    let lastBuiltKey = '';
-    let latestCountdown = null;
+    var API = 'http://localhost:3001';
 
-    function buildKey(state) {
+    function scoreVal(v) {
+      return (v === undefined || v === null) ? '' : v;
+    }
+
+    // One schedule slot: label row (label + right-aligned score/time) then
+    // one full-width logo+name row PER team, stacked — see the CSS comment
+    // above .bm-sched-label-row for why this isn't a single side-by-side
+    // row. `isNext` gets the accent border + gradient underline treatment.
+    function schedTeamRowHtml(name, logo) {
+      var logoHtml = logo
+        ? safeImg(logo, { 'class': 'bm-sched-logo', alt: name || '' })
+        : '<div class="bm-sched-logo bm-sched-logo-empty"></div>';
+      return '<div class="bm-sched-row">' + logoHtml +
+        '<span class="bm-sched-name">' + escapeHtml(name || 'TBD') + '</span></div>';
+    }
+
+    function schedItemHtml(m, i, isNext) {
+      var completed = !!m.completed;
+      var labelText = m.label || ('MATCH ' + (i + 1));
+      var rightHtml = completed
+        ? '<span class="bm-sched-score">' + escapeHtml(String(scoreVal(m.score1))) + '&ndash;' + escapeHtml(String(scoreVal(m.score2))) + '</span>'
+        : (m.time ? '<span class="bm-sched-time">' + escapeHtml(m.time) + '</span>' : '');
+
+      return '<div class="bm-sched-panel v2-panel' + (isNext ? ' bm-upnext' : '') + '">' +
+        '<div class="bm-sched-label-row">' +
+          '<span class="bm-sched-label">' + escapeHtml(labelText) + '</span>' + rightHtml +
+        '</div>' +
+        schedTeamRowHtml(m.team1, m.team1Logo) +
+        schedTeamRowHtml(m.team2, m.team2Logo) +
+        (isNext ? '<span class="v2-underline bm-upnext-underline"></span>' : '') +
+        '</div>';
+    }
+
+    function countdownBoxHtml(remainingSeconds) {
+      return '<div class="bm-cd-panel v2-panel">' +
+        '<div class="bm-cd-label">Starting In</div>' +
+        '<div class="bm-cd-digits" id="bm-timer-text">' + formatTime(remainingSeconds) + '</div>' +
+        '</div>';
+    }
+
+    // ── shell: builds the persistent chrome exactly ONCE ────────────────────
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'between-matches-v2');
+      root.innerHTML =
+        '<div id="cd-bg"></div>' +
+        '<div id="cd-header" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-cams" style="animation: fadeIn 0.5s ease-out 0.15s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-countdown" style="animation: slideUp 0.5s ease-out 0.20s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-schedule" style="animation: slideUp 0.5s ease-out 0.25s both;">' +
+          '<div class="slot-content"></div></div>';
+      applyTextureBg(document.getElementById('cd-bg'));
+    }
+
+    // ── key: EXACTLY the state leaves render reads (see the file-header
+    // comment for why this is a superset of the pre-v2 buildKey). ───────────
+    function key(state) {
       var schedule = state.schedule || [];
-      var vis = state.countdown?.visible !== false ? '1' : '0';
-      return schedule.map(function(m) { return (m.team1||'') + (m.team2||'') + (m.completed||'') + (m.score1||'') + (m.score2||'') + (m.team1Logo||'') + (m.team2Logo||''); }).join(',')
-        + '|' + (state.teams?.team1?.name||'') + '|' + (state.teams?.team2?.name||'')
-        + '|' + (state.eventName||'') + '|' + vis;
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var countdown = state.countdown || {};
+      var sched = schedule.map(function (m) {
+        return [m.team1, m.team2, m.team1Logo, m.team2Logo, m.completed, m.score1, m.score2, m.label, m.time, m.upNext];
+      });
+      return [
+        sched, t1.name, t1.logo, t2.name, t2.logo,
+        state.eventName, countdown.visible !== false
+      ];
     }
 
-    function update(state) {
+    function render(state) {
       applyTheme(state);
-      const el = document.getElementById('root');
 
-      latestCountdown = state.countdown || null;
-      countdownVisible = state.countdown?.visible !== false;
-      startLocalTick(function () { return document.getElementById('bm-timer-text'); }, function () { return latestCountdown; });
+      var camRect = CAM_LAYOUTS.wide.single[0];
+      applyCutoutMask(document.getElementById('cd-bg'), [camRect]);
 
-      var currentKey = buildKey(state);
-      if (currentKey === lastBuiltKey) {
-        var timerEl = document.getElementById('bm-timer-text');
-        if (timerEl) timerEl.textContent = formatTime(getRemaining(latestCountdown, Date.now()));
-        return;
+      document.querySelector('#cd-header .slot-content').innerHTML =
+        eventHeader({ eventName: state.eventName || 'FACEIT Season 8', subtitle: 'COMING UP' });
+
+      // No name pill (name: '') — see the file-header comment, decision (1).
+      document.querySelector('#cd-cams .slot-content').innerHTML =
+        camFrame({ rect: camRect, name: '' });
+
+      var countdown = state.countdown || null;
+      var countdownVisible = !countdown || countdown.visible !== false;
+      var countdownWrap = document.getElementById('cd-countdown');
+      countdownWrap.style.display = countdownVisible ? '' : 'none';
+      document.querySelector('#cd-countdown .slot-content').innerHTML =
+        countdownVisible ? countdownBoxHtml(getRemaining(countdown, Date.now())) : '';
+
+      var schedule = state.schedule || [];
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var itemsHtml;
+      if (schedule.length) {
+        var nextIdx = -1;
+        for (var i = 0; i < schedule.length; i++) {
+          if (!schedule[i].completed) { nextIdx = i; break; }
+        }
+        itemsHtml = schedule.map(function (m, idx) {
+          return schedItemHtml(m, idx, !!m.upNext || idx === nextIdx);
+        }).join('');
+      } else {
+        itemsHtml = schedItemHtml({
+          team1: t1.name, team2: t2.name, team1Logo: t1.logo, team2Logo: t2.logo,
+          label: 'Up Next', completed: false, time: 'VS'
+        }, 0, true);
       }
-      lastBuiltKey = currentKey;
-
-      const schedule = state.schedule || [];
-
-      const schedHtml = schedule.map((match, i) => {
-        const isNext = match.upNext || i === schedule.findIndex(m => !m.completed);
-        const completed = match.completed;
-        return `<div class="sched-item ${isNext ? 'up-next' : ''}">
-          <div class="sched-label">${match.label || `Match ${i+1}`}</div>
-          ${match.team1Logo ? `<img class="sched-team-logo" src="${proxyImg(match.team1Logo)}">` : '<div class="sched-team-logo placeholder"></div>'}
-          <span class="sched-team-name">${match.team1 || 'TBD'}</span>
-          ${completed
-            ? `<span class="sched-score">${match.score1 ?? ''}-${match.score2 ?? ''}</span>`
-            : `<span class="sched-time">${match.time || ''}</span>`
-          }
-          <span class="sched-team-name" style="text-align:right">${match.team2 || 'TBD'}</span>
-          ${match.team2Logo ? `<img class="sched-team-logo" src="${proxyImg(match.team2Logo)}">` : '<div class="sched-team-logo placeholder"></div>'}
-        </div>`;
-      }).join('');
-
-      const fallbackSched = !schedule.length ? `
-        <div class="sched-item up-next">
-          <div class="sched-label">UP NEXT</div>
-          ${state.teams?.team1?.logo ? `<img class="sched-team-logo" src="${proxyImg(state.teams.team1.logo)}">` : '<div class="sched-team-logo placeholder"></div>'}
-          <span class="sched-team-name">${state.teams?.team1?.name || 'TBD'}</span>
-          <span class="sched-score">vs</span>
-          <span class="sched-team-name">${state.teams?.team2?.name || 'TBD'}</span>
-          ${state.teams?.team2?.logo ? `<img class="sched-team-logo" src="${proxyImg(state.teams.team2.logo)}">` : '<div class="sched-team-logo placeholder"></div>'}
-        </div>` : '';
-
-      el.innerHTML = `
-        <div class="rainbow-bar"></div>
-        <div class="branding">
-          <img class="org-logo" src="./org.png">
-          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
-        </div>
-        <div class="cam-area"></div>
-        ${countdownVisible ? `<div class="countdown-box">
-          <div class="countdown-time" id="bm-timer-text">${formatTime(getRemaining(latestCountdown, Date.now()))}</div>
-        </div>` : ''}
-        <div class="schedule-bar">
-          ${schedHtml || fallbackSched}
-        </div>
-      `;
+      document.querySelector('#cd-schedule .slot-content').innerHTML = itemsHtml;
     }
-    stateSync(update);
+
+    defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render
+    });
+
+    // ── Countdown live-tick wiring (decoupled from the keyed render above —
+    // see the file-header comment). Registered as its own stateSync
+    // subscriber so `latestCountdown` and the local 1s tick stay fresh on
+    // every real state change, independent of whether the visual key
+    // changed. startLocalTick's resolver re-queries #bm-timer-text live, so
+    // it survives #cd-countdown's innerHTML being rebuilt by render(). ────
+    var latestCountdown = null;
+    function trackCountdown(state) {
+      latestCountdown = state.countdown || null;
+      startLocalTick(function () { return document.getElementById('bm-timer-text'); }, function () { return latestCountdown; });
+    }
+    stateSync(trackCountdown);
   </script>
 </body>
 </html>

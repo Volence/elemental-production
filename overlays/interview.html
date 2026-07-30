@@ -3,143 +3,221 @@
 <head>
   <meta charset="UTF-8">
   <title>Interview</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap">
+  <!-- Broadcast v2 (Plan 3 Task 5): rebuilt on the casters.html cam-scene
+       template — see that file for the long-form cutout invariant writeup.
+       SINGLE-CAM-ONLY scene: CAM_LAYOUTS.interview has only a `single` key
+       (no `dual`), so this never branches on state.casterLayout — there is
+       exactly one cam window, always CAM_LAYOUTS.interview.single[0]
+       ({ x:580, y:120, w:760, h:520 } — same y:120 headroom as the desk
+       scenes' cams, so the event header sits cleanly above it with no
+       overlap, unlike between-matches.html's cam which starts almost at
+       the canvas edge).
+
+       Cam frame's name pill IS used here (unlike between-matches) — it
+       shows the interviewee's name (escaped by camFrame itself), since
+       this cam slot DOES have a specific identity: whoever is being
+       interviewed. `accent` is the interviewee's team color so the frame
+       border/underline read as "their" color, same idea as the desk
+       scenes' per-seat accents.
+
+       PLAYER CARD (spec §6 "pill + underline language, role/team chips
+       from the site's chip vocabulary"): a single `#cd-card` wrapper
+       (stacked flex column — no separate positioned elements for
+       name/chips/label, they're one visual group) below the cam:
+         - name pill: big Geist name, teamColor-tinted wash + border, a
+           v2-underline gradient bar (same pill+underline anatomy as
+           eventHeader()/v2-map-pill elsewhere in the package).
+         - chip row: role chip (role -> color, REALIGNED to the same
+           tank/damage/support -> blue/red/green mapping hero-bans.html's
+           roleMeta() uses, rather than the old scene's one-off amber-for-
+           tank scheme — same three semantic colors everywhere in the v2
+           package now) + team chip (proxied teamLogo + team name,
+           teamColor border via hexToAlpha).
+         - label badge: the free-text interview label (e.g. "Post-Match
+           Interview"), neutral panel styling.
+
+       KEY: this scene had NO key at all before v2 (rebuilt on every single
+       state-sync tick, ~every 1.5-2.5s, even when nothing interview-
+       related changed). Real key now: every interviewee field render()
+       reads (name/teamName/teamLogo/teamColor/role/label) + eventName +
+       theme team colors (applyTheme() derives --team1-color/--team2-color
+       from these — kept in the key for the same reason every other v2
+       scene keys theme colors even where not painted directly: a producer
+       correcting a team's color mid-broadcast must still trigger a repaint
+       pass, and it costs nothing to include). -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      background: transparent; overflow: hidden;
-      width: 1920px; height: 1080px;
-      font-family: var(--font-body, 'Inter', sans-serif); color: white;
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
+    }
+    #root { position: relative; width: 1920px; height: 1080px; }
+
+    /* Petal-texture cutout layer — mask set in render() from the single
+       fixed CAM_LAYOUTS.interview rect (never varies with state). */
+    #cd-bg { position: absolute; inset: 0; }
+
+    /* ── Positioned wrapper slots (built ONCE by shell). Centered wrappers
+       use width:fit-content + margin:auto rather than left:50%+
+       translateX(-50%) so the slideDown/slideUp entrance transforms never
+       clobber the centering (same convention as every other v2 scene). ── */
+    #cd-header { position: absolute; top: 40px; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 900px; }
+    #cd-cams { position: absolute; inset: 0; }
+    /* Cam bottom edge is y:640 (120+520); card starts a clean 40px below it. */
+    #cd-card {
+      position: absolute; top: 680px; left: 0; right: 0; margin: 0 auto; width: fit-content;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
     }
 
-    .container {
-      position: relative; width: 1920px; height: 1080px;
-      background: url('./ELMT_BG_1920x1080.png') no-repeat center/cover;
+    /* ── Name pill: pill + underline anatomy (mirrors eventHeader()/
+       v2-map-pill's shared look, scene-local since teamColor tinting is
+       per-instance data, not a static component) ── */
+    .iv-name-pill {
+      position: relative; padding: 14px 36px 18px;
+      background: var(--panel-bg); border: 1px solid; border-radius: var(--panel-radius);
+      font-size: 48px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;
+      color: #fff; white-space: nowrap;
+    }
+    .iv-name-underline { position: absolute; left: 20px; right: 20px; bottom: 6px; }
+
+    /* ── Chip row: role chip + team chip ── */
+    .iv-chip-row { display: flex; align-items: center; gap: 12px; }
+    .iv-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 16px; background: var(--panel-bg); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: var(--panel-radius); font-size: 22px; font-weight: 800;
+      letter-spacing: 1px; text-transform: uppercase; white-space: nowrap;
+    }
+    .iv-role-chip { font-weight: 800; }
+    .iv-team-chip-logo { width: 26px; height: 26px; border-radius: var(--panel-radius); object-fit: cover; flex: none; }
+    .iv-team-chip span { color: #fff; }
+
+    /* ── Label badge ── */
+    .iv-label-badge {
+      padding: 8px 24px; background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+      font-size: 22px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
     }
 
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Branding */
-    .branding {
-      position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 16px;
-    }
-    .branding .org-logo { width: 52px; height: 52px; object-fit: contain; }
-    .branding .divider { width: 3px; height: 38px; background: rgba(255,255,255,0.2); border-radius: 2px; }
-    .branding .event-name {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 28px; letter-spacing: 3px;
-    }
-
-    /* Interview cam (large center) */
-    .cam-area {
-      position: absolute;
-      left: 50%; top: 120px;
-      transform: translateX(-50%);
-      width: 760px; height: 520px;
-      border: 2px solid rgba(255,255,255,0.06);
-      border-radius: 10px;
-      background: rgba(0,0,0,0.4);
-    }
-
-    /* Accent bar under cam */
-    .accent-bar {
-      position: absolute;
-      left: 50%; transform: translateX(-50%);
-      top: 642px;
-      width: 760px; height: 5px;
-      background: var(--rainbow-gradient, linear-gradient(90deg, #2563eb, #06b6d4, #22c55e, #f59e0b, #ef4444, #f97316));
-      border-radius: 0 0 4px 4px;
-    }
-
-    /* Player info card */
-    .player-card {
-      position: absolute;
-      left: 50%; bottom: 120px;
-      transform: translateX(-50%);
-      text-align: center;
-      
-    }
-    .player-name {
-      font-family: var(--font-title, 'Bebas Neue', sans-serif);
-      font-size: 48px; letter-spacing: 4px;
-    }
-    .player-detail {
-      display: flex; align-items: center; justify-content: center; gap: 12px;
-      margin-top: 4px;
-    }
-    .player-team {
-      font-size: 16px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 2px;
-    }
-    .player-role {
-      font-size: 12px; font-weight: 600;
-      padding: 3px 12px; border-radius: 4px;
-      text-transform: uppercase; letter-spacing: 1px;
-    }
-    .player-team-logo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-
-    .label-badge {
-      position: absolute; left: 50%; bottom: 50px;
-      transform: translateX(-50%);
-      font-size: 14px; font-weight: 700; letter-spacing: 3px;
-      text-transform: uppercase; padding: 6px 24px;
-      background: rgba(255,255,255,0.06); border-radius: 4px;
-      color: rgba(255,255,255,0.3);
-      
-    }
+    /* overlay-core appends its volatile render container as #root's LAST
+       child; this scene never uses it directly (render() writes into each
+       wrapper's persistent .slot-content). Every shell child above carries
+       an id, so this only matches that trailing container. */
+    #root > div:not([id]) { display: none; }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="container" id="root" style="animation: fadeIn 0.6s ease-out both;"></div>
+  <div id="root"></div>
 
+  <!-- Script order matters: helpers + component builders + cam geometry
+       must all be global before overlay-core wires the render loop. NO
+       ?./?? in the inline script (OBS Chromium 103 floor). -->
   <script src="./theme-helpers.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./cam-layout.js"></script>
+  <script src="./bg-helper.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
-    const API = 'http://localhost:3001';
-    function update(state) {
-      applyTheme(state);
-      const el = document.getElementById('root');
-      const interviewee = state.interviewee || {};
-      const playerName = interviewee.name || 'Player';
-      const teamName = interviewee.teamName || '';
-      const teamLogo = interviewee.teamLogo || '';
-      const teamColor = interviewee.teamColor || '#fff';
-      const role = interviewee.role || '';
-      const label = interviewee.label || 'Post-Match Interview';
+    var API = 'http://localhost:3001';
 
-      const roleColors = { 'Tank': '#f59e0b', 'Damage': '#ef4444', 'Support': '#22c55e' };
-      const roleColor = roleColors[role] || 'rgba(255,255,255,0.3)';
-
-      el.innerHTML = `
-        <div class="branding">
-          <img class="org-logo" src="./org.png">
-          <div class="divider"></div>
-          <div class="event-name">${state.eventName || 'FACEIT SEASON 8'}</div>
-        </div>
-
-        <div class="cam-area"></div>
-        <div class="accent-bar"></div>
-
-        <div class="player-card">
-          <div class="player-name" style="color:${teamColor}">${playerName}</div>
-          <div class="player-detail">
-            ${teamLogo ? `<img class="player-team-logo" src="${proxyImg(teamLogo)}">` : ''}
-            ${teamName ? `<span class="player-team" style="color:${teamColor}">${teamName}</span>` : ''}
-            ${role ? `<span class="player-role" style="background:${roleColor}20;color:${roleColor}">${role}</span>` : ''}
-          </div>
-        </div>
-
-        <div class="label-badge">${label}</div>
-      `;
+    // Role -> chip label + color, realigned to hero-bans.html's roleMeta()
+    // tank/damage/support -> blue/red/green mapping (see file-header
+    // comment). Interviewee.role values are Title-case ('Tank'/'Damage'/
+    // 'Support', set by the dashboard's <select>), unlike the hero-data
+    // role field hero-bans reads (lowercase) — so this is a separate,
+    // Title-case-keyed copy, not a shared helper.
+    function roleMeta(role) {
+      if (role === 'Tank') return { label: 'TANK', color: 'var(--elmt-blue)' };
+      if (role === 'Damage') return { label: 'DAMAGE', color: 'var(--elmt-red)' };
+      if (role === 'Support') return { label: 'SUPPORT', color: 'var(--elmt-green)' };
+      return null;
     }
-    stateSync(update);
+
+    function chipsRowHtml(iv, teamColor) {
+      var role = roleMeta(iv.role);
+      var roleChipHtml = role
+        ? '<div class="iv-chip iv-role-chip" style="color:' + role.color + ';border-color:' + role.color + '">' + role.label + '</div>'
+        : '';
+
+      var teamChipHtml = '';
+      if (iv.teamName) {
+        var logoHtml = iv.teamLogo ? safeImg(iv.teamLogo, { 'class': 'iv-team-chip-logo', alt: iv.teamName }) : '';
+        var borderColor = teamColor || 'rgba(255,255,255,0.2)';
+        teamChipHtml = '<div class="iv-chip iv-team-chip" style="border-color:' + escapeHtml(borderColor) + '">' +
+          logoHtml + '<span>' + escapeHtml(iv.teamName) + '</span></div>';
+      }
+
+      return '<div class="iv-chip-row">' + roleChipHtml + teamChipHtml + '</div>';
+    }
+
+    function cardHtml(iv) {
+      var teamColor = iv.teamColor || '';
+      var wash = teamColor ? hexToAlpha(teamColor, 0.22) : 'transparent';
+      var pillBorder = teamColor || 'rgba(255,255,255,0.25)';
+      var pillStyle = 'border-color:' + escapeHtml(pillBorder) +
+        ';background-image:linear-gradient(100deg,' + wash + ',transparent 70%)';
+
+      var nameHtml = '<div class="iv-name-pill" style="' + pillStyle + '">' +
+        escapeHtml(iv.name || 'Player') +
+        '<span class="v2-underline iv-name-underline"></span></div>';
+
+      var labelHtml = '<div class="iv-label-badge">' + escapeHtml(iv.label || 'Post-Match Interview') + '</div>';
+
+      return nameHtml + chipsRowHtml(iv, teamColor) + labelHtml;
+    }
+
+    // ── shell: builds the persistent chrome exactly ONCE ────────────────────
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'interview-v2');
+      root.innerHTML =
+        '<div id="cd-bg"></div>' +
+        '<div id="cd-header" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-cams" style="animation: fadeIn 0.5s ease-out 0.15s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-card" style="animation: slideUp 0.5s ease-out 0.25s both;">' +
+          '<div class="slot-content"></div></div>';
+      applyTextureBg(document.getElementById('cd-bg'));
+    }
+
+    // ── key: interviewee fields (name/teamName/teamLogo/teamColor/role/
+    // label) + eventName + theme team colors (see file-header comment). ────
+    function key(state) {
+      var iv = state.interviewee || {};
+      var theme = state.theme || {};
+      return [
+        iv.name, iv.teamName, iv.teamLogo, iv.teamColor, iv.role, iv.label,
+        state.eventName,
+        theme.team1Color, theme.team2Color
+      ];
+    }
+
+    function render(state) {
+      applyTheme(state);
+
+      var camRect = CAM_LAYOUTS.interview.single[0];
+      applyCutoutMask(document.getElementById('cd-bg'), [camRect]);
+
+      document.querySelector('#cd-header .slot-content').innerHTML =
+        eventHeader({ eventName: state.eventName || 'FACEIT Season 8', subtitle: 'INTERVIEW' });
+
+      var iv = state.interviewee || {};
+      document.querySelector('#cd-cams .slot-content').innerHTML =
+        camFrame({ rect: camRect, name: iv.name || '', accent: iv.teamColor || '' });
+
+      document.querySelector('#cd-card .slot-content').innerHTML = cardHtml(iv);
+    }
+
+    defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render
+    });
   </script>
 </body>
 </html>
