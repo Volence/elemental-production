@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.4.0 — Broadcast Package v2
+## v2.0.0 — Broadcast Package v2
 
 The full v2 broadcast package: every OBS overlay scene restyled onto the v2 design
 system (petal texture, Geist type, gradient-underline chrome, pinwheel motif) and
@@ -83,6 +83,63 @@ First round of owner feedback on the v2 package, landed pre-release:
   button that resets the interviewee (name, cam URL, visibility, team, role,
   label) to empty in one click.
 
+### Owner QA batch 2
+
+Second round of owner feedback on the v2 package:
+
+- **Hero bans, derived-consistent.** `heroBans` is now recomputed from
+  `(perMapBans, maps, selectedMapIdx)` on server boot (after state load) and
+  on every `PATCH /api/state` that touches maps/perMapBans/selectedMapIdx/
+  banSwaps, not only at FACEIT poll ticks — a persisted state (server
+  restart, idle sync, a match loaded before this fix) no longer gets stuck
+  with stale/empty bans. Producer overrides on `heroBans` are still
+  respected.
+- **Ban Reveal never goes black.** The empty-bans state now keeps the petal
+  texture, crest, and "HERO BANS" heading visible with a dimmed "AWAITING
+  BANS" chip, instead of hiding the whole scene — a dedicated OBS scene
+  should never read as dead air.
+- **Map board shows bans on every played map.** All completed columns now
+  show their two ban tiles (54px, vs. 84px for the current/last map), not
+  just the active one; hero-name captions are dropped from board tiles
+  package-wide per owner feedback ("we don't need the names").
+- **`activeBanMapIdx` exposed as derived state**, so the Ban Reveal scene and
+  the map board always label the same resolved ban map — fixes a mismatch
+  where a finished series could show different "active" maps in different
+  places.
+- **Map-intro redesign.** Replaced the squished top-bar/empty-bottom-bar
+  layout with a centered composition: a large map-name hero block with
+  `MAP n · MODE` and `MATCH POINT` chips, a team-matchup row around the
+  pinwheel score hub, and flanking ban-art tiles — staged entrance
+  animations throughout. The flythrough background requirement is dropped
+  per owner direction ("we can have anything in the middle").
+- **Flythrough HUD gains match context.** casters-flythrough-hud now shows a
+  `MAP n · NAME · MODE` chip and a compact matchup strip (logos, names,
+  score hub, series pips) centered below the cam frames, without covering
+  them.
+- **Wider caster deck panels.** `casters-scoreboard.html`'s `.sb-panel` and
+  `casters-lobby.html`'s `.lb-panel` are ~200px wider (owner: "a little
+  wider for both"), still centered safely inside the 1920 canvas and still
+  guarded by `fitPanelToCanvas` on single-cam layouts.
+- **Idle-motion package.** Three shared, infinite CSS utilities in
+  `theme-v2.css` (owner: "any time there's the logo it shrinks and grows
+  just slightly... slight interesting movement"):
+  - `.v2-idle-breathe` — a subtle scale pulse (1 → 1.035 → 1, ~4s), applied
+    to team logos in the gameplay HUD plates, every caster-deck scene
+    (desk/lobby/scoreboard/map-score/flythrough), and map-intro's team
+    blocks; series-winner's winner logo gets it via a dedicated wrapping
+    span so it doesn't collide with its own reveal entrance.
+  - `.v2-idle-glow` and `.v2-idle-spin` — an opacity/brightness pulse and a
+    slow 45s rotation, applied together to the neutral pinwheel crests on
+    starting-soon, BRB, and end-of-stream (BRB's previously bespoke local
+    `petalBreathe` keyframe is retired in favor of the shared utility); the
+    live series pip also gets the glow pulse.
+  - Idle animations are infinite and class-driven, verified to survive
+    `state-sync.js`'s OBS-visibility entrance replay (its stash/restore of
+    `style.animation` round-trips them correctly via the empty-string path).
+- **Interview transparency re-confirmed.** Gray-backdrop pixel test on
+  interview.html: the interviewee window and both caster corner slots
+  sample exactly the override gray with no opaque overlay — still fully
+  transparent.
 ### Owner QA batch 3
 
 Third round of owner feedback on the v2 package:
@@ -167,60 +224,3 @@ Third round of owner feedback on the v2 package:
   so they leaked into the picker; curated exclusion list added. Aatlis and
   Neon Junction were verified as real OWCS 2026 competitive maps and stay.
 
-### Owner QA batch 2
-
-Second round of owner feedback on the v2 package:
-
-- **Hero bans, derived-consistent.** `heroBans` is now recomputed from
-  `(perMapBans, maps, selectedMapIdx)` on server boot (after state load) and
-  on every `PATCH /api/state` that touches maps/perMapBans/selectedMapIdx/
-  banSwaps, not only at FACEIT poll ticks — a persisted state (server
-  restart, idle sync, a match loaded before this fix) no longer gets stuck
-  with stale/empty bans. Producer overrides on `heroBans` are still
-  respected.
-- **Ban Reveal never goes black.** The empty-bans state now keeps the petal
-  texture, crest, and "HERO BANS" heading visible with a dimmed "AWAITING
-  BANS" chip, instead of hiding the whole scene — a dedicated OBS scene
-  should never read as dead air.
-- **Map board shows bans on every played map.** All completed columns now
-  show their two ban tiles (54px, vs. 84px for the current/last map), not
-  just the active one; hero-name captions are dropped from board tiles
-  package-wide per owner feedback ("we don't need the names").
-- **`activeBanMapIdx` exposed as derived state**, so the Ban Reveal scene and
-  the map board always label the same resolved ban map — fixes a mismatch
-  where a finished series could show different "active" maps in different
-  places.
-- **Map-intro redesign.** Replaced the squished top-bar/empty-bottom-bar
-  layout with a centered composition: a large map-name hero block with
-  `MAP n · MODE` and `MATCH POINT` chips, a team-matchup row around the
-  pinwheel score hub, and flanking ban-art tiles — staged entrance
-  animations throughout. The flythrough background requirement is dropped
-  per owner direction ("we can have anything in the middle").
-- **Flythrough HUD gains match context.** casters-flythrough-hud now shows a
-  `MAP n · NAME · MODE` chip and a compact matchup strip (logos, names,
-  score hub, series pips) centered below the cam frames, without covering
-  them.
-- **Wider caster deck panels.** `casters-scoreboard.html`'s `.sb-panel` and
-  `casters-lobby.html`'s `.lb-panel` are ~200px wider (owner: "a little
-  wider for both"), still centered safely inside the 1920 canvas and still
-  guarded by `fitPanelToCanvas` on single-cam layouts.
-- **Idle-motion package.** Three shared, infinite CSS utilities in
-  `theme-v2.css` (owner: "any time there's the logo it shrinks and grows
-  just slightly... slight interesting movement"):
-  - `.v2-idle-breathe` — a subtle scale pulse (1 → 1.035 → 1, ~4s), applied
-    to team logos in the gameplay HUD plates, every caster-deck scene
-    (desk/lobby/scoreboard/map-score/flythrough), and map-intro's team
-    blocks; series-winner's winner logo gets it via a dedicated wrapping
-    span so it doesn't collide with its own reveal entrance.
-  - `.v2-idle-glow` and `.v2-idle-spin` — an opacity/brightness pulse and a
-    slow 45s rotation, applied together to the neutral pinwheel crests on
-    starting-soon, BRB, and end-of-stream (BRB's previously bespoke local
-    `petalBreathe` keyframe is retired in favor of the shared utility); the
-    live series pip also gets the glow pulse.
-  - Idle animations are infinite and class-driven, verified to survive
-    `state-sync.js`'s OBS-visibility entrance replay (its stash/restore of
-    `style.animation` round-trips them correctly via the empty-string path).
-- **Interview transparency re-confirmed.** Gray-backdrop pixel test on
-  interview.html: the interviewee window and both caster corner slots
-  sample exactly the override gray with no opaque overlay — still fully
-  transparent.

@@ -94,6 +94,8 @@ const defaultState = {
     sceneSwitch: {
       'Starting': 'Ctrl+Shift+1',
       'Map Pick': 'Ctrl+Shift+2',
+      'Map Pool': 'Ctrl+Shift+P',
+      'Ban Reveal': 'Ctrl+Shift+B',
       'Map Intro': 'Ctrl+Shift+3',
       'Gameplay': 'Ctrl+Shift+4',
       'Casters': 'Ctrl+Shift+5',

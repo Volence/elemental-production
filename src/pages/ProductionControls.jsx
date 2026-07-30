@@ -308,7 +308,7 @@ export default function ProductionControls({ state, updateState, api }) {
 
   const sceneList = scenes.length > 0
     ? scenes.map(s => s.sceneName)
-    : ['Starting', 'Map Pick', 'Map Intro', 'Gameplay', 'Casters', 'Casters Lobby', 'Casters Scoreboard', 'Map Score', 'Between Matches', 'BRB', 'Interview', 'Series Winner', 'Ending'];
+    : ['Starting', 'Map Pick', 'Map Pool', 'Ban Reveal', 'Map Intro', 'Casters Flythrough', 'Gameplay', 'Casters', 'Casters Lobby', 'Casters Scoreboard', 'Map Score', 'Between Matches', 'BRB', 'Interview', 'Series Winner', 'Ending'];
 
   return (
     <div className="fade-in">
@@ -492,6 +492,7 @@ export default function ProductionControls({ state, updateState, api }) {
             const thumbSrc = thumbFile ? `/scene-thumbs/${thumbFile}.png` : null;
             const overlayFile = {
               'Starting': 'starting-soon', 'Map Pick': 'map-pick', 'Map Intro': 'map-intro',
+              'Map Pool': 'map-pool', 'Ban Reveal': 'hero-bans',
               'Gameplay': 'gameplay-hud', 'Casters': 'casters', 'Casters Lobby': 'casters-lobby',
               'Casters Scoreboard': 'casters-scoreboard', 'Map Score': 'casters-map-score',
               'Casters Flythrough': 'casters-flythrough-hud',

@@ -72,6 +72,11 @@ function safeImg(src, attrs) {
       html += ' ' + escapeHtml(key) + '="' + escapeHtml(attrs[key]) + '"';
     }
   }
+  // Dead source (e.g. a FACEIT avatar the CDN 400s on — real occurrence,
+  // owner QA batch 3 release sweep) must not paint the browser's
+  // broken-image glyph on stream. visibility (not display) so the box keeps
+  // its layout slot and rows don't reflow.
+  html += ' onerror="this.style.visibility=\'hidden\'"';
   html += '>';
   return html;
 }

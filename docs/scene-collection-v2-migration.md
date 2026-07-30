@@ -83,6 +83,23 @@ list) containing a single **Ban Reveal BS** browser source pointed at
 `overlays/hero-bans.html` — the full-screen hero-ban reveal graphic. It is
 created idempotently by the generator; re-running never duplicates it.
 
+## Map Pool scene + pick/ban audio (owner QA batch 3)
+
+- v2 also includes a **Map Pool** scene (between **Map Pick** and **Ban
+  Reveal**) with a **Map Pool BS** browser source pointed at
+  `overlays/map-pool.html` — the season pool board. Configure the pool once in
+  the dashboard under **Settings → Season Map Pool**; it persists across
+  restarts.
+- **Ban Reveal** and **Map Pool** both carry **Caster 1**, **Caster 2** and
+  **Casters Background Music** (copied from Map Pick's items, including its
+  offscreen-audio cam placement), so casters stay audible through the whole
+  pick/ban block.
+- If you already imported an earlier v2 collection, these were also injected
+  into the live collection via obs-websocket — you only need to **drag "Map
+  Pool" between "Map Pick" and "Ban Reveal"** in the scene list (the scene
+  list order can't be set remotely). A fresh import has the order right
+  already.
+
 ---
 
 ## What changed vs v1
