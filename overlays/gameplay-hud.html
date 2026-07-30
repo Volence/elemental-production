@@ -91,21 +91,23 @@
        much wider span — the keystone is only ~420px wide at true center
        where escort's bar is thinnest, but RE-VERIFY on a payload map and
        shrink KEYSTONE_H below if it grazes. */
-    /* Height budget (owner QA batch 3f — "slightly touching the scoreboard"):
-       the previous 96px box actually held ~99px of content and wore a 22px
-       shadow, so its visual bottom brushed the control-mode objective UI
-       (~y118-123). Now the content adds up EXACTLY to the box: 40 crest +
-       22 line1 + 13 line2 + 4 gaps + 13 padding = 92, and the shadow is
-       tight — visual bottom ≈104, a clear ~19px above the objective UI. */
+    /* Height budget (owner QA batch 3f/3g): the game's objective cluster is
+       NOT at a fixed y — it shifts with mode and round state, and a 92px
+       vertical-stack keystone still read as touching it on Lijiang. So the
+       keystone is a compact HORIZONTAL drop block instead: the 48px crest
+       sits beside the text stack, the box ends at y=72 (18px below the bar —
+       still clearly a keystone) and the shadow is tight, so the visual
+       bottom ≈78 stays clear of anything the game draws in any mode. */
     .hbar-center {
-      flex: none; align-self: flex-start; height: 92px; padding: 5px 28px 8px;
+      flex: none; align-self: flex-start; height: 72px; padding: 0 24px;
       position: relative;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      display: flex; align-items: center; gap: 14px;
       background: rgba(8,10,15,0.99);
       border-left: 1px solid rgba(255,255,255,0.16);
       border-right: 1px solid rgba(255,255,255,0.16);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.4);
     }
+    .hbar-center-stack { display: flex; flex-direction: column; align-items: center; gap: 2px; }
     .hbar-center-line1 { font-size: 21px; font-weight: 800; letter-spacing: 1px; line-height: 1.05; white-space: nowrap; text-transform: uppercase; }
     .hbar-center-line2 {
       font-size: 12px; font-weight: 700; letter-spacing: 2.5px; line-height: 1.1;
@@ -324,9 +326,11 @@
             // Idle glow is opacity/filter, safe under the wrapper's slideDown
             // `both` fill.
             '<span class="v2-medallion v2-idle-glow">' +
-              pinwheelSVG({ color1: t1color, color2: t2color, size: 40 }) + '</span>' +
-            '<span class="hbar-center-line1">' + escapeHtml(line1) + '</span>' +
-            '<span class="hbar-center-line2">' + escapeHtml(line2) + '</span>' +
+              pinwheelSVG({ color1: t1color, color2: t2color, size: 48 }) + '</span>' +
+            '<div class="hbar-center-stack">' +
+              '<span class="hbar-center-line1">' + escapeHtml(line1) + '</span>' +
+              '<span class="hbar-center-line2">' + escapeHtml(line2) + '</span>' +
+            '</div>' +
             '<span class="hbar-underline v2-underline"></span>' +
           '</div>' +
           scoreBox(rightScore, rightColor, rightPop) +
