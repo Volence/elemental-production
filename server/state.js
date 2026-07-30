@@ -32,6 +32,7 @@ const defaultState = {
     { name: 'Caster 1', camUrl: '', visible: true },
     { name: 'Caster 2', camUrl: '', visible: true },
   ],
+  casterLayout: 2, // 0 = no cam frames, 1 = single cam, 2 = dual cams — scenes already defaulted to 2 client-side; now explicit here
   interviewee: { name: '', camUrl: '', visible: false },
   countdown: { duration: 300, remaining: 0, running: false, label: 'Starting Soon', visible: true, startedAt: null },
   font: { family: 'Bebas Neue', url: 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap' },

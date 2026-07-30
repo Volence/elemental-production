@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { pinwheelSVG } from './pinwheel.js';
 globalThis.pinwheelSVG = pinwheelSVG;
-import { banTile, teamPlate, safeImg, eventHeader, mapPips, topFrame } from './components-v2.js';
+import { banTile, teamPlate, safeImg, eventHeader, mapPips, topFrame, camFrame, banArtTile } from './components-v2.js';
 
 describe('banTile', () => {
   it('renders portrait via provided src with slash overlay and 56px default', () => {
@@ -127,15 +127,115 @@ describe('topFrame', () => {
     const html = topFrame({ ...opts, swapSides: true });
     expect(html.indexOf('ICE')).toBeLessThan(html.indexOf('FIRE'));
   });
-  it('accepts an explicit currentMapName, overriding the inline current-status scan', () => {
-    // No map is status 'current' here — without opts.currentMapName the map
-    // pill would go blank (the inline fallback only scans for 'current').
+  it('accepts an explicit currentMapName, overriding the internal fallback', () => {
     const html = topFrame({
       ...opts,
       maps: [{ name: 'Busan', status: 'completed', winner: 'team1' }],
       currentMapName: 'Nepal',
     });
     expect(html).toContain('Nepal');
+  });
+  it('falls back to the next upcoming map when nothing is current (no opts.currentMapName)', () => {
+    const html = topFrame({
+      ...opts,
+      maps: [
+        { name: 'Busan', status: 'completed', winner: 'team1' },
+        { name: 'Dorado', status: 'upcoming' },
+      ],
+    });
+    expect(html).toContain('Dorado');
+  });
+  it('falls back to the LAST map name when every map is completed (findCurrentMap semantics, not blank)', () => {
+    const html = topFrame({
+      ...opts,
+      maps: [
+        { name: 'Busan', status: 'completed', winner: 'team1' },
+        { name: 'Ilios', status: 'completed', winner: 'team2' },
+      ],
+    });
+    expect(html).toContain('Ilios');
+    expect(html).not.toMatch(/v2-map-pill">\s*</);
+  });
+});
+
+describe('camFrame', () => {
+  it('positions the frame absolutely from the rect (inline, data-driven)', () => {
+    const html = camFrame({ rect: { x: 330, y: 120, w: 580, h: 362 }, name: 'Desk Caster', accent: '#f00' });
+    expect(html).toContain('left:330px');
+    expect(html).toContain('top:120px');
+    expect(html).toContain('width:580px');
+    expect(html).toContain('height:362px');
+  });
+  it('escapes the caster name', () => {
+    const html = camFrame({ rect: { x: 0, y: 0, w: 100, h: 100 }, name: '<img onerror=x>' });
+    expect(html).not.toContain('<img onerror');
+    expect(html).toContain('&lt;img onerror');
+  });
+  it('has a transparent interior — no background is ever set on the frame', () => {
+    const html = camFrame({ rect: { x: 0, y: 0, w: 100, h: 100 }, name: 'Caster' });
+    expect(html).not.toContain('background');
+  });
+  it('includes the v2-underline base edge and a name pill', () => {
+    const html = camFrame({ rect: { x: 0, y: 0, w: 100, h: 100 }, name: 'Caster' });
+    expect(html).toContain('v2-underline');
+    expect(html).toContain('v2-cam-pill');
+  });
+  it('omits the pill entirely when name is empty', () => {
+    const html = camFrame({ rect: { x: 0, y: 0, w: 100, h: 100 }, name: '' });
+    expect(html).not.toContain('v2-cam-pill');
+  });
+});
+
+describe('banArtTile', () => {
+  it('renders the render-image path when renderUrl is given', () => {
+    const html = banArtTile({ renderUrl: 'http://localhost:3001/cache/genji.png', portrait: 'http://localhost:3001/cache/genji-p.png', heroName: 'Genji', teamColor: '#f00' });
+    expect(html).toContain('v2-ban-art-render-img');
+    expect(html).toContain('genji.png');
+    expect(html).not.toContain('v2-ban-art-fallback-bg');
+  });
+  it('falls back to the portrait bust when no renderUrl', () => {
+    const html = banArtTile({ renderUrl: null, portrait: 'http://localhost:3001/cache/genji-p.png', heroName: 'Genji', teamColor: '#f00' });
+    expect(html).toContain('v2-ban-art-fallback-bg');
+    expect(html).toContain('v2-ban-art-fallback-img');
+    expect(html).toContain('genji-p.png');
+  });
+  it('escapes the hero name (alt text and name overlay)', () => {
+    const html = banArtTile({ renderUrl: 'x.png', portrait: '', heroName: '<script>x</script>', teamColor: '#f00', nameOverlay: true });
+    expect(html).not.toContain('<script>x</script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+  it('animated:false (default) renders a static slash with no animation', () => {
+    const html = banArtTile({ renderUrl: 'x.png', portrait: '', heroName: 'Ana', teamColor: '#f00' });
+    expect(html).toContain('v2-ban-art-slash');
+    expect(html).not.toContain('animation:hbSlashSweep');
+  });
+  it('animated:true sets the FULL inline animation shorthand on the slash', () => {
+    const html = banArtTile({ renderUrl: 'x.png', portrait: '', heroName: 'Ana', teamColor: '#f00', animated: true, delay: 0.15 });
+    expect(html).toContain('animation:hbSlashSweep 0.5s ease-out 0.50s both');
+  });
+  it('nameOverlay renders the bottom name bar; omitted by default', () => {
+    const withOverlay = banArtTile({ renderUrl: 'x.png', portrait: '', heroName: 'Ana', teamColor: '#f00', nameOverlay: true });
+    expect(withOverlay).toContain('v2-ban-art-name');
+    const without = banArtTile({ renderUrl: 'x.png', portrait: '', heroName: 'Ana', teamColor: '#f00' });
+    expect(without).not.toContain('v2-ban-art-name');
+  });
+  it('deck size scales the fallback bust exactly (108 -> 64px, matching map-intro\'s old value)', () => {
+    const html = banArtTile({ renderUrl: null, portrait: 'p.png', heroName: 'Ana', teamColor: '#f00', size: 108 });
+    expect(html).toContain('width:64px;height:64px');
+  });
+  it('splices beforeSlashHtml/afterNameHtml in the DOM order hero-bans needs (art, wash, slash, chip)', () => {
+    const html = banArtTile({
+      renderUrl: 'x.png', portrait: '', heroName: 'Ana', teamColor: '#f00',
+      beforeSlashHtml: '<div class="MARK-WASH"></div>',
+      afterNameHtml: '<div class="MARK-CHIP"></div>',
+    });
+    const artIdx = html.indexOf('v2-ban-art"');
+    const washIdx = html.indexOf('MARK-WASH');
+    const slashIdx = html.indexOf('v2-ban-art-slash');
+    const chipIdx = html.indexOf('MARK-CHIP');
+    expect(artIdx).toBeLessThan(washIdx);
+    expect(washIdx).toBeLessThan(slashIdx);
+    expect(slashIdx).toBeLessThan(chipIdx);
   });
 });
 

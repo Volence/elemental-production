@@ -190,3 +190,74 @@
 .v2-center-block {
   display: flex; align-items: center; gap: 12px;
 }
+
+/* ── camFrame() internals (Plan 3 Task 1) ─────────────────────────────────
+   Geometry (position/size) is always inline-from-rect (cam-layout.js is the
+   sole source of truth for cam-cutout coordinates — this file never
+   duplicates a pixel value). The interior stays fully transparent: no
+   background is set anywhere here, by design — the caster/interviewee
+   browser source sits BEHIND the overlay in OBS and must show through. */
+.v2-cam-frame {
+  box-sizing: border-box;
+  border: 1px solid rgba(255,255,255,0.35);
+  pointer-events: none;
+}
+.v2-cam-frame-underline {
+  position: absolute; left: 0; right: 0; bottom: -3px; height: 3px;
+}
+.v2-cam-pill {
+  position: absolute; left: 50%; bottom: 0; transform: translate(-50%, calc(100% + 10px));
+  white-space: nowrap; box-sizing: border-box;
+  background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+  padding: 6px 16px; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;
+  text-transform: uppercase; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+
+/* ── banArtTile() internals (Plan 2 carry-over consolidation — Plan 3
+   Task 1) ─────────────────────────────────────────────────────────────────
+   Shared by hero-bans.html's full-screen reveal panels (animated:true, no
+   `size` -> "reveal" scale) and map-intro.html's steady-state deck tiles
+   (animated:false, size:108 -> "deck" scale). Each scene still owns its own
+   LAYOUT class (hb-panel / mi-ban-tile — flex sizing within its parent row);
+   this class owns the tile's shared look. */
+.v2-ban-art-tile {
+  position: relative; overflow: hidden; background: #141821;
+  border: 1px solid; border-radius: var(--panel-radius); box-sizing: border-box;
+}
+.v2-ban-art { position: absolute; inset: 0; }
+.v2-ban-art-render-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; object-position: bottom center;
+}
+.v2-ban-art-fallback-bg { position: absolute; inset: 0; background: linear-gradient(180deg, #262c39 0%, #171a22 100%); }
+.v2-ban-art-fallback-portrait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+/* Base ("reveal" scale) look — width/height/border-width/box-shadow are
+   always overridden inline by banArtTile() per its `size` opt (see the JS
+   comment); border-radius/object-fit/border-color/box-shadow default here
+   are the "reveal" values, kept as the class default since "deck" scale
+   only needs to override the size-dependent subset. */
+.v2-ban-art-fallback-img {
+  border-radius: 50%; object-fit: cover;
+  border: 4px solid rgba(255,255,255,0.18);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+}
+/* No opacity set here (defaults to 1) — a static, non-animated slash
+   (animated:false) must be visible immediately. The animated variant's
+   inline `animation:...both` shorthand supplies its own 0%-keyframe opacity
+   during the delay, overriding this default without needing a base 0 here. */
+.v2-ban-art-slash {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(45deg, transparent 46%, rgba(255,0,0,0.85) 49%, rgba(255,0,0,0.85) 51%, transparent 54%);
+}
+/* animated:true's sweep-in keyframe (moved here from hero-bans.html's local
+   <style> — banArtTile() is the only place that references it by name now). */
+@keyframes hbSlashSweep {
+  0%   { opacity: 0; transform: translateX(-55%) scaleX(1.35); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: translateX(0) scaleX(1); }
+}
+.v2-ban-art-name {
+  position: absolute; left: 0; right: 0; bottom: 0; background: rgba(8,10,15,0.9);
+  padding: 4px 6px; color: #fff; font-weight: 800; font-size: 15px; text-align: center;
+  text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

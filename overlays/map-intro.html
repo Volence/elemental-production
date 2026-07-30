@@ -42,7 +42,11 @@
        This scene instead places the frame in the SAME top-of-screen band the
        HUD/map-pick occupy (top edge, horizontally centered) so the eye reads
        it as "the same object, moved" even though it's a fresh element. */
-    #mi-top { top: 22px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
+    /* max-width caps the frame at 1840px (40px canvas margin either side) so
+       a long event name hits shared CSS's .v2-event-name ellipsis path
+       (theme-v2.css) instead of pushing the whole top frame off-canvas —
+       same carry-over fix as gameplay-hud/map-pick's top frame. */
+    #mi-top { top: 22px; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 1840px; }
     /* #mi-deck: lower deck — ban tiles flanking the score deck (mockup: the
        card sits ~9% off the bottom, ~76% wide, horizontally centered).
        Centered via left/right:0 + margin:auto on an explicit-width box
@@ -80,29 +84,14 @@
     .mi-row { display: flex; align-items: stretch; gap: 8px; }
 
     /* Ban render tile (deck scale — smaller, simpler sibling of hero-bans.html's
-       full-screen .hb-panel: same art/fallback/foot anatomy, no slam/sweep
-       animation — this is a steady-state card, not a reveal moment). */
+       full-screen reveal panels: same art/fallback/name anatomy via the
+       shared banArtTile() (components-v2.js, Plan 3 Task 1 consolidation),
+       no slam/sweep animation — this is a steady-state card, not a reveal
+       moment. Layout only here — background/border/border-radius/
+       box-sizing/overflow/position live on the shared .v2-ban-art-tile
+       class; this scene keeps only its own width/aspect-ratio/flex sizing. */
     .mi-ban-tile {
-      position: relative; width: 108px; aspect-ratio: 1 / 1.1; overflow: hidden;
-      background: #141821; border: 1px solid; border-radius: var(--panel-radius);
-      flex: none; box-sizing: border-box;
-    }
-    .mi-ban-art { position: absolute; inset: 0; }
-    .mi-ban-render-img {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      object-fit: contain; object-position: bottom center;
-    }
-    .mi-ban-fallback-bg { position: absolute; inset: 0; background: linear-gradient(180deg, #262c39 0%, #171a22 100%); }
-    .mi-ban-fallback-portrait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-    .mi-ban-fallback-img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.18); }
-    .mi-ban-slash {
-      position: absolute; inset: 0; pointer-events: none;
-      background-image: linear-gradient(45deg, transparent 46%, rgba(255,0,0,0.85) 49%, rgba(255,0,0,0.85) 51%, transparent 54%);
-    }
-    .mi-ban-name {
-      position: absolute; left: 0; right: 0; bottom: 0; background: rgba(8,10,15,0.9);
-      padding: 4px 6px; color: #fff; font-weight: 800; font-size: 15px; text-align: center;
-      text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      width: 108px; aspect-ratio: 1 / 1.1; flex: none;
     }
 
     /* Score deck: dark panel, team blocks flanking a mini pinwheel hub. */
@@ -160,36 +149,25 @@
       return (team.score === undefined || team.score === null) ? 0 : team.score;
     }
 
-    // One deck-scale ban tile. Same render/portrait-fallback anatomy as
-    // hero-bans.html's panelHtml(), shrunk down and with NO entrance/sweep
-    // animation — the deck is a steady-state card (visible for the whole
-    // map-intro hold), not a reveal moment, so nothing here needs the
-    // "render-output animations need the full shorthand inline" treatment
-    // hero-bans.html documents (there IS no animation to replay).
+    // One deck-scale ban tile. Shared render/portrait-fallback/slash/name
+    // anatomy via banArtTile() (components-v2.js, Plan 3 Task 1 carry-over
+    // consolidation with hero-bans.html's panelHtml()) — deck scale
+    // (size: 108, matching this tile's own width so the fallback bust comes
+    // out at banArtTile's documented exact 64px), animated: false and NO
+    // entrance/sweep animation — the deck is a steady-state card (visible
+    // for the whole map-intro hold), not a reveal moment. nameOverlay: true
+    // reproduces the tile-bottom name bar this scene always had.
     function banTileDeck(heroKey, teamColor) {
       var hero = findHeroEntry(heroData, heroKey);
       var heroName = hero ? hero.name : heroKey;
       var renderUrl = hero ? hero.render : null;
       var portrait = hero ? hero.portrait : '';
 
-      var artHtml;
-      if (renderUrl) {
-        artHtml = '<div class="mi-ban-art">' +
-          safeImg(renderUrl, { 'class': 'mi-ban-render-img', alt: heroName }) +
-          '</div>';
-      } else {
-        var portraitHtml = portrait ? safeImg(portrait, { 'class': 'mi-ban-fallback-img', alt: heroName }) : '';
-        artHtml = '<div class="mi-ban-art">' +
-          '<div class="mi-ban-fallback-bg"></div>' +
-          '<div class="mi-ban-fallback-portrait">' + portraitHtml + '</div>' +
-          '</div>';
-      }
-
-      return '<div class="mi-ban-tile" style="border-color:' + hexToAlpha(teamColor, 0.6) + '">' +
-        artHtml +
-        '<div class="mi-ban-slash"></div>' +
-        '<div class="mi-ban-name">' + escapeHtml(heroName) + '</div>' +
-        '</div>';
+      return banArtTile({
+        renderUrl: renderUrl, portrait: portrait, heroName: heroName, teamColor: teamColor,
+        size: 108, animated: false, nameOverlay: true,
+        wrapperClass: 'mi-ban-tile'
+      });
     }
 
     // One deck-scale team block: logo/swatch + name + optional tag. `side`

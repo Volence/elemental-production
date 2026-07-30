@@ -158,6 +158,149 @@ function teamPlate(opts) {
   return html;
 }
 
+// Cam cutout frame (Plan 3 Task 1): absolutely-positioned at `rect` (inline
+// position/size — geometry is data-driven from cam-layout.js's CAM_LAYOUTS,
+// NEVER scene CSS, so a producer's OBS scene-collection cam source and this
+// frame always agree on where the window is). The interior is deliberately
+// left fully TRANSPARENT — no background is ever set here — because the
+// caster/interviewee browser source sits BEHIND this overlay in OBS and
+// must show through the cutout; camFrame only draws the frame's chrome
+// (hairline border, a gradient underline base edge, and a name pill that
+// hangs off the bottom per the mockup). `accent` (optional) tints the
+// border + pill border — a caster desk with per-seat accent colors, or ''
+// for a neutral hairline.
+//
+// opts: { rect: {x,y,w,h}, name, accent }
+function camFrame(opts) {
+  opts = opts || {};
+  var rect = opts.rect || {};
+  var name = opts.name || '';
+  var accent = opts.accent || '';
+
+  var x = rect.x || 0;
+  var y = rect.y || 0;
+  var w = rect.w || 0;
+  var h = rect.h || 0;
+
+  var frameStyle = 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;';
+  if (accent) frameStyle += 'border-color:' + escapeHtml(accent) + ';';
+
+  var pillStyle = accent ? ' style="border-color:' + escapeHtml(accent) + '"' : '';
+  // No name -> no pill: an unnamed cam slot shows a clean frame instead of
+  // an empty chrome box. All cam scenes inherit this; don't re-guard per scene.
+  var pillHtml = name ? ('<div class="v2-cam-pill"' + pillStyle + '>' + escapeHtml(name) + '</div>') : '';
+
+  return '<div class="v2-cam-frame" style="' + frameStyle + '">' +
+    '<span class="v2-underline v2-cam-frame-underline"></span>' +
+    pillHtml +
+    '</div>';
+}
+
+// Hero ban ART tile (Plan 2 carry-over consolidation): render-vs-portrait
+// art + a red "denied" slash + an optional name overlay. Extracted from
+// hero-bans.html's panelHtml() and map-intro.html's banTileDeck(), which
+// had independently grown near-identical render/fallback/slash markup —
+// this is the single copy both scenes now call. Like banTile/teamPlate
+// elsewhere in this file, banArtTile owns the WHOLE tile (including the
+// bordered wrapper); the scene only contributes its own layout class via
+// `wrapperClass` (how the tile sizes/positions within its parent) and,
+// for hero-bans' reveal panels, its own slam-in entrance animation via
+// `extraStyle` spliced onto the same element.
+//
+// opts: { renderUrl, portrait, heroName, teamColor, size, animated, delay,
+//   nameOverlay, wrapperClass, extraStyle, beforeSlashHtml, afterNameHtml }
+//
+// `beforeSlashHtml`/`afterNameHtml` (raw HTML, optional): extra layers the
+// caller wants inside the SAME tile, spliced in around the shared art/slash/
+// name anatomy so DOM paint order (later sibling paints on top, since
+// nothing here sets z-index) matches exactly what the pre-extraction scenes
+// had. hero-bans.html's reveal panels need MORE than banArtTile's own
+// anatomy — a team-color wash gradient that must paint BETWEEN the art and
+// the slash (beforeSlashHtml), and a BANNED chip + role/name foot bar that
+// must paint LAST, on top of everything (afterNameHtml).
+//
+// `size` (px, optional): deck-tile bust scale. Omitted -> "reveal" scale
+// (180px fallback bust, 4px ring, drop shadow — hero-bans.html's full-screen
+// panels, which have no fixed tile size of their own). A number -> "deck"
+// scale, bust = round(size * 64/108) so passing map-intro's actual 108px
+// tile width reproduces its exact pre-existing 64px bust with a thinner
+// 2px ring and no shadow.
+//
+// `animated` (default false): false emits a static, always-visible slash
+// (map-intro's steady-state deck tiles — a card visible for the whole
+// map-intro hold, not a reveal moment). true emits the sweep-in slash with
+// the FULL inline `animation` shorthand — mirrors hero-bans.html's own
+// documented render-output-animation rule: state-sync's replayAnimation
+// stashes/restores style.animation, which reads '' if only the
+// animation-delay longhand were set, so a bare delay would be dropped on
+// OBS visibility replay and every slash would sweep simultaneously instead
+// of staggered. `delay` (seconds) is the slam-in delay the CALLER already
+// staggered per panel; the slash's own delay is delay + 0.35s (it starts
+// once the slam-in has mostly settled) — same arithmetic hero-bans.html
+// used inline before this extraction.
+//
+// `nameOverlay` (default false): renders heroName as a bottom bar directly
+// on the tile (map-intro's look). hero-bans.html leaves this off and shows
+// the name (plus a role chip) in its own foot bar OUTSIDE the art tile
+// instead — the two scenes' name treatments differ enough (role chip vs.
+// none, reveal-scale vs. deck-scale type) that forcing them into one
+// shared visual would itself be a visual change, so only the on/off
+// plumbing is shared here, not a single fixed look.
+function banArtTile(opts) {
+  opts = opts || {};
+  var renderUrl = opts.renderUrl || null;
+  var portrait = opts.portrait || '';
+  var heroName = opts.heroName || '';
+  var teamColor = opts.teamColor || '';
+  var size = opts.size;
+  var animated = !!opts.animated;
+  var delay = opts.delay || 0;
+  var nameOverlay = !!opts.nameOverlay;
+  var wrapperClass = opts.wrapperClass || '';
+  var extraStyle = opts.extraStyle || '';
+  var beforeSlashHtml = opts.beforeSlashHtml || '';
+  var afterNameHtml = opts.afterNameHtml || '';
+
+  // Deck ratio (64/108) is map-intro's exact pre-existing bust/tile ratio —
+  // baking it in here reproduces its old pixel values exactly rather than
+  // approximating them.
+  var bustSize = size ? Math.round(size * 64 / 108) : 180;
+  var bustBorder = size ? 2 : 4;
+  var bustStyle = 'width:' + bustSize + 'px;height:' + bustSize + 'px;border-width:' + bustBorder + 'px;' +
+    (size ? 'box-shadow:none;' : '');
+
+  var artHtml;
+  if (renderUrl) {
+    artHtml = '<div class="v2-ban-art">' +
+      safeImg(renderUrl, { 'class': 'v2-ban-art-render-img', alt: heroName }) +
+      '</div>';
+  } else {
+    var portraitHtml = portrait
+      ? safeImg(portrait, { 'class': 'v2-ban-art-fallback-img', alt: heroName, style: bustStyle })
+      : '';
+    artHtml = '<div class="v2-ban-art">' +
+      '<div class="v2-ban-art-fallback-bg"></div>' +
+      '<div class="v2-ban-art-fallback-portrait">' + portraitHtml + '</div>' +
+      '</div>';
+  }
+
+  var slashStyle = animated
+    ? ' style="animation:hbSlashSweep 0.5s ease-out ' + (delay + 0.35).toFixed(2) + 's both"'
+    : '';
+  var slashHtml = '<div class="v2-ban-art-slash"' + slashStyle + '></div>';
+
+  var nameHtml = nameOverlay
+    ? '<div class="v2-ban-art-name">' + escapeHtml(heroName) + '</div>'
+    : '';
+
+  var wrapperStyle = 'border-color:' + escapeHtml(_hexToAlpha(teamColor, 0.6)) + ';' + extraStyle;
+  var cls = 'v2-ban-art-tile' + (wrapperClass ? ' ' + wrapperClass : '');
+
+  return '<div class="' + cls + '" style="' + wrapperStyle + '">' +
+    artHtml + beforeSlashHtml + slashHtml + nameHtml + afterNameHtml +
+    '</div>';
+}
+
 // Accent/punctuation-insensitive first-word extraction for map abbreviations
 // ("King's Row" -> "KIN"). Same NFD-strip technique as theme-helpers.js's
 // normHeroName, kept as a private local copy for the same reason _hexToAlpha/
@@ -263,6 +406,25 @@ function _pinwheel(opts) {
   return '';
 }
 
+// Private mirror of theme-helpers.js's findCurrentMapIndex/findCurrentMap
+// fallback order (live -> next upcoming -> last played). topFrame can't
+// require('./theme-helpers.js') at load time (see the big comment at the
+// top of this file explaining why), so this is a deliberate, minimal,
+// self-contained duplicate of that same logic — used ONLY as topFrame's
+// last resort when the caller doesn't pass opts.currentMapName. Mirrors
+// findCurrentMapIndex; keep in sync if that function's order ever changes.
+function _fallbackMapName(maps) {
+  var i;
+  for (i = 0; i < maps.length; i++) {
+    if (maps[i] && maps[i].status === 'current') return maps[i].name || '';
+  }
+  for (i = 0; i < maps.length; i++) {
+    if (maps[i] && maps[i].status === 'upcoming') return maps[i].name || '';
+  }
+  if (maps.length > 0 && maps[maps.length - 1]) return maps[maps.length - 1].name || '';
+  return '';
+}
+
 // One hero-ban wing (v7 mockup): a row of banTile()s in the team's color,
 // sitting between a team plate and the center block. Empty array -> an
 // empty (but present) wing container; topFrame omits the wing entirely
@@ -327,20 +489,15 @@ function topFrame(opts) {
     rightWingHtml = _banWing(rightBans, rightColor);
   }
 
-  // opts.currentMapName lets callers (e.g. the Task 4 HUD) inject a richer
-  // fallback than this inline scan — findCurrentMap()'s live -> next
-  // upcoming -> last played order — so the map pill doesn't go blank
-  // between maps when nothing is 'current' yet/anymore. Falls back to a
-  // plain "first map with status === 'current'" scan when omitted.
+  // opts.currentMapName lets callers (e.g. the Task 4 HUD) inject a richer,
+  // server-computed fallback (usually findCurrentMap() itself) — that
+  // still takes precedence when given. When omitted, _fallbackMapName()
+  // mirrors findCurrentMapIndex's own live -> next upcoming -> last played
+  // order (upgraded from the old plain "first map with status === 'current'"
+  // scan, which went blank once every map was completed).
   var currentMapName = opts.currentMapName;
   if (!currentMapName) {
-    currentMapName = '';
-    for (var i = 0; i < maps.length; i++) {
-      if (maps[i] && maps[i].status === 'current') {
-        currentMapName = maps[i].name || '';
-        break;
-      }
-    }
+    currentMapName = _fallbackMapName(maps);
   }
 
   var eventPill = eventHeader({ eventName: opts.eventName, subtitle: bestOf ? ('BO' + bestOf) : '' });
@@ -375,6 +532,8 @@ if (typeof module !== 'undefined' && module.exports) {
     safeImg: safeImg,
     eventHeader: eventHeader,
     mapPips: mapPips,
-    topFrame: topFrame
+    topFrame: topFrame,
+    camFrame: camFrame,
+    banArtTile: banArtTile
   };
 }

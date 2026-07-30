@@ -87,48 +87,17 @@
     .hb-columns { display: flex; gap: 16px; flex: 1 1 auto; min-height: 0; }
 
     /* ── One ban panel ────────────────────────────────────────────────── */
-    .hb-panel {
-      position: relative; flex: 1 1 0; min-width: 0; overflow: hidden;
-      background: #141821; border: 1px solid; border-radius: var(--panel-radius);
-      box-sizing: border-box;
-    }
-    .hb-panel-art { position: absolute; inset: 0; }
-    /* Full-body render path: a transparent-cutout PNG/WebP, contained (not
-       cropped) and anchored to the panel's bottom so feet sit on the floor
-       of the panel rather than centering awkwardly in empty space. */
-    .hb-panel-render-img {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      object-fit: contain; object-position: bottom center;
-    }
-    /* Portrait-fallback path (no local render dropped in yet): dark gradient
-       backdrop + an oversized centered bust from the same square portrait
-       the ban tiles use elsewhere — reads as "hero silhouette", not a raw UI
-       thumbnail, at this scale. */
-    .hb-panel-fallback-bg {
-      position: absolute; inset: 0;
-      background: linear-gradient(180deg, #262c39 0%, #171a22 100%);
-    }
-    .hb-panel-fallback-portrait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-    .hb-panel-fallback-img {
-      width: 180px; height: 180px; border-radius: 50%; object-fit: cover;
-      border: 4px solid rgba(255,255,255,0.18); box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-    }
+    /* Layout only — background/border/border-radius/box-sizing/overflow/
+       position now live on the shared .v2-ban-art-tile class (banArtTile()
+       in components-v2.js, Plan 3 Task 1 consolidation with map-intro's
+       .mi-ban-tile). This scene keeps only what's specific to ITS layout:
+       flex sizing within the .hb-columns row. */
+    .hb-panel { flex: 1 1 0; min-width: 0; }
+    /* Wash + BANNED chip + foot (role/name) stay scene-owned — hero-bans'
+       reveal treatment is richer than banArtTile's shared anatomy (art +
+       slash + optional name overlay), so these render as siblings alongside
+       banArtTile()'s output rather than being folded into it. */
     .hb-panel-wash { position: absolute; inset: 0; pointer-events: none; }
-    /* Red slash: same visual family as banTile's .v2-ban-slash (universal
-       "denied" red, not team color). Here it SWEEPS in via a delayed
-       animation (see panelHtml()'s inline animation-delay) instead of
-       banTile's static overlay — this panel is a reveal moment, the small
-       ban tile elsewhere isn't. */
-    .hb-panel-slash {
-      position: absolute; inset: 0; pointer-events: none; opacity: 0;
-      background-image: linear-gradient(45deg, transparent 46%, rgba(255,0,0,0.85) 49%, rgba(255,0,0,0.85) 51%, transparent 54%);
-      /* animation set inline (full shorthand) by render — see slashHtml */
-    }
-    @keyframes hbSlashSweep {
-      0%   { opacity: 0; transform: translateX(-55%) scaleX(1.35); }
-      60%  { opacity: 1; }
-      100% { opacity: 1; transform: translateX(0) scaleX(1); }
-    }
     .hb-panel-banned-chip {
       position: absolute; top: 0; left: 0; font-weight: 800; font-size: 22px;
       letter-spacing: 1.5px; padding: 7px 20px; color: #fff;
@@ -209,33 +178,13 @@
       var portrait = hero ? hero.portrait : '';
 
       var slamAnim = side === 'left' ? 'slideRight' : 'slideLeft';
-      var panelStyle = 'border-color:' + hexToAlpha(teamColor, 0.6) + ';' +
-        'animation:' + slamAnim + ' 0.5s ease-out ' + delay.toFixed(2) + 's both;';
+      var slamStyle = 'animation:' + slamAnim + ' 0.5s ease-out ' + delay.toFixed(2) + 's both;';
 
-      var artHtml;
-      if (renderUrl) {
-        artHtml = '<div class="hb-panel-art">' +
-          safeImg(renderUrl, { 'class': 'hb-panel-render-img', alt: heroName }) +
-          '</div>';
-      } else {
-        var portraitHtml = portrait ? safeImg(portrait, { 'class': 'hb-panel-fallback-img', alt: heroName }) : '';
-        artHtml = '<div class="hb-panel-art">' +
-          '<div class="hb-panel-fallback-bg"></div>' +
-          '<div class="hb-panel-fallback-portrait">' + portraitHtml + '</div>' +
-          '</div>';
-      }
-
+      // Wash must paint BETWEEN the art and the slash (banArtTile's
+      // beforeSlashHtml) so the DOM/paint order matches the pre-extraction
+      // markup exactly: art, wash, slash, chip, name.
       var washHtml = '<div class="hb-panel-wash" style="background-image:linear-gradient(180deg, transparent 50%, ' +
         hexToAlpha(teamColor, 0.5) + ')"></div>';
-
-      // Sweep starts once the slam-in has mostly settled (delay + ~0.35s).
-      // Render-output animations must set the FULL animation shorthand inline
-      // (not bare animation-delay): state-sync's replayAnimation stashes and
-      // restores style.animation, which reads '' when only the delay longhand
-      // is set — a bare delay would be dropped on OBS visibility replay and
-      // every slash would sweep simultaneously.
-      var slashDelay = (delay + 0.35).toFixed(2);
-      var slashHtml = '<div class="hb-panel-slash" style="animation:hbSlashSweep 0.5s ease-out ' + slashDelay + 's both"></div>';
 
       var chipHtml = '<div class="hb-panel-banned-chip" style="background:' + escapeHtml(teamColor) + '">BANNED</div>';
 
@@ -247,7 +196,19 @@
         '<span class="hb-panel-name">' + escapeHtml(heroName) + '</span>' +
         '</div>';
 
-      return '<div class="hb-panel" style="' + panelStyle + '">' + artHtml + washHtml + slashHtml + chipHtml + footHtml + '</div>';
+      // Shared render-vs-portrait art + sweep-in slash (components-v2.js,
+      // Plan 3 Task 1 carry-over consolidation with map-intro's
+      // banTileDeck()). animated:true because a ban changing IS a fresh
+      // reveal moment here (see the big comment above on why this scene
+      // deviates from the "chrome never replays" rule). nameOverlay stays
+      // off — this scene shows the name (+ role) in its own foot bar below,
+      // not overlaid on the art like map-intro's deck tiles.
+      return banArtTile({
+        renderUrl: renderUrl, portrait: portrait, heroName: heroName, teamColor: teamColor,
+        animated: true, delay: delay,
+        wrapperClass: 'hb-panel', extraStyle: slamStyle,
+        beforeSlashHtml: washHtml, afterNameHtml: chipHtml + footHtml
+      });
     }
 
     // One team's side: label row + N-wide column of panels. Base case (one
