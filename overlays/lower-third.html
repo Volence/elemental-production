@@ -67,24 +67,47 @@
   </div>
 
   <script src="./theme-helpers.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
-    const API = 'http://localhost:3001';
-    function update(state) {
-      applyTheme(state);
-      const lt = document.getElementById('lt');
-      const data = state.lowerThird || {};
+    // The #lt markup above is fully static (never rebuilt) — only textContent
+    // and the "visible" class get mutated per state, so there's no shell to
+    // build; the existing DOM IS the shell. The runtime's trailing render
+    // container lands as the last child of <body>, after #lt — an empty,
+    // unstyled sibling that doesn't affect the absolutely-positioned lower
+    // third, so no wrapper element is needed here.
+    // NOTE for scenes copying this migration: el: document.body is right
+    // ONLY because this scene has no #root and never uses the render
+    // container. Scenes with a positioned/animated #root should pass that
+    // element as el so the container and any shell chrome live inside
+    // state-sync's animation-replay scope (replayAnimation walks #root).
+    defineOverlay({
+      el: document.body,
+      key: function(state) {
+        var t = state.theme || {};
+        var d = state.lowerThird || {};
+        // Only the theme leaves this scene's CSS actually reads
+        // (--lower-third-gradient, --font-body) are tracked here; applyTheme
+        // also sets many other custom properties nothing in this document
+        // consumes, so changes to those must not force a re-render.
+        // Array/object entries (like lowerThirdBg) are fine — the key array
+        // is JSON-serialized for comparison, so deep changes are caught.
+        return [d.visible, d.title, d.subtitle, t.lowerThirdBg, t.fontFamily];
+      },
+      render: function(state) {
+        applyTheme(state);
+        var lt = document.getElementById('lt');
+        var data = state.lowerThird || {};
 
-      if (data.visible && (data.title || data.subtitle)) {
-        document.getElementById('lt-title').textContent = data.title || '';
-        document.getElementById('lt-subtitle').textContent = data.subtitle || '';
-        lt.classList.add('visible');
-      } else {
-        lt.classList.remove('visible');
+        if (data.visible && (data.title || data.subtitle)) {
+          document.getElementById('lt-title').textContent = data.title || '';
+          document.getElementById('lt-subtitle').textContent = data.subtitle || '';
+          lt.classList.add('visible');
+        } else {
+          lt.classList.remove('visible');
+        }
       }
-    }
-    stateSync(update);
+    });
   </script>
 </body>
 </html>
