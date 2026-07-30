@@ -14,10 +14,19 @@ var CAM_LAYOUTS = {
     dual:   [ { x: 353, y: 270, w: 501, h: 282 }, { x: 1074, y: 270, w: 501, h: 282 } ],
     single: [ { x: 710, y: 270, w: 501, h: 282 } ]
   },
-  // Big single cam area (between-matches.html)
-  wide:  { single: [ { x: 200, y: 30, w: 1690, h: 900 } ] },
-  // Interview single cam
-  interview: { single: [ { x: 580, y: 120, w: 760, h: 520 } ] }
+  // Big single cam area (between-matches.html) — centered with equal 115px
+  // side margins (115 + 1690 + 115 = 1920); top pushed to y:84 so the event
+  // header band sits fully ABOVE the window (owner QA batch 1: the inherited
+  // v1 200/30 margins left the window off-center and the header overlapping
+  // its top edge). Bottom edge = 84 + 860 = 944.
+  wide:  { single: [ { x: 115, y: 84, w: 1690, h: 860 } ] },
+  // Interview: single center cam (interviewee) + two bottom-corner caster
+  // slots (owner QA batch 1). The corner slots clear the centered player card;
+  // interview.html renders them only when the matching caster is named.
+  interview: {
+    single:  [ { x: 580, y: 120, w: 760, h: 520 } ],
+    casters: [ { x: 60, y: 760, w: 420, h: 262 }, { x: 1440, y: 760, w: 420, h: 262 } ]
+  }
 };
 
 // CJS export guard so Node/Vitest can import this for tests and Task 9's

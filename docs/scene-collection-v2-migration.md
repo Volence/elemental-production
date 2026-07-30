@@ -26,6 +26,63 @@ Both are named **"Elemental Production v2"** in OBS after import.
 
 That's it. Do **not** hand-move the camera sources (see "Do not hand-move").
 
+> **Keeping your existing camera URLs / media paths:** importing v2 gives you a
+> collection with **blank** camera URLs and media file paths. If you already
+> have a working collection, run the **settings carryover** (below) *before*
+> importing so the v2 files inherit your producer settings — then import.
+
+---
+
+## Settings carryover (keep your URLs & media paths)
+
+The v2 files ship with blank camera URLs and blank media paths on purpose (they
+are yours to point at). Re-importing v2 **replaces** the whole collection, so if
+you already run a live collection you would otherwise have to re-enter every
+camera URL and media file by hand. The generator can copy those for you.
+
+**1. Find your live collection file.** OBS stores each scene collection as JSON:
+
+```
+~/.config/obs-studio/basic/scenes/<CollectionName>.json     # Linux
+%APPDATA%\obs-studio\basic\scenes\<CollectionName>.json      # Windows
+```
+
+The file name is the collection's display name with spaces replaced by
+underscores (e.g. `Elemental_Production.json`). Match it to the collection you
+currently use in **Scene Collection** menu.
+
+**2. Carry its settings into the v2 files** (run from the repo root):
+
+```
+node scripts/build-scene-collection-v2.mjs --carry-from ~/.config/obs-studio/basic/scenes/Elemental_Production.json
+```
+
+This copies, **by source name**, into BOTH `data/obs-scene-collection.json` and
+`data/obs-scene-collection-windows.json`:
+
+- `settings.url` for **Caster 1**, **Caster 2**, **Interviewee**
+- `settings.local_file` / `settings.playlist` (+ `is_local_file` when present)
+  for **Background Music**, **Casters Background Music**, **Map Flythrough**,
+  **Map Music**, **Replay**
+
+Only **non-empty** values are copied — a blank value in your live collection
+never wipes a value already set in v2. The command prints a per-source summary
+(`carried` / `skipped-empty` / `absent`) so you can see exactly what moved.
+
+**3. THEN import** the v2 file (see "One-time import steps"). Order matters:
+carryover edits the repo's JSON files, and the import reads those files — so
+carry first, import second. (Re-importing later would again replace the
+collection, so re-run carryover any time before re-importing.)
+
+---
+
+## Ban Reveal scene (owner QA batch 1)
+
+v2 now includes a **Ban Reveal** scene (right after **Map Pick** in the scene
+list) containing a single **Ban Reveal BS** browser source pointed at
+`overlays/hero-bans.html` — the full-screen hero-ban reveal graphic. It is
+created idempotently by the generator; re-running never duplicates it.
+
 ---
 
 ## What changed vs v1
@@ -40,7 +97,16 @@ That's it. Do **not** hand-move the camera sources (see "Do not hand-move").
   | Casters Scoreboard | desk (dual) | Caster 1 (left), Caster 2 (right) |
   | Map Score | desk (dual) | Caster 1 (left), Caster 2 (right) |
   | Casters Flythrough | flythrough (dual) | Caster 1 (left), Caster 2 (right) |
-  | Interview | interview (single) | Interviewee |
+  | Interview | interview (single + corners) | Interviewee (center), Caster 1 (bottom-left), Caster 2 (bottom-right) |
+
+  **Interview corner caster slots (owner QA batch 1):** the Interview scene now
+  also carries **Caster 1** (bottom-left, `60,760 420×262`) and **Caster 2**
+  (bottom-right, `1440,760 420×262`) behind the overlay's two corner cutouts.
+  The overlay only draws a corner cutout when that caster is *named* in the
+  dashboard, so an unnamed caster leaves the corner solid (no floating empty
+  window). These items are wired to the same shared **Caster 1 / Caster 2**
+  camera sources as the desk scenes — set their URL once and it applies
+  everywhere.
 
   Each camera uses a **bounds box** (OBS "Scale to outer bounds") whose top-left
   corner and size match the overlay cutout, so any 1920×1080 camera source is
@@ -119,7 +185,7 @@ and only ever touches the mapped camera transforms plus the collection name.
   source, not a live camera — so nothing is baked there. If you want a live camera
   in Between Matches, add a **Caster 1** browser-source to that scene and re-run
   the generator (`node scripts/build-scene-collection-v2.mjs`); it will snap the
-  new source into the reserved 1690×900 wide window automatically.
+  new source into the reserved 1690×860 wide window automatically.
 
 ---
 

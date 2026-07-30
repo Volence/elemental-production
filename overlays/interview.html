@@ -5,13 +5,19 @@
   <title>Interview</title>
   <!-- Broadcast v2 (Plan 3 Task 5): rebuilt on the casters.html cam-scene
        template — see that file for the long-form cutout invariant writeup.
-       SINGLE-CAM-ONLY scene: CAM_LAYOUTS.interview has only a `single` key
-       (no `dual`), so this never branches on state.casterLayout — there is
-       exactly one cam window, always CAM_LAYOUTS.interview.single[0]
+       Center cam window is always CAM_LAYOUTS.interview.single[0]
        ({ x:580, y:120, w:760, h:520 } — same y:120 headroom as the desk
        scenes' cams, so the event header sits cleanly above it with no
-       overlap, unlike between-matches.html's cam which starts almost at
-       the canvas edge).
+       overlap). This scene does NOT branch on state.casterLayout.
+
+       CASTER CORNER SLOTS (owner QA batch 1): CAM_LAYOUTS.interview.casters
+       adds two bottom-corner cutouts ({x:60,y:760,...} / {x:1440,y:760,...})
+       for the show casters during an interview. Each is rendered ONLY when
+       the matching state.casters[i] is named (pill = that caster's name);
+       the cutout mask includes a corner rect ONLY while its frame is shown,
+       so an unnamed slot punches no hole. When any corner slot is active the
+       centered player card gets `.has-casters` (narrower cap) so a wide name
+       pill can't reach into the corners.
 
        Cam frame's name pill IS used here (unlike between-matches) — it
        shows the interviewee's name (escaped by camFrame itself), since
@@ -72,6 +78,11 @@
       max-width: 1600px; /* nowrap pills below: cap + ellipsis so an absurd name can't overflow the canvas */
       display: flex; flex-direction: column; align-items: center; gap: 16px;
     }
+    /* When the bottom-corner caster slots are shown (owner QA batch 1), cap the
+       centered card so a wide name pill can't reach into the corner cutouts —
+       the slots occupy x<480 and x>1440, so 880px centered clears both with
+       margin. Without casters the card keeps the full 1600px cap. */
+    #cd-card.has-casters { max-width: 880px; }
     #cd-card .iv-name-pill, #cd-card .iv-chips { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
     /* ── Name pill: pill + underline anatomy (mirrors eventHeader()/
@@ -192,14 +203,17 @@
     }
 
     // ── key: interviewee fields (name/teamName/teamLogo/teamColor/role/
-    // label) + eventName + theme team colors (see file-header comment). ────
+    // label) + eventName + theme team colors (see file-header comment) +
+    // the two corner caster NAMES (drive whether each corner slot renders). ─
     function key(state) {
       var iv = state.interviewee || {};
       var theme = state.theme || {};
+      var casters = state.casters || [];
       return [
         iv.name, iv.teamName, iv.teamLogo, iv.teamColor, iv.role, iv.label,
         state.eventName,
-        theme.team1Color, theme.team2Color
+        theme.team1Color, theme.team2Color,
+        (casters[0] || {}).name || '', (casters[1] || {}).name || ''
       ];
     }
 
@@ -207,17 +221,34 @@
       applyTheme(state);
 
       var camRect = CAM_LAYOUTS.interview.single[0];
-      applyCutoutMask(document.getElementById('cd-bg'), [camRect]);
+      var casterRects = CAM_LAYOUTS.interview.casters || [];
+      var casters = state.casters || [];
+      var iv = state.interviewee || {};
+
+      // Center interviewee cam — name:'' since the player card below already
+      // carries the interviewee's (bigger) name; a cam pill would duplicate it.
+      var camsHtml = camFrame({ rect: camRect, name: '', accent: iv.teamColor || '' });
+
+      // Corner caster slots: render + punch a mask hole ONLY for named casters.
+      var activeRects = [camRect];
+      var anyCaster = false;
+      for (var i = 0; i < casterRects.length; i++) {
+        var c = casters[i] || {};
+        if (c.name) {
+          anyCaster = true;
+          activeRects.push(casterRects[i]);
+          camsHtml += camFrame({ rect: casterRects[i], name: c.name });
+        }
+      }
+
+      applyCutoutMask(document.getElementById('cd-bg'), activeRects);
 
       document.querySelector('#cd-header .slot-content').innerHTML =
         eventHeader({ eventName: state.eventName || 'FACEIT Season 8', subtitle: 'INTERVIEW' });
 
-      var iv = state.interviewee || {};
-      document.querySelector('#cd-cams .slot-content').innerHTML =
-        // name:'' — the player card right below the cam already carries the
-        // interviewee's name (bigger); a cam pill would duplicate it stacked.
-        camFrame({ rect: camRect, name: '', accent: iv.teamColor || '' });
+      document.querySelector('#cd-cams .slot-content').innerHTML = camsHtml;
 
+      document.getElementById('cd-card').classList.toggle('has-casters', anyCaster);
       document.querySelector('#cd-card .slot-content').innerHTML = cardHtml(iv);
     }
 

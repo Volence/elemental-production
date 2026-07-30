@@ -8,7 +8,13 @@ import {
   processCollection,
   loadCamLayouts,
   assertReviverSourceSupport,
+  normalizeAssign,
+  ensureBanRevealScene,
+  applyCarryover,
+  isNonEmptyCarry,
   SCENE_MAP,
+  CARRY_SOURCES,
+  BAN_REVEAL,
   CAM_LAYOUTS,
   RawNum,
   COLLECTION_NAME_V2,
@@ -117,11 +123,10 @@ describe('regenerated collections', () => {
       for (const [sceneName, cfg] of Object.entries(SCENE_MAP)) {
         const scene = findScene(obj, sceneName);
         expect(scene, `scene ${sceneName} exists`).toBeTruthy();
-        const rects = CAM_LAYOUTS[cfg.group][cfg.variant];
-        for (const [camName, idx] of Object.entries(cfg.assign)) {
-          const item = findItem(scene, camName);
+        for (const m of normalizeAssign(cfg)) {
+          const item = findItem(scene, m.cam);
           if (!item) continue; // e.g. Between Matches has no live cam source
-          const rect = rects[idx];
+          const rect = CAM_LAYOUTS[m.group][m.variant][m.idx];
           expect(item.pos).toEqual({ x: rect.x, y: rect.y });
           expect(item.bounds).toEqual({ x: rect.w, y: rect.h });
           expect(item.bounds_type).toBe(OBS_BOUNDS_SCALE_OUTER);
@@ -130,6 +135,52 @@ describe('regenerated collections', () => {
           expect(item.locked).toBe(true);
         }
       }
+    }
+  });
+
+  it('Interview scene has Caster 1/Caster 2 corner items at the canonical rects, behind the overlay BS', () => {
+    for (const { obj } of files) {
+      const scene = findScene(obj, 'Interview');
+      const items = scene.settings.items;
+      const [r0, r1] = CAM_LAYOUTS.interview.casters;
+      const c1 = findItem(scene, 'Caster 1');
+      const c2 = findItem(scene, 'Caster 2');
+      expect(c1, 'Caster 1 baked into Interview').toBeTruthy();
+      expect(c2, 'Caster 2 baked into Interview').toBeTruthy();
+      expect(c1.pos).toEqual({ x: r0.x, y: r0.y });
+      expect(c1.bounds).toEqual({ x: r0.w, y: r0.h });
+      expect(c2.pos).toEqual({ x: r1.x, y: r1.y });
+      expect(c2.bounds).toEqual({ x: r1.w, y: r1.h });
+      // Cams must precede the overlay BS in z-order (earlier index = further back).
+      const idxOf = (n) => items.findIndex((it) => it.name === n);
+      expect(idxOf('Caster 1')).toBeLessThan(idxOf('Interview BS'));
+      expect(idxOf('Caster 2')).toBeLessThan(idxOf('Interview BS'));
+      // Wired to the shared global cam sources (unique ids within the scene).
+      const globalC1 = obj.sources.find((s) => s.name === 'Caster 1' && s.id === 'browser_source');
+      expect(c1.source_uuid).toBe(globalC1.uuid);
+      const ids = items.map((it) => it.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it('has a Ban Reveal scene + browser-source right after Map Pick', () => {
+    for (const { obj } of files) {
+      const scene = findScene(obj, 'Ban Reveal');
+      expect(scene, 'Ban Reveal scene exists').toBeTruthy();
+      const bs = obj.sources.find((s) => s.name === 'Ban Reveal BS' && s.id === 'browser_source');
+      expect(bs).toBeTruthy();
+      expect(bs.settings.url).toBe('http://localhost:3001/overlays/hero-bans.html');
+      expect(bs.settings.width).toBe(1920);
+      expect(bs.settings.height).toBe(1080);
+      expect(bs.uuid).toBe(BAN_REVEAL.bsUuid);
+      expect(scene.uuid).toBe(BAN_REVEAL.sceneUuid);
+      // The scene holds the BS as a full-frame item.
+      const item = scene.settings.items.find((it) => it.name === 'Ban Reveal BS');
+      expect(item.source_uuid).toBe(bs.uuid);
+      expect(item.bounds).toEqual({ x: 1920, y: 1080 });
+      // scene_order: Ban Reveal immediately follows Map Pick.
+      const order = obj.scene_order.map((o) => o.name);
+      expect(order[order.indexOf('Map Pick') + 1]).toBe('Ban Reveal');
     }
   });
 
@@ -158,5 +209,114 @@ describe('regenerated collections', () => {
       }
       expect(checked.length).toBeGreaterThan(10);
     }
+  });
+});
+
+describe('ensureBanRevealScene (2c)', () => {
+  // A minimal collection with a Map Pick scene but NO Ban Reveal.
+  function bareCollection() {
+    return {
+      name: 'x',
+      scene_order: [{ name: 'Starting' }, { name: 'Map Pick' }, { name: 'Map Intro' }],
+      sources: [
+        { name: 'Map Pick BS', id: 'browser_source', uuid: 'a-mp', settings: { url: 'x' } },
+        { name: 'Starting', id: 'scene', uuid: 'e-s', settings: { items: [] } },
+        { name: 'Map Pick', id: 'scene', uuid: 'e-mp', settings: { items: [] } },
+        { name: 'Map Intro', id: 'scene', uuid: 'e-mi', settings: { items: [] } },
+      ],
+    };
+  }
+
+  it('creates the scene + browser-source + scene_order entry when absent', () => {
+    const obj = bareCollection();
+    const r = ensureBanRevealScene(obj);
+    expect(r.status).toBe('ban-reveal-created');
+    const scene = obj.sources.find((s) => s.id === 'scene' && s.name === 'Ban Reveal');
+    const bs = obj.sources.find((s) => s.id === 'browser_source' && s.name === 'Ban Reveal BS');
+    expect(scene).toBeTruthy();
+    expect(bs).toBeTruthy();
+    expect(bs.settings.url).toContain('hero-bans.html');
+    // Placed right after Map Pick in scene_order AND in the sources scene list.
+    const order = obj.scene_order.map((o) => o.name);
+    expect(order[order.indexOf('Map Pick') + 1]).toBe('Ban Reveal');
+    const sceneNames = obj.sources.filter((s) => s.id === 'scene').map((s) => s.name);
+    expect(sceneNames[sceneNames.indexOf('Map Pick') + 1]).toBe('Ban Reveal');
+  });
+
+  it('is idempotent — a second call is a no-op (no duplicates)', () => {
+    const obj = bareCollection();
+    ensureBanRevealScene(obj);
+    const afterFirst = JSON.stringify(obj);
+    const r2 = ensureBanRevealScene(obj);
+    expect(r2.status).toBe('ban-reveal-present');
+    expect(JSON.stringify(obj)).toBe(afterFirst);
+    expect(obj.sources.filter((s) => s.name === 'Ban Reveal').length).toBe(1);
+    expect(obj.scene_order.filter((o) => o.name === 'Ban Reveal').length).toBe(1);
+  });
+});
+
+describe('applyCarryover (2d)', () => {
+  function v2Collection() {
+    return {
+      sources: [
+        { name: 'Caster 1', id: 'browser_source', settings: { url: '' } },
+        { name: 'Caster 2', id: 'browser_source', settings: { url: 'http://existing/keep' } },
+        { name: 'Interviewee', id: 'browser_source', settings: { url: '' } },
+        { name: 'Replay', id: 'ffmpeg_source', settings: { local_file: '', looping: false } },
+        { name: 'Background Music', id: 'ffmpeg_source', settings: { local_file: '', playlist: [] } },
+        { name: 'Map Flythrough', id: 'ffmpeg_source', settings: { local_file: '' } }, // present in v2, absent from carry
+      ],
+    };
+  }
+  // Foreign (producer's live) collection to carry FROM.
+  function carryMap() {
+    return new Map([
+      ['Caster 1', { settings: { url: 'http://cam/one' } }],
+      ['Caster 2', { settings: { url: '' } }], // empty -> must NOT clobber
+      ['Interviewee', { settings: { url: 'http://cam/iv', width: 1920 } }],
+      ['Replay', { settings: { local_file: '/media/replay.mkv', is_local_file: true } }],
+      ['Background Music', { settings: { local_file: '', playlist: [{ value: '/m/a.mp3' }] } }],
+      // Map Flythrough / Map Music absent from carry entirely.
+    ]);
+  }
+
+  it('carries non-empty values, never clobbers a non-empty v2 value with an empty carry', () => {
+    const obj = v2Collection();
+    const recs = applyCarryover(obj, carryMap());
+    const get = (n) => obj.sources.find((s) => s.name === n).settings;
+    expect(get('Caster 1').url).toBe('http://cam/one'); // carried
+    expect(get('Caster 2').url).toBe('http://existing/keep'); // empty carry skipped
+    expect(get('Interviewee').url).toBe('http://cam/iv'); // carried
+    expect(get('Replay').local_file).toBe('/media/replay.mkv'); // carried
+    expect(get('Replay').is_local_file).toBe(true); // carried (present)
+    expect(get('Background Music').playlist).toEqual([{ value: '/m/a.mp3' }]); // carried
+    expect(get('Background Music').local_file).toBe(''); // empty carry skipped
+
+    const status = (n, k) => recs.find((r) => r.name === n && r.key === k).status;
+    expect(status('Caster 1', 'url')).toBe('carried');
+    expect(status('Caster 2', 'url')).toBe('skipped-empty');
+    expect(status('Background Music', 'local_file')).toBe('skipped-empty');
+    // A carry source that's entirely absent reports its keys as absent.
+    expect(recs.some((r) => r.name === 'Map Flythrough' && r.status === 'absent')).toBe(true);
+  });
+
+  it('reports target-absent when a CARRY_SOURCES name is missing from v2', () => {
+    const obj = { sources: [] };
+    const recs = applyCarryover(obj, carryMap());
+    // Every configured source is missing from this empty v2.
+    for (const name of Object.keys(CARRY_SOURCES)) {
+      expect(recs.some((r) => r.name === name && r.status === 'target-absent')).toBe(true);
+    }
+  });
+
+  it('isNonEmptyCarry: blanks/empty-arrays skipped, non-blank strings/arrays/bools kept', () => {
+    expect(isNonEmptyCarry('')).toBe(false);
+    expect(isNonEmptyCarry('   ')).toBe(false);
+    expect(isNonEmptyCarry('/x')).toBe(true);
+    expect(isNonEmptyCarry([])).toBe(false);
+    expect(isNonEmptyCarry([1])).toBe(true);
+    expect(isNonEmptyCarry(false)).toBe(true);
+    expect(isNonEmptyCarry(undefined)).toBe(false);
+    expect(isNonEmptyCarry(null)).toBe(false);
   });
 });

@@ -9,6 +9,9 @@
       "name": "Map Pick"
     },
     {
+      "name": "Ban Reveal"
+    },
+    {
       "name": "Map Intro"
     },
     {
@@ -122,6 +125,28 @@
       "sync": 0,
       "flags": 0,
       "volume": 1.0,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Ban Reveal BS",
+      "uuid": "a0000001-000f-4000-8000-00000000000f",
+      "versioned_id": "browser_source",
+      "id": "browser_source",
+      "settings": {
+        "url": "http://localhost:3001/overlays/hero-bans.html",
+        "width": 1920,
+        "height": 1080,
+        "css": "",
+        "reroute_audio": false
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
       "deinterlace_mode": 0,
       "deinterlace_field_order": 0,
       "monitoring_type": 0,
@@ -823,6 +848,57 @@
         ],
         "custom_size": false,
         "id_counter": 4
+      },
+      "mixers": 0,
+      "sync": 0,
+      "flags": 0,
+      "volume": 1,
+      "deinterlace_mode": 0,
+      "deinterlace_field_order": 0,
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "prev_ver": 29,
+      "name": "Ban Reveal",
+      "uuid": "e0000005-000f-4000-8000-00000000000f",
+      "versioned_id": "scene",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Ban Reveal BS",
+            "source_uuid": "a0000001-000f-4000-8000-00000000000f",
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 2,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 1920,
+              "y": 1080
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 1,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
+          }
+        ],
+        "custom_size": false,
+        "id_counter": 1
       },
       "mixers": 0,
       "sync": 0,
@@ -2171,6 +2247,66 @@
             "locked": true
           },
           {
+            "name": "Caster 1",
+            "source_uuid": "c0000003-0001-4000-8000-000000000001",
+            "pos": {
+              "x": 60,
+              "y": 760
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 3,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 420,
+              "y": 262
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 5,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
+          },
+          {
+            "name": "Caster 2",
+            "source_uuid": "c0000003-0002-4000-8000-000000000002",
+            "pos": {
+              "x": 1440,
+              "y": 760
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "rot": 0,
+            "alignment": 5,
+            "bounds_type": 3,
+            "bounds_alignment": 0,
+            "bounds": {
+              "x": 420,
+              "y": 262
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "id": 6,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_type": "normal",
+            "visible": true,
+            "locked": true
+          },
+          {
             "name": "Interview BS",
             "source_uuid": "a0000001-000c-4000-8000-00000000000c",
             "pos": {
@@ -2262,7 +2398,7 @@
           }
         ],
         "custom_size": false,
-        "id_counter": 4
+        "id_counter": 6
       },
       "mixers": 0,
       "sync": 0,

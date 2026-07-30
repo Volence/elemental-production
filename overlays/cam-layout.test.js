@@ -45,6 +45,27 @@ describe('CAM_LAYOUTS shape', () => {
     expect(b).toEqual({ x: 1074, y: 270, w: 501, h: 282 });
   });
 
+  it('wide.single is the recentered between-matches window (equal 115px side margins)', () => {
+    expect(CAM_LAYOUTS.wide.single[0]).toEqual({ x: 115, y: 84, w: 1690, h: 860 });
+    const r = CAM_LAYOUTS.wide.single[0];
+    // Equal side margins => centered.
+    expect(r.x).toBe(1920 - (r.x + r.w));
+  });
+
+  it('interview.casters are the two bottom-corner slots at canonical rects', () => {
+    expect(CAM_LAYOUTS.interview.casters).toEqual([
+      { x: 60, y: 760, w: 420, h: 262 },
+      { x: 1440, y: 760, w: 420, h: 262 },
+    ]);
+    CAM_LAYOUTS.interview.casters.forEach(assertRectShape);
+    // Mirror-symmetric left/right corners.
+    const [l, r] = CAM_LAYOUTS.interview.casters;
+    expect(l.x).toBe(1920 - (r.x + r.w));
+    // Clear of the centered player card region (x within [480, 1440]).
+    expect(l.x + l.w).toBeLessThanOrEqual(480);
+    expect(r.x).toBeGreaterThanOrEqual(1440);
+  });
+
   it('every rect across every group/variant sits within the 1920x1080 canvas', () => {
     allGroups.forEach((g) => {
       Object.keys(CAM_LAYOUTS[g]).forEach((variant) => {

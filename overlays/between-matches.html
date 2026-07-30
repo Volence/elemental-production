@@ -13,10 +13,15 @@
        `layout === 1 ? single : dual` selector from the desk scenes here
        (flagged explicitly by the Task 4 review as a trap for this task).
 
-       CAM RECT: { x:200, y:30, w:1690, h:900 } — bottom edge at y=930,
-       leaving only a 30px strip ABOVE the cam and a 150px strip BELOW it
-       (930-1080) before the canvas edge. That geometry drives two layout
-       decisions that differ from the desk scenes:
+       CAM RECT: { x:115, y:84, w:1690, h:860 } — CENTERED with equal 115px
+       side margins (owner QA batch 1: the inherited v1 200-left/30-right
+       margins left the window visibly off-center). Top pushed to y:84 so
+       the event header band sits FULLY ABOVE the cutout (no overlap — the
+       owner reported the old y:30 cam with the header floating over its top
+       edge as "weirdly cut"). Bottom edge at y=944, leaving an 84px strip
+       ABOVE the cam and a 136px strip BELOW it (944-1080) before the canvas
+       edge. That geometry drives one layout decision that differs from the
+       desk scenes:
 
        1) NO NAME PILL on the cam frame (camFrame({..., name: ''})). The
           desk scenes' pills identify WHICH caster is in which seat; this
@@ -27,16 +32,11 @@
           when name is '' (see components-v2.js), so this falls out for
           free; no bg=transparent-style branching needed.
 
-       2) The v2 event header (top-center, per spec §5) does NOT fit in the
-          30px strip above the cam — a real header pill (~40-50px tall) is
-          taller than the headroom. Rather than shrink the header illegibly
-          or relocate it off-brand from every other cam scene, it floats
-          near the very top and intentionally overlaps the first ~15-25px
-          of the transparent cutout, reading as a title bar pinned over the
-          top of the camera feed (a standard broadcast treatment for an
-          ambient/waiting-room shot, distinct from the desk scenes where the
-          cams start much lower at y:120 and the header sits cleanly above
-          them with room to spare).
+       HEADER CLEARANCE (owner QA batch 1): the event header band (top-center,
+       per spec §5) is a ~44px pill; at top:22 it ends near y:66, a clean
+       ~18px above the cam's y:84 top edge — no overlap. This replaces the
+       pre-QA treatment where the header intentionally overlapped the top of
+       a y:30 cam (which read as clipped text to the owner).
 
        EVENT TITLE OVERFLOW FIX (spec §5): eventHeader()'s `.v2-event-name`
        already ellipsizes via `flex:0 1 auto; min-width:0; overflow:hidden`
@@ -44,8 +44,9 @@
        the header's width, same as map-intro's `#mi-top` carry-over fix.
        `#cd-header` here gets `max-width: 900px` for exactly that reason
        (this was the scene the overflow bug was originally reported against
-       — spec §5 calls it out by name). Verified in Task 5 with a seeded
-       80+ char event name.
+       — spec §5 calls it out by name). A scene-local `padding-right` on the
+       ellipsized name keeps the "…" off the pill edge so a truncated long
+       name never looks jammed. Verified with a seeded 80+ char event name.
 
        COUNTDOWN CONTRACT (preserved EXACTLY from the pre-v2 scene, read the
        old buildKey/update comments before touching this):
@@ -100,18 +101,21 @@
        left:50%+translateX(-50%) so the slideDown/slideUp entrance
        transforms never clobber the centering (same gotcha as every other
        v2 scene's shell wrappers). */
-    #cd-header { position: absolute; top: 18px; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 900px; }
+    #cd-header { position: absolute; top: 22px; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 900px; }
+    /* Keep the ellipsis of a truncated event name off the pill's right edge so
+       a long name never looks jammed/"weirdly cut" (owner QA batch 1). */
+    #cd-header .v2-event-name { padding-right: 8px; }
     #cd-cams { position: absolute; inset: 0; }
 
-    /* Bottom band starts at y:950 — a clean 20px below the cam's y:930
-       bottom edge, so neither the countdown box nor the schedule row ever
-       overlaps the cutout. Both share the same top/bottom so their content
-       baselines line up. */
-    /* Cam window bottom is y=930; start the band at 942 and run to 16px off
-       the canvas edge so a stacked panel (label + two 32px logo rows) fits
-       without grazing the overflow:hidden edges. */
-    #cd-countdown { position: absolute; left: 24px; top: 942px; bottom: 16px; width: 240px; }
-    #cd-schedule { position: absolute; left: 284px; right: 24px; top: 942px; bottom: 16px; }
+    /* Bottom band: cam window bottom is now y=944 (owner QA batch 1: cam
+       recentered to y:84 + h:860). Start the band at 956 — a clean 12px
+       below the cutout, matching the earlier polish commit's breathing room
+       — and run to 16px off the canvas edge so a stacked panel (label + two
+       32px logo rows) fits without grazing the overflow:hidden edges.
+       Neither the countdown box nor the schedule row overlaps the cutout;
+       both share the same top/bottom so their content baselines line up. */
+    #cd-countdown { position: absolute; left: 24px; top: 956px; bottom: 16px; width: 240px; }
+    #cd-schedule { position: absolute; left: 284px; right: 24px; top: 956px; bottom: 16px; }
     /* Both wrappers resolve a real height via top+bottom; .slot-content
        (a plain block child) needs an explicit height:100% to inherit it —
        height:100% on a descendant only resolves against an ancestor with a

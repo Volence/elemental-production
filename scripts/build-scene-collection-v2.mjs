@@ -70,6 +70,13 @@ const OBS_ALIGN_CENTER = 0;
 // Scene name -> which CAM_LAYOUTS group/variant, and which cam source maps to
 // which rect index within that variant's rect array. Assignment is by SOURCE
 // NAME (never JSON item order). Only these scenes are touched.
+//
+// An assign value is EITHER a bare rect index (uses the entry's group/variant)
+// OR a spec object { variant, idx, ensure } that overrides the variant within
+// the entry's group and, when ensure:true, has the generator CREATE the cam
+// scene-item if the scene doesn't already contain it (used for the Interview
+// caster corner slots, which don't exist in the v1 collection). See
+// normalizeAssign() below.
 const SCENE_MAP = {
   'Casters':            { group: 'desk',       variant: 'dual',   assign: { 'Caster 1': 0, 'Caster 2': 1 } },
   'Casters Lobby':      { group: 'desk',       variant: 'dual',   assign: { 'Caster 1': 0, 'Caster 2': 1 } },
@@ -77,7 +84,67 @@ const SCENE_MAP = {
   'Map Score':          { group: 'desk',       variant: 'dual',   assign: { 'Caster 1': 0, 'Caster 2': 1 } },
   'Casters Flythrough': { group: 'flythrough', variant: 'dual',   assign: { 'Caster 1': 0, 'Caster 2': 1 } },
   'Between Matches':    { group: 'wide',       variant: 'single', assign: { 'Caster 1': 0 } },
-  'Interview':          { group: 'interview',  variant: 'single', assign: { 'Interviewee': 0 } },
+  'Interview':          { group: 'interview',  variant: 'single', assign: {
+    'Interviewee': 0,
+    'Caster 1': { variant: 'casters', idx: 0, ensure: true },
+    'Caster 2': { variant: 'casters', idx: 1, ensure: true },
+  } },
+};
+
+// Normalize an entry's `assign` map into a flat list of resolved cam mappings:
+// { cam, group, variant, idx, ensure }. A bare-number value inherits the
+// entry's group/variant and never ensures; a spec object may override variant
+// (within the same group) and request ensure-create.
+function normalizeAssign(cfg) {
+  const out = [];
+  for (const [cam, spec] of Object.entries(cfg.assign)) {
+    if (typeof spec === 'number') {
+      out.push({ cam, group: cfg.group, variant: cfg.variant, idx: spec, ensure: false });
+    } else {
+      out.push({
+        cam,
+        group: spec.group || cfg.group,
+        variant: spec.variant || cfg.variant,
+        idx: spec.idx,
+        ensure: !!spec.ensure,
+      });
+    }
+  }
+  return out;
+}
+
+// ---- Ban Reveal scene (owner QA batch 1) --------------------------------
+// The generator ensures a "Ban Reveal" scene exists (idempotently): a scene
+// source holding one full-frame "Ban Reveal BS" browser_source pointed at the
+// hero-bans overlay, plus a scene_order entry immediately after "Map Pick".
+// UUIDs are FIXED literals (next in each family's series: browser sources
+// a0000001-000X, scenes e0000005-000X) so re-running never mints new ids and
+// the ensure step stays a no-op once present.
+const BAN_REVEAL = {
+  sceneName: 'Ban Reveal',
+  sceneUuid: 'e0000005-000f-4000-8000-00000000000f',
+  bsName: 'Ban Reveal BS',
+  bsUuid: 'a0000001-000f-4000-8000-00000000000f',
+  url: 'http://localhost:3001/overlays/hero-bans.html',
+  afterScene: 'Map Pick',
+};
+
+// ---- Settings carryover (owner QA batch 1) ------------------------------
+// `--carry-from <path>` reads another OBS scene-collection JSON (e.g. the
+// producer's live collection under ~/.config/obs-studio/basic/scenes/) and
+// copies the producer's own settings BY SOURCE NAME into both v2 files, so a
+// re-import doesn't wipe their camera URLs / media paths. Only NON-EMPTY carry
+// values are copied — an empty value in the carry file never clobbers a
+// non-empty value already in v2.
+const CARRY_SOURCES = {
+  'Caster 1':                 ['url'],
+  'Caster 2':                 ['url'],
+  'Interviewee':              ['url'],
+  'Background Music':         ['local_file', 'playlist', 'is_local_file'],
+  'Casters Background Music': ['local_file', 'playlist', 'is_local_file'],
+  'Map Flythrough':           ['local_file', 'playlist', 'is_local_file'],
+  'Map Music':                ['local_file', 'playlist', 'is_local_file'],
+  'Replay':                   ['local_file', 'playlist', 'is_local_file'],
 };
 
 const FILES = [
@@ -156,12 +223,162 @@ function applyTransform(item, rect) {
   item.locked = true;
 }
 
+// Build a fresh OBS scene-item in the collection's house key-order (mirrors an
+// existing cam item). Transform fields are placeholders; applyTransform() then
+// overwrites pos/bounds/bounds_type/alignment/scale/locked in place, preserving
+// key order.
+function makeSceneItem(name, sourceUuid, id) {
+  return {
+    name: name,
+    source_uuid: sourceUuid,
+    pos: { x: 0, y: 0 },
+    scale: { x: 1, y: 1 },
+    rot: 0,
+    alignment: OBS_ALIGN_TOP_LEFT,
+    bounds_type: 0,
+    bounds_alignment: OBS_ALIGN_CENTER,
+    bounds: { x: 0, y: 0 },
+    crop_left: 0,
+    crop_top: 0,
+    crop_right: 0,
+    crop_bottom: 0,
+    id: id,
+    group_item_backup: false,
+    scale_filter: 'disable',
+    blend_type: 'normal',
+    visible: true,
+    locked: false,
+  };
+}
+
+// A full-frame (1920x1080, "Scale to inner bounds" type 2) scene-item — the
+// shape every "...BS" overlay browser-source uses inside its scene.
+function makeOverlayItem(name, sourceUuid, id) {
+  const it = makeSceneItem(name, sourceUuid, id);
+  it.bounds_type = 2;
+  it.bounds = { x: 1920, y: 1080 };
+  it.locked = true;
+  return it;
+}
+
+// Ensure the "Ban Reveal" scene + its browser-source exist (idempotent). Adds
+// the browser_source right after "Map Pick BS", the scene right after the
+// "Map Pick" scene in `sources`, and a scene_order entry right after
+// "Map Pick". Returns a change record (created | present).
+function ensureBanRevealScene(obj) {
+  const sources = obj.sources || (obj.sources = []);
+  const hasScene = sources.some((s) => s && s.id === 'scene' && s.name === BAN_REVEAL.sceneName);
+  if (hasScene) return { status: 'ban-reveal-present' };
+
+  // Browser source — mirror the "Map Pick BS" shape exactly.
+  const bs = {
+    prev_ver: 29,
+    name: BAN_REVEAL.bsName,
+    uuid: BAN_REVEAL.bsUuid,
+    versioned_id: 'browser_source',
+    id: 'browser_source',
+    settings: {
+      url: BAN_REVEAL.url,
+      width: 1920,
+      height: 1080,
+      css: '',
+      reroute_audio: false,
+    },
+    mixers: 0,
+    sync: 0,
+    flags: 0,
+    volume: 1,
+    deinterlace_mode: 0,
+    deinterlace_field_order: 0,
+    monitoring_type: 0,
+    private_settings: {},
+  };
+
+  // Scene source — mirror the "Map Pick" scene shape (one full-frame BS item).
+  const scene = {
+    prev_ver: 29,
+    name: BAN_REVEAL.sceneName,
+    uuid: BAN_REVEAL.sceneUuid,
+    versioned_id: 'scene',
+    id: 'scene',
+    settings: {
+      items: [makeOverlayItem(BAN_REVEAL.bsName, BAN_REVEAL.bsUuid, 1)],
+      custom_size: false,
+      id_counter: 1,
+    },
+    mixers: 0,
+    sync: 0,
+    flags: 0,
+    volume: 1,
+    deinterlace_mode: 0,
+    deinterlace_field_order: 0,
+    monitoring_type: 0,
+    private_settings: {},
+  };
+
+  const insertAfter = (arr, pred, item) => {
+    const i = arr.findIndex(pred);
+    if (i === -1) arr.push(item); else arr.splice(i + 1, 0, item);
+  };
+  insertAfter(sources, (s) => s && s.name === 'Map Pick BS', bs);
+  insertAfter(sources, (s) => s && s.id === 'scene' && s.name === BAN_REVEAL.afterScene, scene);
+
+  const order = obj.scene_order || (obj.scene_order = []);
+  if (!order.some((o) => o && o.name === BAN_REVEAL.sceneName)) {
+    insertAfter(order, (o) => o && o.name === BAN_REVEAL.afterScene, { name: BAN_REVEAL.sceneName });
+  }
+
+  return { status: 'ban-reveal-created' };
+}
+
+// True if a carry value is worth copying. Strings must be non-blank; arrays
+// (playlist) must be non-empty; booleans (is_local_file) always count as
+// present. Anything else (null/undefined) is skipped.
+function isNonEmptyCarry(v) {
+  if (typeof v === 'string') return v.trim() !== '';
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === 'boolean') return true;
+  return false;
+}
+
+// Copy the producer's own source settings (by name) from a foreign collection
+// into `obj`. Only non-empty carry values are written; an empty carry value
+// never clobbers an existing v2 value. `carryByName` is Map<name, settings>.
+// Returns per-(source,key) records: carried | skipped-empty | absent.
+function applyCarryover(obj, carryByName) {
+  const records = [];
+  const byName = new Map((obj.sources || []).filter((s) => s && s.name).map((s) => [s.name, s]));
+  for (const [name, keys] of Object.entries(CARRY_SOURCES)) {
+    const target = byName.get(name);
+    const src = carryByName.get(name);
+    if (!target) { records.push({ name, key: null, status: 'target-absent' }); continue; }
+    const targetSettings = target.settings || (target.settings = {});
+    const srcSettings = (src && src.settings) || null;
+    for (const key of keys) {
+      if (!srcSettings || !(key in srcSettings)) { records.push({ name, key, status: 'absent' }); continue; }
+      const val = srcSettings[key];
+      if (!isNonEmptyCarry(val)) { records.push({ name, key, status: 'skipped-empty' }); continue; }
+      targetSettings[key] = val;
+      records.push({ name, key, status: 'carried' });
+    }
+  }
+  return records;
+}
+
 function processCollection(obj) {
   const changes = [];
   obj.name = COLLECTION_NAME_V2;
 
+  // Ensure the Ban Reveal scene exists BEFORE the cam-bake pass (so the pass
+  // sees a complete collection). Idempotent.
+  const banReveal = ensureBanRevealScene(obj);
+  changes.push({ scene: BAN_REVEAL.sceneName, cam: null, status: banReveal.status });
+
   const scenes = (obj.sources || []).filter((s) => s && s.id === 'scene');
   const byName = new Map(scenes.map((s) => [s.name, s]));
+  // Global source lookup for ensure-create (a scene-item's source_uuid must
+  // equal the global source's uuid).
+  const globalByName = new Map((obj.sources || []).filter((s) => s && s.name).map((s) => [s.name, s]));
 
   for (const [sceneName, cfg] of Object.entries(SCENE_MAP)) {
     const scene = byName.get(sceneName);
@@ -169,31 +386,94 @@ function processCollection(obj) {
       changes.push({ scene: sceneName, cam: null, status: 'scene-missing' });
       continue;
     }
-    const rects = ((CAM_LAYOUTS[cfg.group] || {})[cfg.variant]) || [];
-    const items = (scene.settings && scene.settings.items) || [];
-    for (const [camName, rectIdx] of Object.entries(cfg.assign)) {
-      const rect = rects[rectIdx];
-      const item = items.find((it) => it && it.name === camName);
+    const settings = scene.settings || (scene.settings = {});
+    const items = settings.items || (settings.items = []);
+    for (const m of normalizeAssign(cfg)) {
+      const rects = ((CAM_LAYOUTS[m.group] || {})[m.variant]) || [];
+      const rect = rects[m.idx];
+      let item = items.find((it) => it && it.name === m.cam);
       if (!rect) {
-        changes.push({ scene: sceneName, cam: camName, status: 'rect-missing' });
+        changes.push({ scene: sceneName, cam: m.cam, status: 'rect-missing' });
+        continue;
+      }
+      if (!item && m.ensure) {
+        // Create the missing cam scene-item, wiring it to the global source of
+        // the same name and inserting it just after the last cam already in
+        // the scene (cams sit BELOW the overlay "...BS" in z-order — earlier
+        // array index = further back — so they show THROUGH the cutout).
+        const globalSrc = globalByName.get(m.cam);
+        if (!globalSrc) {
+          changes.push({ scene: sceneName, cam: m.cam, status: 'global-source-absent' });
+          continue;
+        }
+        const raw = settings.id_counter;
+        const prevId = (raw instanceof RawNum) ? Number(raw.raw) : (typeof raw === 'number' ? raw : items.length);
+        const nextId = prevId + 1;
+        settings.id_counter = nextId;
+        item = makeSceneItem(m.cam, globalSrc.uuid, nextId);
+        // Insert right after the LAST existing cam item so cams stay grouped
+        // and in mapping order, all preceding the overlay "...BS" in z-order.
+        const CAM_ITEM_NAMES = ['Interviewee', 'Caster 1', 'Caster 2'];
+        let insertIdx = 0;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i] && CAM_ITEM_NAMES.indexOf(items[i].name) !== -1) insertIdx = i + 1;
+        }
+        items.splice(insertIdx, 0, item);
+        applyTransform(item, rect);
+        changes.push({ scene: sceneName, cam: m.cam, status: 'created', rect });
         continue;
       }
       if (!item) {
         // Mapped cam source absent from this scene (e.g. Between Matches has no
         // live cam, only a Replay media source) — nothing to bake.
-        changes.push({ scene: sceneName, cam: camName, status: 'source-absent', rect });
+        changes.push({ scene: sceneName, cam: m.cam, status: 'source-absent', rect });
         continue;
       }
       applyTransform(item, rect);
-      changes.push({ scene: sceneName, cam: camName, status: 'baked', rect });
+      changes.push({ scene: sceneName, cam: m.cam, status: 'baked', rect });
     }
   }
   return changes;
 }
 
+// Read a foreign OBS collection JSON and index its sources by name. Plain
+// JSON.parse is fine — we only read values OUT of it, never re-serialize it.
+function loadCarrySources(carryPath) {
+  const text = fs.readFileSync(carryPath, 'utf8');
+  let obj;
+  try {
+    obj = JSON.parse(text);
+  } catch (e) {
+    console.error(`ERROR: --carry-from file is not valid JSON (${carryPath}): ${e.message}`);
+    console.error('Expected an OBS scene-collection JSON (e.g. ~/.config/obs-studio/basic/scenes/<Collection>.json).');
+    process.exit(2);
+  }
+  const map = new Map();
+  for (const s of (obj.sources || [])) {
+    if (s && s.name && !map.has(s.name)) map.set(s.name, s);
+  }
+  return map;
+}
+
 function main() {
   assertReviverSourceSupport();
   const check = process.argv.includes('--check');
+  const carryIdx = process.argv.indexOf('--carry-from');
+  const carryPath = carryIdx !== -1 ? process.argv[carryIdx + 1] : null;
+  if (carryIdx !== -1 && !carryPath) {
+    console.error('ERROR: --carry-from requires a path to an OBS scene-collection JSON.');
+    process.exit(2);
+  }
+  let carryByName = null;
+  if (carryPath) {
+    if (!fs.existsSync(carryPath)) {
+      console.error(`ERROR: --carry-from file not found: ${carryPath}`);
+      process.exit(2);
+    }
+    carryByName = loadCarrySources(carryPath);
+    console.log(`Carryover source: ${carryPath} (${carryByName.size} named sources)`);
+  }
+
   let anyStale = false;
   const problems = []; // scene-missing / rect-missing across all files
 
@@ -201,20 +481,38 @@ function main() {
     const orig = fs.readFileSync(file, 'utf8');
     const obj = parseLossless(orig);
     const changes = processCollection(obj);
+    let carryRecords = null;
+    if (carryByName) carryRecords = applyCarryover(obj, carryByName);
     const out = stringifyLossless(obj);
     const stale = out !== orig;
     anyStale = anyStale || stale;
 
     const baked = changes.filter((c) => c.status === 'baked');
+    const created = changes.filter((c) => c.status === 'created');
     const absent = changes.filter((c) => c.status === 'source-absent');
-    const missing = changes.filter((c) => c.status === 'scene-missing' || c.status === 'rect-missing');
+    const missing = changes.filter((c) => c.status === 'scene-missing' || c.status === 'rect-missing' || c.status === 'global-source-absent');
+    const banReveal = changes.find((c) => c.status === 'ban-reveal-created' || c.status === 'ban-reveal-present');
     console.log(`\n${file}`);
     console.log(`  collection name -> "${COLLECTION_NAME_V2}"`);
+    if (banReveal) {
+      console.log(`  ban-reveal  ${banReveal.status === 'ban-reveal-created' ? 'CREATED scene + browser-source + scene_order entry' : 'already present (no-op)'}`);
+    }
     for (const c of baked) {
       console.log(`  baked  ${c.scene} / ${c.cam}  pos ${c.rect.x},${c.rect.y}  bounds ${c.rect.w}x${c.rect.h}`);
     }
+    for (const c of created) {
+      console.log(`  create ${c.scene} / ${c.cam}  pos ${c.rect.x},${c.rect.y}  bounds ${c.rect.w}x${c.rect.h}  (new scene-item)`);
+    }
     for (const c of absent) {
       console.log(`  skip   ${c.scene} / ${c.cam}  (source not present in scene; rect ${c.rect.w}x${c.rect.h} reserved)`);
+    }
+    if (carryRecords) {
+      const carried = carryRecords.filter((r) => r.status === 'carried');
+      const skippedEmpty = carryRecords.filter((r) => r.status === 'skipped-empty');
+      const carryAbsent = carryRecords.filter((r) => r.status === 'absent' || r.status === 'target-absent');
+      console.log(`  carryover: ${carried.length} carried, ${skippedEmpty.length} skipped-empty, ${carryAbsent.length} absent`);
+      for (const r of carried) console.log(`    carried  ${r.name}.${r.key}`);
+      for (const r of carryAbsent) console.log(`    absent   ${r.name}${r.key ? '.' + r.key : ' (source not in v2)'}`);
     }
     // A missing SCENE or missing RECT means the mapping no longer matches the
     // collection (e.g. a scene was renamed in OBS) — surface it loudly so it
@@ -250,4 +548,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   main();
 }
 
-export { parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, assertReviverSourceSupport, SCENE_MAP, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_OUTER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };
+export { parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, assertReviverSourceSupport, normalizeAssign, makeSceneItem, makeOverlayItem, ensureBanRevealScene, applyCarryover, isNonEmptyCarry, loadCarrySources, SCENE_MAP, CARRY_SOURCES, BAN_REVEAL, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_OUTER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };
