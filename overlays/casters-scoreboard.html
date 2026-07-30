@@ -225,12 +225,17 @@
     var lastRenderKey = '';
     var lastState = null;
     function update(state) {
+      // Stash latest state (before the dedup guard) so local interactions
+      // (switchMap) can force a repaint without waiting for a poll.
       lastState = state;
       var renderKey = JSON.stringify([
         state.teams, state.maps, state.casters, state.casterLayout,
         state.playerStats, state.bestOf, state.eventName, state.theme,
         state.selectedMapIdx, state.heroBans, state.perMapBans
       ]);
+      // Commit lastRenderKey only at genuine render points below — the
+      // malformed-round early return must leave it unset so a corrected
+      // frame with the same key still repaints (renderKey-latch bug).
       if (renderKey === lastRenderKey) return;
       applyTheme(state);
       const el = document.getElementById('root');
@@ -446,6 +451,8 @@
 
     window.switchMap = function(idx) {
       currentMap = idx;
+      // State content is unchanged by a local click, so null the key to
+      // defeat the dedup guard and repaint with the new currentMap.
       lastRenderKey = null;
       if (lastState) update(lastState);
     };
