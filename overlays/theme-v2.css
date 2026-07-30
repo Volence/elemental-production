@@ -49,3 +49,130 @@
    info icons >=44px, ban tiles 56px. Enforced by component defaults below,
    documented here for reviewers. */
 .v2-ban-tile { width: 56px; height: 56px; border-radius: var(--panel-radius); }
+
+/* ===========================================================================
+   SHARED COMPONENT-INTERNAL STYLES (Task 4 — HUD is the first consumer, but
+   these belong to the components in components-v2.js / pinwheel.js, NOT to the
+   gameplay-hud scene. Scenes only own absolute positioning of the whole blocks.
+   Tasks 5-7 (map-pick / map-intro) reuse these verbatim via topFrame().)
+   =========================================================================== */
+
+/* ── teamPlate() internals ──────────────────────────────────────────────── */
+/* The plate content is a flex row: logo | name | score. The score glows in
+   the plate's team color via --plate-color (set inline by the scene on the
+   plate row, since teamPlate only emits --wash-color). Right-side plates mirror
+   the row (logo outer, score inner) off the .v2-wash-right class teamPlate adds. */
+.v2-plate-content {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px; height: 100%; box-sizing: border-box;
+}
+.v2-plate-logo {
+  width: 44px; height: 44px; border-radius: var(--panel-radius);
+  object-fit: cover; flex: none; border: 1px solid rgba(255,255,255,0.15);
+}
+.v2-plate-name {
+  font-size: 30px; font-weight: 800; color: #fff; white-space: nowrap;
+  letter-spacing: 0.5px; text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+  overflow: hidden; text-overflow: ellipsis;
+}
+.v2-plate-score {
+  font-size: 50px; font-weight: 800; line-height: 1; color: #fff;
+  margin-left: auto; flex: none;
+  text-shadow: 0 0 14px var(--plate-color, rgba(255,255,255,0.6));
+}
+.v2-wash-right .v2-plate-content { flex-direction: row-reverse; }
+.v2-wash-right .v2-plate-score { margin-left: 0; margin-right: auto; }
+
+/* ── banTile() internals ────────────────────────────────────────────────── */
+/* .v2-ban-tile already sizes to 56px above; add the frame + image fill here.
+   banTile sets border-color inline (team color); this supplies width/style. */
+.v2-ban-tile {
+  border: 1px solid rgba(255,255,255,0.2); overflow: hidden;
+  background: #242938; box-sizing: border-box;
+}
+.v2-ban-tile-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: grayscale(15%) brightness(0.85);
+}
+.v2-ban-tile-empty { width: 100%; height: 100%; background: #242938; }
+.v2-ban-tile-name {
+  font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.75);
+  text-transform: uppercase; letter-spacing: 0.4px; text-align: center;
+  max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── ban wing ───────────────────────────────────────────────────────────── */
+/* A wing is a row of tile-over-name cells. banTile() emits the tile and its
+   name label as two FLAT siblings (no per-ban wrapper), so column-flow grid
+   with two auto rows lays each tile directly above its name without needing a
+   wrapper element — this also matches components-v2.js's _banWing() output. */
+.v2-wing {
+  display: grid; grid-auto-flow: column; grid-template-rows: auto auto;
+  align-items: center; justify-items: center; gap: 3px 5px;
+  padding: 5px 7px; background: rgba(8,10,15,0.92);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: var(--panel-radius);
+  box-sizing: border-box;
+}
+
+/* ── pinwheel medallion (pinwheel.js SVG wrapper) ───────────────────────── */
+.v2-medallion {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  flex: none;
+}
+.v2-medallion::before {
+  content: ''; position: absolute; inset: 4px; border-radius: 50%;
+  background: rgba(8,10,15,0.9); border: 1px solid rgba(255,255,255,0.12);
+}
+.v2-medallion svg { position: relative; }
+
+/* ── event header pill (eventHeader()) ──────────────────────────────────── */
+.v2-event-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 14px; background: var(--panel-bg); border: var(--panel-border);
+  border-radius: var(--panel-radius); white-space: nowrap;
+}
+.v2-event-name {
+  position: relative; font-size: 22px; font-weight: 800; letter-spacing: 1px;
+  color: rgba(255,255,255,0.85); text-transform: uppercase;
+}
+/* eventHeader's built-in .v2-underline sits inside .v2-event-name — pin it as a
+   subtle gradient underline. (The map pill carries the primary underline.) */
+.v2-event-header .v2-underline { position: absolute; left: 0; right: 0; bottom: -4px; }
+.v2-event-subtitle {
+  font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.4);
+}
+
+/* ── map pill (+ gradient underline) ────────────────────────────────────── */
+/* Underline via ::after (not a span) so topFrame's plain <div class=v2-map-pill>
+   gets it too — consistent across the HUD and Tasks 5-7. */
+.v2-map-pill {
+  position: relative; display: inline-flex; align-items: center;
+  padding: 7px 16px; background: var(--panel-bg); border: var(--panel-border);
+  border-radius: var(--panel-radius);
+  font-size: 28px; font-weight: 800; color: #fff; letter-spacing: 0.5px;
+  text-transform: uppercase; white-space: nowrap;
+}
+.v2-map-pill::after {
+  content: ''; position: absolute; left: 16px; right: 16px; bottom: 4px;
+  height: 2px; border-radius: 1px; background: var(--grad4);
+}
+
+/* ── map-winner pips (mapPips()) ────────────────────────────────────────── */
+.v2-pips { display: flex; gap: 3px; align-items: center; }
+.v2-pip {
+  width: 26px; height: 22px; border-radius: 2px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: #fff;
+  background: #2a2f3a;
+}
+/* Current (live) map — white with a glow; color carries "now" per spec. */
+.v2-pip-live { background: #fff; color: #0a0c11; box-shadow: 0 0 8px rgba(255,255,255,0.7); }
+/* Padding pips beyond the played maps up to bestOf — dark, recede. */
+.v2-pip-empty { background: #1e222b; color: rgba(255,255,255,0.3); }
+
+/* ── topFrame() row internals (used by Tasks 5-7; the HUD composes the same
+   pieces into three separate screen regions instead of one row) ─────────── */
+.v2-top-frame { display: flex; align-items: stretch; gap: 10px; }
+.v2-center-block {
+  display: flex; align-items: center; gap: 12px;
+}

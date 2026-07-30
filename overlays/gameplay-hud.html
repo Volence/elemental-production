@@ -3,371 +3,227 @@
 <head>
   <meta charset="UTF-8">
   <title>Gameplay HUD Overlay</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;600;700;800&display=swap">
+  <!-- Broadcast v2: Geist via @font-face in fonts-v2.css (NO CDN hotlinks —
+       forbidden in OBS). theme-v2.css owns the design tokens + shared
+       component-internal styles; this file's own <style> owns only the
+       scene's absolute positioning of the three wrapper slots. -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: transparent; overflow: hidden; width: 1920px; height: 1080px;
-      font-family: 'Oswald', 'Bebas Neue', sans-serif; color: white;
+      font-family: var(--font-v2); color: #fff;
     }
+    #root { position: relative; width: 1920px; height: 1080px; }
 
-    .hud { position: relative; width: 1920px; height: 1080px; }
+    /* ── Three positioned wrapper slots (built ONCE by shell) ──────────────
+       Layout budget (design spec §3, 1920x1080): side plates within y<110
+       (full height of that band), center band within y<62, and the gap
+       columns x≈590–710 (and mirrored 1210–1330) stay clear. The side
+       regions are 510px wide from a 40px inset → left ends at x=550, right
+       starts at x=1370, both clear of the gap columns. The center band is
+       shrink-to-fit and centered above the objective panel. */
+    .hud-slot { position: absolute; }
+    #hud-left  { top: 14px; left: 40px;  width: 510px; }
+    #hud-right { top: 14px; right: 40px; width: 510px; }
+    /* Centered via left/right:0 + margin:auto on a fit-content box rather than
+       translateX(-50%): the slideDown entrance animates `transform`, and its
+       `both` fill would otherwise clobber a translateX and de-center the band. */
+    #hud-center { top: 0; left: 0; right: 0; margin: 0 auto; width: fit-content; }
 
-    /* ===== Unified top strip (event + series tracker) ===== */
-    .top-strip {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 15;
-      display: flex;
-      align-items: stretch;
-      height: 34px;
-      background: rgba(8,10,14,0.96);
-      border-radius: 0 0 6px 6px;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-top: none;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.6);
-      overflow: hidden;
-    }
+    /* Side region row: plate (outer) grows, ban wing (inner) is fixed width.
+       .hud-row-right mirrors it so the plate stays on the outer edge. */
+    .hud-row { display: flex; align-items: stretch; gap: 6px; }
+    .hud-row-right { flex-direction: row-reverse; }
+    .hud-row .v2-panel { flex: 1 1 auto; min-width: 0; }
+    .hud-row .v2-wing  { flex: 0 0 auto; }
 
-    /* Event name section */
-    .strip-event {
-      display: flex;
-      align-items: center;
-      padding: 0 14px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: rgba(255,255,255,0.6);
-      white-space: nowrap;
-      border-right: 1px solid rgba(255,255,255,0.1);
-    }
+    /* Center band: map pill + winner pips sit together to the right of the
+       medallion (component styles for the pieces themselves live in theme-v2.css). */
+    .v2-center-map { display: flex; align-items: center; gap: 10px; }
 
-    /* Individual map slot in the series tracker */
-    .strip-map {
-      display: flex;
-      align-items: center;
-      gap: 0;
-      padding: 0 10px;
-      position: relative;
-      border-right: 1px solid rgba(255,255,255,0.06);
-      cursor: default;
-    }
-    .strip-map:last-of-type { border-right: none; }
-
-    .strip-map .sm-icon {
-      width: 20px;
-      height: 20px;
-      border-radius: 3px;
-      object-fit: cover;
-      margin-right: 6px;
-      opacity: 0.7;
-    }
-
-    .strip-map .sm-name {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: rgba(255,255,255,0.6);
-      white-space: nowrap;
-    }
-
-    .strip-map .sm-score {
-      font-size: 10px;
-      font-weight: 700;
-      margin-left: 5px;
-      color: rgba(255,255,255,0.4);
-    }
-
-    /* Current map highlight */
-    .strip-map.current {
-      background: linear-gradient(180deg, rgba(249,115,22,0.2) 0%, rgba(239,68,68,0.15) 100%);
-    }
-    .strip-map.current .sm-name { color: rgba(255,255,255,0.95); }
-    .strip-map.current .sm-icon { opacity: 1; }
-    .strip-map.current::after {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 2px;
-      background: var(--accent-gradient, linear-gradient(90deg, #f97316, #ef4444));
-    }
-
-    /* Won maps */
-    .strip-map.won-t1::after {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 2px;
-      background: var(--team1-color, #3b82f6);
-    }
-    .strip-map.won-t1 .sm-score { color: var(--team1-color, #3b82f6); }
-
-    .strip-map.won-t2::after {
-      content: '';
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 2px;
-      background: var(--team2-color, #ef4444);
-    }
-    .strip-map.won-t2 .sm-score { color: var(--team2-color, #ef4444); }
-
-    /* Best-of section */
-    .strip-bo {
-      display: flex;
-      align-items: center;
-      padding: 0 14px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: rgba(255,255,255,0.45);
-      white-space: nowrap;
-      border-left: 1px solid rgba(255,255,255,0.1);
-    }
-
-    /* ===== Team bars ===== */
-    .top-bar {
-      position: absolute;
-      top: 46px;
-      width: 100%;
-      height: 64px;
-      display: flex;
-      justify-content: space-between;
-      z-index: 10;
-      pointer-events: none;
-      padding: 0 56px;
-    }
-
-    .team-bar {
-      position: relative;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      overflow: hidden;
-      background-color: var(--score-bg, rgba(12,15,18,0.92));
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-    }
-    .team-bar .bar-content {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      width: 100%;
-      height: 100%;
-      padding: 0 8px;
-      gap: 6px;
-    }
-
-    /* Left bar */
-    .team-bar.left {
-      width: 29%;
-      border-radius: 0 4px 4px 0;
-      background-image: url('LeftTeam_1.png');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-    }
-    .team-bar.left .bar-content {
-      justify-content: flex-start;
-    }
-    .team-bar.left .team-score {
-      margin-left: auto;
-      padding-right: 6px;
-    }
-
-    /* Right bar */
-    .team-bar.right {
-      width: 29%;
-      border-radius: 4px 0 0 4px;
-      background-image: url('RightTeam_1.png');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-    }
-    .team-bar.right .bar-content {
-      justify-content: flex-end;
-      flex-direction: row-reverse;
-    }
-    .team-bar.right .team-score {
-      margin-right: auto;
-      padding-left: 6px;
-    }
-
-    .team-logo {
-      width: 34px;
-      height: 34px;
-      border-radius: 4px;
-      object-fit: cover;
-      flex-shrink: 0;
-      border: 1px solid rgba(255,255,255,0.15);
-    }
-
-    .team-name {
-      font-size: 19px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      white-space: nowrap;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.7);
-    }
-
-    .team-score {
-      font-size: 27px;
-      font-weight: 700;
-      min-width: 24px;
-      text-align: center;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.7);
-    }
-
-    .score-divider {
-      width: 1px;
-      height: 28px;
-      background: rgba(255,255,255,0.25);
-      flex-shrink: 0;
-    }
-
-    /* Hero bans */
-    .bans-group {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-    }
-    .ban-icon {
-      width: 26px;
-      height: 26px;
-      border-radius: 3px;
-      overflow: hidden;
-      border: 1px solid rgba(239,68,68,0.6);
-      position: relative;
-      flex-shrink: 0;
-    }
-    .ban-icon img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      filter: grayscale(15%) brightness(0.85);
-    }
-    .ban-icon::after {
-      content: '';
-      position: absolute;
-      top: -1px;
-      right: -1px;
-      width: 8px;
-      height: 8px;
-      background: var(--accent, #ef4444);
-      clip-path: polygon(100% 0, 0 0, 100% 100%);
-    }
-
-    /* Animations */
-    .top-strip { transform: translateX(-50%); }
-    @keyframes dropDown { to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-    .team-bar { opacity: 0; }
-    .team-bar.left { transform: translateX(-20px); animation: slideIn 0.5s ease-out 0.2s both; }
-    .team-bar.right { transform: translateX(20px); animation: slideIn 0.5s ease-out 0.3s both; }
-    @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+    /* overlay-core appends its volatile render container as #root's LAST child
+       (after the shell wrappers). This scene never uses it — render() writes
+       into each wrapper's persistent .slot-content instead (the render-vs-reflow
+       split) — so the trailing, id-less container is hidden. Every shell wrapper
+       has an id, so this only matches that container. */
+    #root > div:not([id]) { display: none; }
   </style>
-  <link rel="stylesheet" href="./animations.css">
 </head>
 <body>
-  <div class="hud" id="root" style="animation: fadeIn 0.4s ease-out both;"></div>
+  <div id="root"></div>
 
+  <!-- Script order matters: helpers + SVG + component builders must all be
+       global before overlay-core wires the render loop. NO ?./?? in the inline
+       script (OBS Chromium 103 floor); template literals/const/arrow are fine. -->
   <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./overlay-core.js"></script>
   <script src="./state-sync.js"></script>
   <script>
-    // Loaded via state-sync.js for SSE + polling fallback
-    const API = 'http://localhost:3001';
-    const GRAPHICS = `${API}/assets/graphics`;
-    const CACHE_BUST = `v=${Date.now()}`;
-    let heroData = [];
-    let lastRenderKey = '';
+    var API = 'http://localhost:3001';
+    var heroData = [];
 
-    async function loadHeroes() {
-      heroData = window.__HERO_DATA__ || await fetch(`${API}/api/heroes`).then(r => r.json()).catch(() => []);
+    // Dep (overlay-core loads it before the first render): hero portraits for
+    // the ban wings. Per-dep catch in overlay-core means a fetch failure just
+    // yields empty heroData rather than blocking the scene.
+    function loadHeroes() {
+      if (window.__HERO_DATA__) { heroData = window.__HERO_DATA__; return Promise.resolve(); }
+      return fetch(API + '/api/heroes')
+        .then(function (r) { return r.json(); })
+        .then(function (d) { heroData = d || []; })
+        .catch(function () { heroData = []; });
     }
 
-    function getHeroPortrait(key) {
-      const hero = findHeroEntry(heroData, key);
-      return hero ? hero.portrait : '';
+    // One ban wing: findHeroEntry() resolves each stored hero key to a
+    // (pre-proxied) portrait + display name, then banTile() renders the 56px
+    // slash tile with its name label. Empty bans → no wing (avoid a stray box).
+    function banWing(keys, teamColor) {
+      if (!keys || keys.length === 0) return '';
+      var html = '<div class="v2-wing" style="border-color:' + teamColor + '">';
+      for (var i = 0; i < keys.length; i++) {
+        var hero = findHeroEntry(heroData, keys[i]);
+        var portrait = hero ? hero.portrait : '';
+        var heroName = hero ? hero.name : keys[i];
+        html += banTile({ portrait: portrait, heroName: heroName, teamColor: teamColor });
+      }
+      html += '</div>';
+      return html;
     }
 
-    function update(state) {
-      var renderKey = JSON.stringify([
-        state.teams, state.maps, state.heroBans, state.swapSides,
-        state.eventName, state.bestOf, state.font?.family
-      ]);
-      if (renderKey === lastRenderKey) return;
-      lastRenderKey = renderKey;
+    function scoreOf(team) {
+      return (team.score === undefined || team.score === null) ? 0 : team.score;
+    }
+
+    // ── shell: builds the three entrance-animated wrappers exactly ONCE ──────
+    // Each wrapper carries an INLINE `animation:` (not an animations.css utility
+    // class) so state-sync.js's replayAnimation() re-runs the entrance on OBS
+    // show/hide: it snapshots each animated element's inline style.animation into
+    // data-anim, sets animation:none, forces reflow, then restores from data-anim.
+    // Inline strings round-trip through that path losslessly (a class would
+    // restore via '' which also works, but inline is what the mechanism reads
+    // first and keeps the exact timing/delay here in one place). render() only
+    // ever rewrites the inner .slot-content, so these wrapper animations NEVER
+    // replay on a data change — that's the fix for the old "team bars re-slide on
+    // every score change" bug. data-shell-marker proves the shell was built once.
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'hud-v2');
+      root.innerHTML =
+        '<div id="hud-left" class="hud-slot" style="animation: slideRight 0.5s ease-out 0.10s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="hud-center" class="hud-slot" style="animation: slideDown 0.5s ease-out 0.15s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="hud-right" class="hud-slot" style="animation: slideLeft 0.5s ease-out 0.20s both;">' +
+          '<div class="slot-content"></div></div>';
+    }
+
+    // ── key: EXACTLY the state leaves render reads (per overlay-core's contract
+    // and lower-third's comment style). applyTheme() also runs in render and sets
+    // many CSS vars nothing here consumes; only the theme leaves this scene's
+    // colors actually derive from (team1Color/team2Color) are keyed. font.family
+    // is keyed for parity with the runtime contract even though the scene renders
+    // in Geist (--font-v2); roundScore is keyed per spec though only
+    // name/status/winner drive the current pips render. ──────────────────────
+    function key(state) {
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var font = state.font || {};
+      var hb = state.heroBans || {};
+      var maps = (state.maps || []).map(function (m) {
+        return [m.status, m.winner, m.name, m.roundScore];
+      });
+      return [
+        t1.name, t1.logo, t1.score, t1.color,
+        t2.name, t2.logo, t2.score, t2.color,
+        maps,
+        hb.team1, hb.team2,
+        state.swapSides, state.eventName, state.bestOf,
+        theme.team1Color, theme.team2Color, font.family
+      ];
+    }
+
+    // ── render: writes into the shell's persistent .slot-content divs, NOT the
+    // runtime's trailing container (which this scene hides). This is the sanctioned
+    // three-region composition: topFrame() returns ONE flex row (plate·wing·center·
+    // wing·plate) which map-intro/map-pick will use, but the HUD needs the plates at
+    // the far screen edges and the center band centered — three separate screen
+    // regions — so it composes the SAME component pieces (teamPlate, banTile wing,
+    // eventHeader, pinwheelSVG medallion, map pill, mapPips) directly instead.
+    //
+    // swapSides is honored exactly like topFrame: the team OBJECTS and their colors
+    // AND ban wings flip with the screen side, but the medallion hub scores/colors
+    // and the winner pips keep TRUE team1/team2 identity (map results belong to the
+    // team that won them, not to a screen side — same invariant as mapPips/mapStripClass).
+    function render(state) {
       applyTheme(state);
-      const el = document.getElementById('root');
-      const swap = !!state.swapSides;
-      const left = swap ? (state.teams?.team2 || {}) : (state.teams?.team1 || {});
-      const right = swap ? (state.teams?.team1 || {}) : (state.teams?.team2 || {});
-      const leftBans = swap ? (state.heroBans?.team2 || []) : (state.heroBans?.team1 || []);
-      const rightBans = swap ? (state.heroBans?.team1 || []) : (state.heroBans?.team2 || []);
-      const maps = state.maps || [];
-      const currentMapIdx = findCurrentMapIndex(maps);
-      const fontFamily = state.font?.family || 'Oswald';
-      const bestOf = state.bestOf || maps.length || 5;
 
-      // Ban icons
-      const bansHtml = (bans) => bans.length > 0 ? `<div class="bans-group">${
-        bans.map(k => `<div class="ban-icon"><img src="${getHeroPortrait(k)}"></div>`).join('')
-      }</div>` : '';
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      // Resolve team colors with the same precedence applyTheme uses
+      // (theme override wins, then the team object's own color).
+      var t1color = theme.team1Color || t1.color || '#3b82f6';
+      var t2color = theme.team2Color || t2.color || '#ef4444';
 
-      // Series map slots for unified top strip
-      const seriesHtml = maps.map((m, i) => {
-        const cls = mapStripClass(m, i, currentMapIdx);
-        const scoreLabel = m.status === 'completed' && m.roundScore ? m.roundScore : '';
-        const showIcon = m.image ? `<img class="sm-icon" src="${proxyImg(m.image)}">` : '';
+      var swap = !!state.swapSides;
+      var leftTeam = swap ? t2 : t1;
+      var rightTeam = swap ? t1 : t2;
+      var leftColor = swap ? t2color : t1color;
+      var rightColor = swap ? t1color : t2color;
 
-        return `
-          <div class="strip-map ${cls}">
-            ${showIcon}
-            <span class="sm-name">${m.name || 'TBD'}</span>
-            ${scoreLabel ? `<span class="sm-score">${scoreLabel}</span>` : ''}
-          </div>
-        `;
-      }).join('');
+      var heroBans = state.heroBans || {};
+      var leftBans = (swap ? heroBans.team2 : heroBans.team1) || [];
+      var rightBans = (swap ? heroBans.team1 : heroBans.team2) || [];
 
-      el.innerHTML = `
-        <div class="top-strip" style="font-family:'${fontFamily}',sans-serif">
-          <div class="strip-event">${state.eventName || 'MATCH'}</div>
-          ${seriesHtml}
-          <div class="strip-bo">BO${bestOf}</div>
-        </div>
+      var maps = state.maps || [];
+      var bestOf = state.bestOf || maps.length || 5;
 
-        <div class="top-bar">
-          <div class="team-bar left">
-            <div class="bar-content" style="font-family:'${fontFamily}',sans-serif">
-              ${left.logo ? `<img class="team-logo" src="${proxyImg(left.logo)}">` : ''}
-              <span class="team-name">${left.name || 'TEAM 1'}</span>
-              ${bansHtml(leftBans)}
-              <div class="score-divider"></div>
-              <span class="team-score">${left.score ?? 0}</span>
-            </div>
-          </div>
+      // LEFT region: plate (outer edge) + ban wing (inner, toward center).
+      document.querySelector('#hud-left .slot-content').innerHTML =
+        '<div class="hud-row" style="--plate-color:' + leftColor + '">' +
+          teamPlate({ side: 'left', name: leftTeam.name, logo: leftTeam.logo,
+                      score: scoreOf(leftTeam), color: leftColor, linework: true }) +
+          banWing(leftBans, leftColor) +
+        '</div>';
 
-          <div class="team-bar right">
-            <div class="bar-content" style="font-family:'${fontFamily}',sans-serif">
-              ${right.logo ? `<img class="team-logo" src="${proxyImg(right.logo)}">` : ''}
-              <span class="team-name">${right.name || 'TEAM 2'}</span>
-              ${bansHtml(rightBans)}
-              <div class="score-divider"></div>
-              <span class="team-score">${right.score ?? 0}</span>
-            </div>
-          </div>
-        </div>
-      `;
+      // RIGHT region: mirrored — plate on the outer edge, wing inner.
+      document.querySelector('#hud-right .slot-content').innerHTML =
+        '<div class="hud-row hud-row-right" style="--plate-color:' + rightColor + '">' +
+          teamPlate({ side: 'right', name: rightTeam.name, logo: rightTeam.logo,
+                      score: scoreOf(rightTeam), color: rightColor, linework: true }) +
+          banWing(rightBans, rightColor) +
+        '</div>';
+
+      // CENTER band: event pill | pinwheel medallion (TRUE scores in hub, TRUE
+      // team colors) | map pill + winner pips.
+      var hubText = scoreOf(t1) + '·' + scoreOf(t2); // "2·1"
+      var currentName = findCurrentMap(maps).name || '';
+      document.querySelector('#hud-center .slot-content').innerHTML =
+        '<div class="v2-center-block">' +
+          eventHeader({ eventName: state.eventName || 'MATCH', subtitle: 'BO' + bestOf }) +
+          '<div class="v2-medallion">' +
+            pinwheelSVG({ color1: t1color, color2: t2color, size: 62, hubText: hubText }) +
+          '</div>' +
+          '<div class="v2-center-map">' +
+            '<div class="v2-map-pill">' + escapeHtml(currentName) + '</div>' +
+            mapPips({ maps: maps, bestOf: bestOf, team1Color: t1color, team2Color: t2color }) +
+          '</div>' +
+        '</div>';
     }
 
-    loadHeroes().then(() => stateSync(update));
+    defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render,
+      deps: [loadHeroes]
+    });
   </script>
 </body>
 </html>
