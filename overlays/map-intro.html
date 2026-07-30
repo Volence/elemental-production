@@ -122,10 +122,17 @@
     }
 
     /* ── Matchup band: [bans] team ··· score-hub ··· team [bans] ──────────── */
+    /* 1fr|auto|1fr grid, NOT a centered flex row: with flex, unequal team-name/
+       tag/ban widths shove the score hub off true screen center (owner QA
+       batch 3 — the hub sat visibly left of the map name's axis). The grid
+       pins the hub to the exact page center and each side fills toward it. */
     .mi-match {
-      display: flex; align-items: center; justify-content: center; gap: 26px;
-      margin-top: 52px;
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+      column-gap: 26px; margin-top: 52px; padding: 0 40px;
     }
+    .mi-side { display: flex; align-items: center; gap: 26px; min-width: 0; }
+    .mi-side-left { justify-content: flex-end; }
+    .mi-side-right { justify-content: flex-start; }
     .mi-bans { display: flex; gap: 10px; flex: none; }
     /* Ban art tile (deck scale — shared banArtTile() anatomy: render/portrait
        fallback + red slash + name overlay). Layout only here; the shared look
@@ -388,11 +395,15 @@
         '</div>';
 
       html += '<div class="mi-match" style="animation: slideUp 0.55s cubic-bezier(0.16,1,0.3,1) 0.46s both;">' +
-        bansGroupHtml(leftBans, leftColor) +
-        teamBlockHtml(leftTeam, leftColor, leftTag, 'left') +
+        '<div class="mi-side mi-side-left">' +
+          bansGroupHtml(leftBans, leftColor) +
+          teamBlockHtml(leftTeam, leftColor, leftTag, 'left') +
+        '</div>' +
         hubHtml +
-        teamBlockHtml(rightTeam, rightColor, rightTag, 'right') +
-        bansGroupHtml(rightBans, rightColor) +
+        '<div class="mi-side mi-side-right">' +
+          teamBlockHtml(rightTeam, rightColor, rightTag, 'right') +
+          bansGroupHtml(rightBans, rightColor) +
+        '</div>' +
         '</div>';
 
       // Series pips — TRUE winner colors (mapPips never swap-flips).

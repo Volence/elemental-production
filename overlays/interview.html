@@ -158,7 +158,9 @@
 
       var teamChipHtml = '';
       if (iv.teamName) {
-        var logoHtml = iv.teamLogo ? safeImg(iv.teamLogo, { 'class': 'iv-team-chip-logo', alt: iv.teamName }) : '';
+        // v2-idle-breathe (owner QA batch 3): leaf img, no entrance animation
+        // of its own — safe per theme-v2.css's idle-motion rules.
+        var logoHtml = iv.teamLogo ? safeImg(iv.teamLogo, { 'class': 'iv-team-chip-logo v2-idle-breathe', alt: iv.teamName }) : '';
         var borderColor = teamColor || 'rgba(255,255,255,0.2)';
         teamChipHtml = '<div class="iv-chip iv-team-chip" style="border-color:' + escapeHtml(borderColor) + '">' +
           logoHtml + '<span>' + escapeHtml(iv.teamName) + '</span></div>';

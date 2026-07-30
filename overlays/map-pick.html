@@ -282,7 +282,10 @@
     // .mp-chip-right's flex-direction reverse.
     function chip(team, color, side) {
       var sideClass = side === 'right' ? ' mp-chip-right' : '';
-      var logoHtml = team.logo ? safeImg(team.logo, { 'class': 'mp-chip-logo', alt: team.name || '' }) : '';
+      // v2-idle-breathe (owner QA batch 3): leaf img inside the chip — the
+      // entrance `both` fill lives on the shell wrapper, not on this element,
+      // so the idle transform is safe per theme-v2.css's idle-motion rules.
+      var logoHtml = team.logo ? safeImg(team.logo, { 'class': 'mp-chip-logo v2-idle-breathe', alt: team.name || '' }) : '';
       return '<div class="mp-chip' + sideClass + '">' +
         logoHtml +
         '<div class="mp-chip-name">' + escapeHtml(team.name || '') + '</div>' +
@@ -298,7 +301,9 @@
       return '<div class="mp-header-row">' +
         chip(t1, t1color, 'left') +
         '<div class="mp-crest">' +
-          '<div class="v2-medallion">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 100 }) + '</div>' +
+          // Idle glow on the crest medallion (owner QA batch 3 eye candy) —
+          // opacity/filter based, so it can't collide with any transform.
+          '<div class="v2-medallion v2-idle-glow">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 100 }) + '</div>' +
           '<div class="mp-event-block">' +
             '<div class="mp-event-title">' + escapeHtml(eventName || 'MATCH') + '</div>' +
             '<div class="v2-underline mp-event-underline"></div>' +

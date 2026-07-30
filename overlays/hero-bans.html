@@ -337,7 +337,9 @@
         }
       }
       document.querySelector('#hb-heading .slot-content').innerHTML =
-        '<div class="hb-medallion"><div class="v2-medallion">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 46 }) + '</div></div>' +
+        // Idle glow on the crest medallion (owner QA batch 3 eye candy) —
+        // opacity/filter based, safe alongside the wrapper's scaleIn entrance.
+        '<div class="hb-medallion"><div class="v2-medallion v2-idle-glow">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 46 }) + '</div></div>' +
         '<div class="hb-heading-text">HERO BANS</div>' +
         '<div class="v2-underline hb-heading-underline"></div>' +
         chipHtml;

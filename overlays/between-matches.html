@@ -172,6 +172,50 @@
     }
     .bm-upnext-underline { position: absolute; left: 0; right: 0; bottom: 0; }
 
+    /* ── Fallback single-match UP NEXT strip (schedule empty) ──────────────
+       The stacked-rows panel above is sized for a 3-up schedule split; when
+       the whole band is ONE panel (the teams-state fallback), that layout
+       strands a tiny label top-left, abuses the time slot for a floating
+       "VS" at the far right, and leaves the middle empty (owner QA batch 3).
+       This variant lays the single matchup out horizontally instead: a
+       bordered UP NEXT label block, then a 1fr|auto|1fr grid so the VS chip
+       sits at the exact center of the remaining width with the two teams
+       reading toward it (same centering rationale as map-intro's .mi-match). */
+    .bm-next-strip {
+      width: 100%; height: 100%; position: relative; overflow: hidden;
+      display: flex; align-items: center; gap: 30px; padding: 0 34px;
+    }
+    .bm-next-label {
+      flex: none; font-size: 24px; font-weight: 800; letter-spacing: 2.5px;
+      text-transform: uppercase; color: #fff;
+      padding-right: 30px; border-right: 1px solid rgba(255,255,255,0.18);
+    }
+    .bm-next-match {
+      flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr auto 1fr;
+      align-items: center; column-gap: 40px;
+    }
+    .bm-next-team { display: flex; align-items: center; gap: 18px; min-width: 0; }
+    .bm-next-team-left { justify-content: flex-end; }
+    .bm-next-team-right { justify-content: flex-start; }
+    .bm-next-logo {
+      width: 56px; height: 56px; border-radius: var(--panel-radius); object-fit: cover;
+      flex: none; border: 1px solid rgba(255,255,255,0.2); background: rgba(8,10,15,0.6);
+    }
+    .bm-next-logo-empty { background: rgba(255,255,255,0.08); }
+    /* Team-color accent: a slim vertical cap on each team block's outer edge
+       (color = identity accent, panel stays neutral — the package rule). */
+    .bm-next-accent { width: 5px; height: 44px; border-radius: 2px; flex: none; }
+    .bm-next-name {
+      font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+    }
+    .bm-next-vs {
+      font-size: 26px; font-weight: 800; letter-spacing: 3px; flex: none;
+      color: rgba(255,255,255,0.45); padding: 8px 18px;
+      border: 1px solid rgba(255,255,255,0.14); border-radius: var(--panel-radius);
+      background: rgba(255,255,255,0.04);
+    }
+
     /* overlay-core appends its volatile render container as #root's LAST
        child; this scene never uses it directly (render() writes into each
        wrapper's persistent .slot-content). Every shell child above carries
@@ -228,6 +272,33 @@
         '</div>';
     }
 
+    // Fallback UP NEXT strip (schedule empty): horizontal single-matchup band —
+    // see the .bm-next-strip CSS comment. Team colors ride as slim outer accent
+    // caps; the VS chip is pinned to the center of the post-label width.
+    function nextStripTeamHtml(name, logo, color, side) {
+      var logoHtml = logo
+        ? safeImg(logo, { 'class': 'bm-next-logo v2-idle-breathe', alt: name || '' })
+        : '<div class="bm-next-logo bm-next-logo-empty"></div>';
+      var accentHtml = '<div class="bm-next-accent" style="background:' + escapeHtml(color) + '"></div>';
+      var nameHtml = '<span class="bm-next-name">' + escapeHtml(name || 'TBD') + '</span>';
+      var inner = side === 'left'
+        ? accentHtml + logoHtml + nameHtml
+        : nameHtml + logoHtml + accentHtml;
+      return '<div class="bm-next-team bm-next-team-' + side + '">' + inner + '</div>';
+    }
+
+    function nextStripHtml(t1, t2, t1color, t2color) {
+      return '<div class="bm-next-strip v2-panel bm-upnext">' +
+        '<div class="bm-next-label">Up Next</div>' +
+        '<div class="bm-next-match">' +
+          nextStripTeamHtml(t1.name, t1.logo, t1color, 'left') +
+          '<div class="bm-next-vs">VS</div>' +
+          nextStripTeamHtml(t2.name, t2.logo, t2color, 'right') +
+        '</div>' +
+        '<span class="v2-underline bm-upnext-underline"></span>' +
+        '</div>';
+    }
+
     function countdownBoxHtml(remainingSeconds) {
       return '<div class="bm-cd-panel v2-panel">' +
         '<div class="bm-cd-label">Starting In</div>' +
@@ -262,9 +333,14 @@
       var sched = schedule.map(function (m) {
         return [m.team1, m.team2, m.team1Logo, m.team2Logo, m.completed, m.score1, m.score2, m.label, m.time, m.upNext];
       });
+      // Team colors feed the fallback strip's accent caps (render reads them
+      // via the same theme-first fallback chain as the other scenes), so they
+      // must be keyed or a color-only edit would never repaint the strip.
+      var theme = state.theme || {};
       return [
-        sched, t1.name, t1.logo, t2.name, t2.logo,
-        state.eventName, countdown.visible !== false
+        sched, t1.name, t1.logo, t1.color, t2.name, t2.logo, t2.color,
+        state.eventName, countdown.visible !== false,
+        theme.team1Color, theme.team2Color
       ];
     }
 
@@ -302,10 +378,10 @@
           return schedItemHtml(m, idx, !!m.upNext || idx === nextIdx);
         }).join('');
       } else {
-        itemsHtml = schedItemHtml({
-          team1: t1.name, team2: t2.name, team1Logo: t1.logo, team2Logo: t2.logo,
-          label: 'Up Next', completed: false, time: 'VS'
-        }, 0, true);
+        var theme = state.theme || {};
+        var t1color = theme.team1Color || t1.color || '#3b82f6';
+        var t2color = theme.team2Color || t2.color || '#ef4444';
+        itemsHtml = nextStripHtml(t1, t2, t1color, t2color);
       }
       document.querySelector('#cd-schedule .slot-content').innerHTML = itemsHtml;
     }

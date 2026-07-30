@@ -83,6 +83,40 @@ First round of owner feedback on the v2 package, landed pre-release:
   button that resets the interviewee (name, cam URL, visibility, team, role,
   label) to empty in one click.
 
+### Owner QA batch 3
+
+Third round of owner feedback on the v2 package:
+
+- **Black Ban Reveal root-caused (OBS-side, not overlay code).** The Ban
+  Reveal browser source's CEF page instance can wedge at scene-collection
+  import — it produces no frames at all (not even injected CSS paints) until
+  its page is force-reloaded. The overlay itself was verified rendering
+  correctly in isolation and inside OBS after a refresh.
+- **"Refresh Overlays" now heals every overlay source.** The
+  `/api/overlays/refresh` endpoint enumerates browser sources from OBS by
+  URL (`/overlays/`) instead of a hardcoded name list that silently missed
+  `Ban Reveal BS` and `Casters Flythrough Hud` — exactly the two scenes the
+  owner reported blank. Caster cams (vdo.ninja) are skipped by construction.
+- **Map Intro hub truly centered.** The matchup band is a `1fr|auto|1fr`
+  grid, pinning score + pinwheel to the exact page center regardless of
+  team-name/tag/ban-tile widths (a centered flex row let asymmetric sides
+  shove the hub visibly off the map name's axis). Map Intro's background
+  remains fully transparent — the "opaque" look in QA was the owner's
+  `Map Flythrough` media source having an empty file path.
+- **Between Matches UP NEXT strip.** The schedule-empty fallback is a proper
+  horizontal band — bordered UP NEXT label, team-color accent caps, logos,
+  and a VS chip pinned to the center of the matchup area — replacing the
+  stacked 3-up panel layout that stranded a tiny label top-left and a
+  floating "VS" at the far right of a mostly-empty bar.
+- **Idle-motion eye candy extended.** Map Pick chip logos + crest medallion,
+  Hero Bans heading medallion, and Interview team-chip logos join the
+  idle-motion package (breathe on leaf logos, glow on crests — per the
+  documented transform-collision rules).
+- **Frozen-bans diagnosis.** A leftover `heroBans` producer override was
+  freezing bans empty while `perMapBans` held real FACEIT data — cleared
+  in-session; the derived resolver immediately surfaced the real bans
+  (Ban Reveal, Map Intro bookends, map-board tiles all confirmed live).
+
 ### Owner QA batch 2
 
 Second round of owner feedback on the v2 package:

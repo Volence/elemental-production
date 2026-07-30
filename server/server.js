@@ -1980,17 +1980,27 @@ app.post('/api/interviewee/cam', async (req, res) => {
 });
 
 /** Refresh all overlay browser sources */
+// Force-reload every overlay browser source's page in OBS. Doubles as the
+// self-heal for wedged CEF instances: a browser source can come up black (no
+// frames ever, not even injected CSS paints) after a scene-collection import
+// and stay black until its page is force-reloaded — owner QA batch 3, Ban
+// Reveal BS. Sources are ENUMERATED from OBS by URL rather than hardcoded:
+// the old fixed list silently missed 'Ban Reveal BS' and 'Casters Flythrough
+// Hud' (added in later QA batches) — exactly the two scenes the owner
+// reported black. URL-matching also skips caster cams (vdo.ninja) for free;
+// refreshing one of those would drop a live camera feed mid-show.
 app.post('/api/overlays/refresh', async (req, res) => {
-  const BROWSER_SOURCES = [
-    'Gameplay HUD', 'Casters BS', 'Casters Lobby BS', 'Casters Scoreboard BS',
-    'Casters Map Score BS', 'Series Winner BS', 'Between Matches BS',
-    'Starting Soon BS', 'BRB BS', 'Interview BS', 'End Stream BS',
-    'Map Intro BS', 'Map Pick BS',
-  ];
-  for (const source of BROWSER_SOURCES) {
-    await obs.refreshBrowserSource(source);
+  const inputs = await obs.getInputList();
+  const results = {};
+  for (const input of inputs) {
+    if (input.inputKind !== 'browser_source') continue;
+    const settings = await obs.rawCall('GetInputSettings', { inputName: input.inputName });
+    const url = settings?.inputSettings?.url || '';
+    if (!url.includes('/overlays/')) continue;
+    results[input.inputName] = await obs.refreshBrowserSource(input.inputName);
   }
-  res.json({ success: true, refreshed: BROWSER_SOURCES.length });
+  const count = Object.values(results).filter(Boolean).length;
+  res.json({ success: true, refreshed: count, results });
 });
 
 /** BRB mode: switch to BRB scene + start timer */
