@@ -25,6 +25,7 @@ import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
 import { buildTeamsUpdate, buildMapsUpdate } from './faceit-merge.js';
+import { findLocalMapImage } from './map-image-resolver.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -38,8 +39,13 @@ const DATA_DIR = process.env.ELEMENTAL_USER_DATA
 // Ensure writable subdirectories exist
 const FONTS_DIR = path.join(DATA_DIR, 'fonts');
 const CACHE_DIR = path.join(DATA_DIR, 'cache');
+// Producer drop-in folder for local-first map screenshots (see
+// data/map-images/README.md for the naming contract). OverFast's CDN
+// screenshots are the fallback when no local file matches.
+const MAP_IMAGES_DIR = path.join(DATA_DIR, 'map-images');
 if (!fs.existsSync(FONTS_DIR)) fs.mkdirSync(FONTS_DIR, { recursive: true });
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+if (!fs.existsSync(MAP_IMAGES_DIR)) fs.mkdirSync(MAP_IMAGES_DIR, { recursive: true });
 
 app.use(cors());
 app.use(express.json());
@@ -167,6 +173,7 @@ app.use('/overlays', express.static(overlaysDir, { setHeaders: noCacheForHtmlOnl
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { setHeaders: noCacheHeaders }));
 app.use('/fonts', express.static(FONTS_DIR));
 app.use('/cache', express.static(CACHE_DIR));
+app.use('/map-images', express.static(MAP_IMAGES_DIR));
 
 // SSE clients for real-time overlay updates
 const sseClients = new Set();
@@ -1132,20 +1139,36 @@ app.delete('/api/overrides', (req, res) => {
 let cachedMaps = null;
 let mapsCacheTime = 0;
 
+/**
+ * Overlay the local-first map image pack (data/map-images/, see its
+ * README for the naming contract) onto OverFast's map list. Local files
+ * are checked fresh on EVERY call (not cached alongside the OverFast list)
+ * so a producer dropping a file in mid-broadcast shows up on the next
+ * /api/maps poll without needing a server restart or waiting out the
+ * 1-hour OverFast cache TTL below.
+ */
+function withLocalMapImages(maps) {
+  return (maps || []).map(map => {
+    const localFile = findLocalMapImage(map.name, MAP_IMAGES_DIR);
+    if (!localFile) return map; // OverFast screenshot stays the fallback
+    return { ...map, screenshot: `http://localhost:${PORT}/map-images/${encodeURIComponent(localFile)}` };
+  });
+}
+
 /** Get all Overwatch maps from OverFast API (cached for 1 hour) */
 app.get('/api/maps', async (req, res) => {
   const ONE_HOUR = 3600000;
   if (cachedMaps && Date.now() - mapsCacheTime < ONE_HOUR) {
-    return res.json(cachedMaps);
+    return res.json(withLocalMapImages(cachedMaps));
   }
   try {
     const resp = await fetch('https://overfast-api.tekrop.fr/maps');
     if (!resp.ok) throw new Error(`OverFast API ${resp.status}`);
     cachedMaps = await resp.json();
     mapsCacheTime = Date.now();
-    res.json(cachedMaps);
+    res.json(withLocalMapImages(cachedMaps));
   } catch (e) {
-    if (cachedMaps) return res.json(cachedMaps); // serve stale cache on error
+    if (cachedMaps) return res.json(withLocalMapImages(cachedMaps)); // serve stale cache on error
     res.status(500).json({ error: e.message });
   }
 });

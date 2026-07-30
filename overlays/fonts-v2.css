@@ -1,0 +1,34 @@
+/* ELMT Broadcast Package v2 — Geist Sans @font-face declarations.
+   Referenced by theme-v2.css's --font-v2 (falls back to Inter/system-ui
+   when these files aren't present, so this stylesheet is safe to load
+   unconditionally).
+
+   Font: Geist Sans by Vercel. License: SIL Open Font License 1.1 (OFL-1.1).
+   Source: https://github.com/vercel/geist-font (packages/geist-sans)
+   Files fetched via the Fontsource mirror (same OFL-1.1 license, Latin
+   subset, static per-weight woff2 instances — not the variable font).
+   See overlays/fonts/LICENSE-Geist.txt for the full license text. */
+
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('./fonts/Geist-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('./fonts/Geist-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('./fonts/Geist-ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}

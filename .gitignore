@@ -27,5 +27,9 @@ release
 .env
 data/cache/
 data/state.json
+# Producer drop-in map screenshots (see data/map-images/README.md) — the
+# README is the only thing tracked in this folder.
+data/map-images/*
+!data/map-images/README.md
 .superpowers/
 .worktrees/
