@@ -118,5 +118,11 @@ function mapStripClass(map, index, currentIdx) {
 // CJS export guard so Node/Vitest can import these for tests; harmless in the
 // browser since `module` is undefined there and this block never executes.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { findCurrentMapIndex: findCurrentMapIndex, findCurrentMap: findCurrentMap, mapStripClass: mapStripClass };
+  module.exports = {
+    findCurrentMapIndex: findCurrentMapIndex,
+    findCurrentMap: findCurrentMap,
+    mapStripClass: mapStripClass,
+    hexToAlpha: hexToAlpha,
+    proxyImg: proxyImg
+  };
 }
