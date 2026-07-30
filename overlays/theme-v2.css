@@ -1,0 +1,51 @@
+/* ELMT Broadcast Package v2 — design tokens.
+   Source of truth: docs/superpowers/specs/2026-07-29-obs-scene-redesign-design.md §2.
+   Team colors are set at runtime by applyTheme() (--team1-color/--team2-color);
+   everything else is static brand. */
+:root {
+  /* Element accents (elmt.gg) */
+  --elmt-red: hsl(0 85% 60%);
+  --elmt-gold: hsl(45 95% 55%);
+  --elmt-green: hsl(140 70% 50%);
+  --elmt-blue: hsl(200 90% 55%);
+  /* Surfaces */
+  --panel-bg: rgba(8, 10, 15, 0.92);
+  --panel-border: 1px solid rgba(255, 255, 255, 0.12);
+  --panel-radius: 3px; /* sharp corners — approved; do not round */
+  /* Type */
+  --font-v2: 'Geist Sans', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  /* Accent line */
+  --grad4: linear-gradient(90deg, var(--elmt-red), var(--elmt-gold), var(--elmt-green), var(--elmt-blue));
+}
+
+.v2-panel {
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  border-radius: var(--panel-radius);
+}
+
+.v2-underline {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--grad4);
+}
+
+/* Team wash: apply with class + inline --wash-color (set from team color) */
+/* background-image (not the shorthand) so the wash composites over
+   .v2-panel's background-color instead of replacing it */
+.v2-wash-left { background-image: linear-gradient(100deg, var(--wash-color, transparent), transparent 68%); }
+.v2-wash-right { background-image: linear-gradient(260deg, var(--wash-color, transparent), transparent 68%); }
+
+/* Petal texture background — image URL is injected by bg helper (Task 2),
+   NOT base64-inlined (audit risk #7: 8MB payload per scene). */
+.v2-texture-bg {
+  background-color: #000;
+  background-image: var(--texture-url, none);
+  background-size: cover;
+  background-position: center;
+}
+
+/* Mobile legibility floor (spec §2): key text >=28px, labels >=22px,
+   info icons >=44px, ban tiles 56px. Enforced by component defaults below,
+   documented here for reviewers. */
+.v2-ban-tile { width: 56px; height: 56px; border-radius: var(--panel-radius); }
