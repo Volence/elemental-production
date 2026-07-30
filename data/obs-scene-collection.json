@@ -45,7 +45,7 @@
       "name": "Ending"
     }
   ],
-  "name": "Elemental Production",
+  "name": "Elemental Production v2",
   "groups": [],
   "quick_transitions": [
     {
@@ -1048,16 +1048,16 @@
               "y": 270
             },
             "scale": {
-              "x": 0.2609,
-              "y": 0.2611
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 501,
+              "y": 282
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -1078,16 +1078,16 @@
               "y": 270
             },
             "scale": {
-              "x": 0.2609,
-              "y": 0.2611
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 501,
+              "y": 282
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -1386,20 +1386,20 @@
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
             "pos": {
-              "x": 369,
-              "y": 377
+              "x": 330,
+              "y": 120
             },
             "scale": {
-              "x": 0.2953,
-              "y": 0.2954
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 580,
+              "y": 362
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -1416,20 +1416,20 @@
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
             "pos": {
-              "x": 980,
-              "y": 377
+              "x": 1010,
+              "y": 120
             },
             "scale": {
-              "x": 0.2974,
-              "y": 0.2972
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 580,
+              "y": 362
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -1527,20 +1527,20 @@
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
             "pos": {
-              "x": 532,
-              "y": 105
+              "x": 330,
+              "y": 120
             },
             "scale": {
-              "x": 0.2104,
-              "y": 0.2102
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 580,
+              "y": 362
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -1557,20 +1557,20 @@
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
             "pos": {
-              "x": 977,
-              "y": 105
+              "x": 1010,
+              "y": 120
             },
             "scale": {
-              "x": 0.2099,
-              "y": 0.2102
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 580,
+              "y": 362
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -1668,20 +1668,20 @@
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
             "pos": {
-              "x": 532,
-              "y": 105
+              "x": 330,
+              "y": 120
             },
             "scale": {
-              "x": 0.2104,
-              "y": 0.2102
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 580,
+              "y": 362
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -1698,20 +1698,20 @@
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
             "pos": {
-              "x": 977,
-              "y": 105
+              "x": 1010,
+              "y": 120
             },
             "scale": {
-              "x": 0.2099,
-              "y": 0.2102
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 580,
+              "y": 362
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -1809,20 +1809,20 @@
             "name": "Caster 1",
             "source_uuid": "c0000003-0001-4000-8000-000000000001",
             "pos": {
-              "x": 73,
-              "y": 124
+              "x": 330,
+              "y": 120
             },
             "scale": {
-              "x": 0.2057,
-              "y": 0.2056
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 580,
+              "y": 362
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -1839,20 +1839,20 @@
             "name": "Caster 2",
             "source_uuid": "c0000003-0002-4000-8000-000000000002",
             "pos": {
-              "x": 71,
-              "y": 389
+              "x": 1010,
+              "y": 120
             },
             "scale": {
-              "x": 0.2057,
-              "y": 0.2056
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 580,
+              "y": 362
             },
             "crop_left": 0,
             "crop_top": 0,
@@ -2142,20 +2142,20 @@
             "name": "Interviewee",
             "source_uuid": "c0000003-0003-4000-8000-000000000003",
             "pos": {
-              "x": 0,
-              "y": 0
+              "x": 580,
+              "y": 120
             },
             "scale": {
-              "x": 1,
-              "y": 1
+              "x": 1.0,
+              "y": 1.0
             },
             "rot": 0,
             "alignment": 5,
-            "bounds_type": 0,
+            "bounds_type": 2,
             "bounds_alignment": 0,
             "bounds": {
-              "x": 0,
-              "y": 0
+              "x": 760,
+              "y": 520
             },
             "crop_left": 0,
             "crop_top": 0,
