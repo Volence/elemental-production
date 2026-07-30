@@ -10,7 +10,7 @@
 
 **References (implementers MUST read what their task lists):**
 - Design spec: `docs/superpowers/specs/2026-07-29-obs-scene-redesign-design.md` (§2 tokens/rules, §3 HUD, §4 match flow, §7 animation model)
-- Approved mockups: `docs/superpowers/specs/hud-layout-v7.html` (side plates + ban wings), `hud-layout-v8.html` (center band), `map-pick-v4.html` + `map-pick-bans.html` (map board + live-column bans), `ban-reveal-map-intro.html` (ban reveal + map intro)
+- Approved mockups (in `.superpowers/brainstorm/3206334-1785360168/content/`): `hud-layout-v7.html` (side plates + ban wings), `hud-layout-v8.html` (center band), `map-pick-v4.html` + `map-pick-bans.html` (map board + live-column bans), `ban-reveal-map-intro.html` (ban reveal + map intro)
 - Foundation APIs: `overlays/overlay-core.js` header docstring (the contract), `overlays/lower-third.html` (migration example — NOTE its `el: document.body` shortcut does NOT apply here; these scenes pass `#root`), `overlays/components-v2.js`, `overlays/theme-v2.css`, `overlays/pinwheel.js`, `overlays/theme-helpers.js` (`findCurrentMapIndex`/`findCurrentMap`/`mapStripClass`/`hexToAlpha`/`proxyImg` — the current-map helper ALREADY EXISTS, use it, do not reimplement)
 
 **Hard constraints (from `.claude` memory `obs-overlay-constraints` — all still apply):**
