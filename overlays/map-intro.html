@@ -58,8 +58,9 @@
        child (after the shell wrappers + bg-overlay). This scene never uses
        it — render() writes into each wrapper's persistent .slot-content
        instead (the render-vs-reflow split, same as the other v2 scenes) —
-       so the trailing, id-less container is hidden. Every shell wrapper has
-       an id, so this only matches that container. */
+       so the trailing, id-less container is hidden. EVERY child shell()
+       builds (including .bg-overlay) must carry an id so this selector
+       matches ONLY that trailing container, not a real piece of chrome. */
     #root > div:not([id]) { display: none; }
 
     /* ── Chips above the deck (MATCH POINT / MAP n · NAME · MODE) ────────── */
@@ -214,7 +215,7 @@
     function shell(root) {
       root.setAttribute('data-shell-marker', 'map-intro-v2');
       root.innerHTML =
-        '<div class="bg-overlay"></div>' +
+        '<div id="mi-bg" class="bg-overlay"></div>' +
         '<div id="mi-top" class="mi-slot" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
           '<div class="slot-content"></div></div>' +
         '<div id="mi-deck" class="mi-slot" style="animation: slideUp 0.5s ease-out 0.25s both;">' +
