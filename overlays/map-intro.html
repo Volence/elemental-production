@@ -30,7 +30,7 @@
        RENDER-OUTPUT ANIMATIONS (hero-bans.html's documented, plan-sanctioned
        deviation from the package's "shell owns the only entrance animations"
        rule, applied here too): shell() builds ONLY the persistent, id'd,
-       animation-free chrome — the gradient wash, the two team washes (colors
+       build-once chrome (one-shot entrance fades only) — the gradient wash, the two team washes (colors
        set later via a CSS custom property, never a rebuild), and the centered
        stage wrapper. EVERY visible piece of the beat — eyebrow, map name,
        underline, chips, matchup band, ban tiles — is emitted fresh by render()
@@ -270,7 +270,7 @@
       var theme = state.theme || {};
       var hb = state.heroBans || {};
       var maps = (state.maps || []).map(function (m) {
-        return [m.name, m.mode, m.status, m.picker];
+        return [m.name, m.mode, m.status, m.picker, m.winner];
       });
       return [
         t1.name, t1.logo, t1.score, t1.color,
@@ -372,12 +372,16 @@
         html += '<div class="mi-chips" style="animation: slideUp 0.5s ease-out 0.36s both;">' + chipsHtml + '</div>';
       }
 
-      // Score hub: TRUE-identity scores + pinwheel (never swap-flipped).
+      // Score hub: the hub is this scene's ONLY score display, so the numbers
+      // must sit next to the team they belong to — scores + their colors flip
+      // WITH the team blocks under swapSides (review finding: a fixed-order
+      // hub reads backwards when swapped). The pinwheel petals alone keep
+      // true team identity (the package invariant for identity marks).
       var hubHtml =
         '<div class="mi-hub">' +
-          '<div class="mi-score" style="color:' + escapeHtml(t1color) + '">' + scoreOf(t1) + '</div>' +
+          '<div class="mi-score" style="color:' + escapeHtml(leftColor) + '">' + scoreOf(leftTeam) + '</div>' +
           '<div class="v2-medallion">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 72 }) + '</div>' +
-          '<div class="mi-score" style="color:' + escapeHtml(t2color) + '">' + scoreOf(t2) + '</div>' +
+          '<div class="mi-score" style="color:' + escapeHtml(rightColor) + '">' + scoreOf(rightTeam) + '</div>' +
         '</div>';
 
       html += '<div class="mi-match" style="animation: slideUp 0.55s cubic-bezier(0.16,1,0.3,1) 0.46s both;">' +
