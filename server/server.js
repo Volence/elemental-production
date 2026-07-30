@@ -796,7 +796,8 @@ app.post('/api/faceit/match', async (req, res) => {
     };
 
     // Importing a match replaces any series name left over from manual/scrim mode
-    if (details.competitionName) update.eventName = details.competitionName;
+    // (unless the producer has manually overridden it)
+    if (details.competitionName && !isOverridden('eventName')) update.eventName = details.competitionName;
 
     if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
     if (!isOverridden('maps')) {
@@ -825,7 +826,7 @@ app.post('/api/faceit/match', async (req, res) => {
     // Team 1 fields
     const t1 = {};
     if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
-    if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
+    if (!isOverridden('teams.team1.logo')) t1.logo = proxyImageUrl(faction1.avatar);
     if (!isOverridden('teams.team1.score')) t1.score = computedScore1;
     if (!isOverridden('teams.team1.color')) t1.color = '#3b82f6';
     t1.faceitId = faction1.id;
@@ -833,7 +834,7 @@ app.post('/api/faceit/match', async (req, res) => {
     // Team 2 fields
     const t2 = {};
     if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
-    if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
+    if (!isOverridden('teams.team2.logo')) t2.logo = proxyImageUrl(faction2.avatar);
     if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
     if (!isOverridden('teams.team2.color')) t2.color = '#ef4444';
     t2.faceitId = faction2.id;
@@ -1013,7 +1014,8 @@ async function faceitPollTick() {
 
     update.teams = buildTeamsUpdate({
       currentTeams: currentState.teams,
-      faction1, faction2,
+      faction1: { ...faction1, avatar: proxyImageUrl(faction1.avatar) },
+      faction2: { ...faction2, avatar: proxyImageUrl(faction2.avatar) },
       score1: computedScore1, score2: computedScore2,
       isOverridden,
     });
@@ -1671,6 +1673,11 @@ app.post('/api/score/increment', (req, res) => {
   const teamData = s.teams[team];
   if (teamData) {
     setState({ teams: { ...s.teams, [team]: { ...teamData, score: teamData.score + 1 } } });
+    // In FACEIT mode, lock scores so the next poll tick doesn't recompute
+    // them from map winners and clobber this manual bump.
+    if (s.mode === 'faceit' && s.faceitMatchId) {
+      setOverrides(['teams.team1.score', 'teams.team2.score']);
+    }
     const updated = getState();
     broadcast('state', updated);
     syncToOBS(updated);
@@ -1710,6 +1717,7 @@ app.post('/api/swap', (req, res) => {
 
 /** Reset match — clear scores, bans, map statuses, stats. Keep team names/logos if keepTeams=true */
 app.post('/api/reset', (req, res) => {
+  stopFaceitPoll('reset');
   const s = getState();
   const keepTeams = req.body?.keepTeams !== false; // default: keep teams
   const resetData = {
@@ -1722,6 +1730,7 @@ app.post('/api/reset', (req, res) => {
     selectedMapIdx: -1,
     faceitMatchId: '',
     faceitMatchUrl: '',
+    faceitAutoSync: false,
     players: { team1: [], team2: [] },
     maps: (s.maps || []).map(m => ({ ...m, status: 'upcoming', winner: null, roundScore: '' })),
   };
@@ -1773,6 +1782,14 @@ app.post('/api/map-win', (req, res) => {
   const teams = { ...s.teams, [team]: { ...teamData, score: teamData.score + 1 } };
 
   setState({ maps, teams });
+  // In FACEIT mode, lock scores so the next poll tick doesn't recompute them
+  // from map winners and clobber this manual bump. (The map winner itself
+  // already survives poll ticks via faceitPollTick's forward-only merge —
+  // it preserves current.winner until FACEIT reports its own winner for
+  // that round — so no `maps` override is needed here, only the scores.)
+  if (s.mode === 'faceit' && s.faceitMatchId) {
+    setOverrides(['teams.team1.score', 'teams.team2.score']);
+  }
   const updated = getState();
   broadcast('state', updated);
   syncToOBS(updated);
@@ -1878,7 +1895,15 @@ app.post('/api/brb', (req, res) => {
   const duration = req.body?.duration || 300; // default 5 min
   obs.setScene('BRB');
   setState({
-    countdown: { duration, remaining: duration, running: true, label: 'BRB' },
+    countdown: {
+      ...getState().countdown,
+      duration,
+      remaining: duration,
+      running: true,
+      startedAt: Date.now(),
+      label: 'BRB',
+      target: null,
+    },
     currentScene: 'BRB',
   });
   startCountdown();
@@ -2052,6 +2077,12 @@ app.post('/api/fonts/upload', express.raw({ type: '*/*', limit: '10mb' }), (req,
 // ============ START ============
 
 loadState();
+
+// If a FACEIT match was mid-sync when the server last stopped, resume polling
+// so the persisted "Auto Sync ON" state is actually true again.
+if (getState().faceitAutoSync && getState().faceitMatchId) {
+  startFaceitPoll();
+}
 
 // Browser source list (shared between startup and manual setup)
 const BROWSER_SOURCES = [

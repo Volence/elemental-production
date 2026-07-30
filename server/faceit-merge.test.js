@@ -33,6 +33,14 @@ describe('buildTeamsUpdate', () => {
     expect(u.team2.name).toBeUndefined();
     expect(u.team2.logo).toBeUndefined();
   });
+
+  it('passes the given avatar value through untouched (proxying is the caller\'s job)', () => {
+    const proxied1 = { ...faction1, avatar: 'http://localhost:5174/api/proxy-image?url=a.png' };
+    const proxied2 = { ...faction2, avatar: 'http://localhost:5174/api/proxy-image?url=b.png' };
+    const u = buildTeamsUpdate({ currentTeams: {}, faction1: proxied1, faction2: proxied2, score1: 0, score2: 0, isOverridden: notOverridden });
+    expect(u.team1.logo).toBe(proxied1.avatar);
+    expect(u.team2.logo).toBe(proxied2.avatar);
+  });
 });
 
 describe('buildMapsUpdate', () => {
