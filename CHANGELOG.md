@@ -45,3 +45,40 @@ runtime changes underneath them.
 - Manual OBS QA gate (cutout alignment, un-inlined backgrounds on cold switch,
   entrance replays, countdown modes) must pass before this goes live — see the
   release checklist.
+
+### Owner QA batch 1
+
+First round of owner feedback on the v2 package, landed pre-release:
+
+- **Brand-color crests.** Neutral scenes (starting-soon, BRB, end-of-stream,
+  series-winner waiting state, caster scenes without a matchup) now render the
+  pinwheel medallion in the four elmt.gg brand colors instead of a generic
+  accent; match-context medallions (HUD, map-pick, map-intro, casters deck)
+  keep team colors.
+- **Gray-logo team color.** Logos that fail the saturation gate on every color
+  bucket now fall back to a silver/gray neutral derived from the logo itself,
+  instead of the generic blue accent color.
+- **Map-board / HUD polish.** Map-board pills drop the redundant "· WON"
+  suffix and shrink slightly; the gameplay HUD center band loses the
+  duplicate map-name pill; caster scenes drop the "CASTED BY" subtitle.
+- **Scoreboard title fix.** The casters-scoreboard title now always resolves
+  the real map name from state instead of occasionally printing the FACEIT
+  hex map id.
+- **Finished-match bans.** Hero bans and map-board ban chips now resolve to
+  the current-or-last-played map, so a completed series still shows its final
+  map's bans instead of going blank.
+- **Centered between-matches window.** The between-matches cam window is
+  recentered with equal side margins and pushed clear of the event header so
+  nothing overlaps or clips.
+- **Interview caster slots.** The interview scene gains two corner camera
+  slots for casters (with name pills), baked into the OBS scene collection
+  generator.
+- **Ban Reveal OBS scene.** The scene-collection generator now creates a "Ban
+  Reveal" scene (idempotently) if one doesn't already exist in the target
+  collection.
+- **Settings carryover.** The generator supports `--carry-from <path>` to
+  copy cam browser-source URLs and media-source file paths from an existing
+  producer OBS collection into the regenerated v2 collection, by source name.
+- **Dashboard quick-clear.** The Interview / Guest Cam panel gets a "Clear"
+  button that resets the interviewee (name, cam URL, visibility, team, role,
+  label) to empty in one click.

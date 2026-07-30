@@ -727,6 +727,9 @@ export default function ProductionControls({ state, updateState, api }) {
       <div className="card">
         <div className="card-header">
           <span className="card-title">🎤 Interview / Guest Cam</span>
+          <button className="btn btn-ghost btn-sm" onClick={() => updateState({
+            interviewee: { name: '', camUrl: '', visible: false, teamName: '', teamLogo: '', teamColor: '', role: '', label: '' }
+          })}>🗑 Clear</button>
         </div>
         <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '4px 0 12px' }}>
           Full-screen interview scene with camera feed + player info bar. Used during post-match player interviews.
