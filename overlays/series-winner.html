@@ -103,7 +103,13 @@
     /* ── Winner label ─────────────────────────────────────────────────── */
     .sw-label {
       font-size: 26px; font-weight: 800; letter-spacing: 10px; text-transform: uppercase;
-      color: rgba(255,255,255,0.4); margin-bottom: 20px;
+      color: rgba(255,255,255,0.55); margin-bottom: 20px;
+      /* The 620px pinwheel in the later .sw-logo-wrap sibling overflows
+         upward across this label — lift the label above it (owner QA batch
+         3: "series winner text is behind the icon") and shadow it so it
+         stays legible over petals of any team color. */
+      position: relative; z-index: 2;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 0 18px rgba(0,0,0,0.6);
     }
 
     /* ── Logo + pinwheel-behind-logo stack ────────────────────────────────
