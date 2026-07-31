@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.0.1 — Import self-heal
+
+- **Auto re-sync after a scene-collection import.** Importing the downloaded
+  collection replaces every media source with the JSON's blank-path version,
+  but the app's change-guarded OBS sync cache still said "already pushed" —
+  so flythroughs and music went silent until an app restart (producer bug
+  report). The server now listens for OBS's `CurrentSceneCollectionChanged`
+  event, clears the sync cache, and re-pushes everything (media paths, cam
+  URLs, browser-source URLs) two seconds after the switch.
+- **⚡ Force Sync button.** The existing `/api/obs/force-sync` endpoint gets
+  a visible button in Production Controls — the manual lever for the same
+  full re-push, for any case where OBS-side settings were wiped or drifted.
+- Reminder that pairs with this fix: media auto-loading needs the folder
+  paths configured in **Settings** on THAT machine (flythroughs dir, music
+  dir + selected files) — app state is per-machine, and the pre-flight
+  checklist calls out anything missing.
+
 ## v2.0.0 — Broadcast Package v2
 
 The full v2 broadcast package: every OBS overlay scene restyled onto the v2 design

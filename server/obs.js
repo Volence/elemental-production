@@ -35,6 +35,17 @@ function registerListeners() {
   obs.on('MediaInputPlaybackEnded', (data) => {
     if (eventCallbacks.onMediaEnd) eventCallbacks.onMediaEnd(data);
   });
+
+  // Forward scene-collection switches (fires when the producer imports and
+  // switches to a new collection). Importing REPLACES every media source
+  // with the JSON's blank-path version, so the server must clear its sync
+  // cache and re-push media paths — otherwise the change-guarded sync
+  // believes everything is already set and the show goes silent (producer
+  // bug report, post-v2.0.0: "imported the JSON and it broke all the music
+  // and cinematics").
+  obs.on('CurrentSceneCollectionChanged', (data) => {
+    if (eventCallbacks.onCollectionChanged) eventCallbacks.onCollectionChanged(data);
+  });
 }
 
 export async function connect(host = 'localhost', port = 4455, password = '') {

@@ -319,6 +319,14 @@ export default function ProductionControls({ state, updateState, api }) {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button className="btn btn-ghost btn-sm" onClick={refreshOverlays}>🔄 Refresh Overlays</button>
+          {/* Full re-push of state → OBS (clears the change-guarded sync
+              cache): heals blank media sources after a scene-collection
+              import without restarting the app. */}
+          <button
+            className="btn btn-ghost btn-sm"
+            title="Re-push everything to OBS (music, flythroughs, cams, names). Use after importing a scene collection."
+            onClick={() => fetch(`${api}/api/obs/force-sync`, { method: 'POST' })}
+          >⚡ Force Sync</button>
           <button className="btn btn-ghost btn-sm" onClick={goBRB}>☕ BRB Mode</button>
           <div style={{ display: 'flex', gap: 2, border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, overflow: 'hidden' }}>
             <button

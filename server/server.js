@@ -2274,6 +2274,23 @@ if (_obsHost) {
       await hideAudioSourceVideo();
     }, 3000);
 
+    // Scene-collection switch (e.g. the producer imports the downloaded JSON
+    // and switches to it): the import replaced every media source with a
+    // blank-path version, but syncToOBS's lastSyncedState cache still says
+    // "already pushed" — so clear the cache and re-sync in full, exactly
+    // like /api/obs/force-sync. Without this the flythroughs and music stay
+    // silent until an app restart (producer bug report, post-v2.0.0).
+    obs.onEvent('onCollectionChanged', async (data) => {
+      console.log(`[OBS] Scene collection changed (${data?.sceneCollectionName || 'unknown'}) — full re-sync`);
+      lastSyncedState = {};
+      // Give OBS a beat to finish loading the new collection's sources.
+      setTimeout(async () => {
+        await syncToOBS(getState()).catch(() => {});
+        await setupBrowserSources().catch(() => {});
+        await hideAudioSourceVideo().catch(() => {});
+      }, 2000);
+    });
+
     // Auto-cycle replay clips when one finishes playing
     obs.onEvent('onMediaEnd', async (data) => {
       if (data.inputName === 'Replay') {
