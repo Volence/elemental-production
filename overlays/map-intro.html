@@ -284,12 +284,11 @@
     }
 
     // ── key: EXACTLY the state leaves render reads ──────────────────────────
-    // maps reduced to [name, mode, status, picker] per entry — findCurrentMap
-    // fallback (status/name), the MAP n · MODE chip + map name (name/mode), and
-    // the MAP PICK / ATTACK FIRST tags (picker). activeBanMapIdx is the
-    // server's derived ban-map resolver answer — preferred for the map context
-    // so the labeled map (name/number/mode) matches the bans shown, exactly
-    // like hero-bans.html.
+    // maps reduced to [name, mode, status, picker] per entry — the
+    // findCurrentMapIndex map context (status/name), the MAP n · MODE chip +
+    // map name (name/mode), and the MAP PICK / ATTACK FIRST tags (picker).
+    // NOT keyed on activeBanMapIdx: this scene labels the LIVE map, not the
+    // ban-resolver's map (see the render() map-context comment).
     function key(state) {
       var teams = state.teams || {};
       var t1 = teams.team1 || {};
@@ -302,7 +301,7 @@
       return [
         t1.name, t1.logo, t1.score, t1.color,
         t2.name, t2.logo, t2.score, t2.color,
-        maps, state.activeBanMapIdx,
+        maps,
         hb.team1, hb.team2,
         state.bestOf, state.eventName, state.swapSides,
         theme.team1Color, theme.team2Color
@@ -323,14 +322,16 @@
       var bestOf = state.bestOf || maps.length || 5;
 
       // ── Map context ────────────────────────────────────────────────────
-      // Prefer state.activeBanMapIdx (the server's DERIVED getActiveBanIdx
-      // answer) so the labeled map — name, number, mode, picker — is the SAME
-      // map whose bans (heroBans, derived from that index) are shown in the
-      // matchup band below. Fall back to findCurrentMap for pre-fix/persisted
-      // states that carry no activeBanMapIdx (-1/undefined), and finally to the
-      // score-sum heuristic only when maps is genuinely empty (pre-sync).
-      var abIdx = (typeof state.activeBanMapIdx === 'number') ? state.activeBanMapIdx : -1;
-      var mapIdx = (abIdx >= 0 && maps[abIdx]) ? abIdx : findCurrentMapIndex(maps);
+      // The LIVE map (current → next upcoming → last played), via the tested
+      // findCurrentMapIndex helper. Deliberately NOT activeBanMapIdx: that is
+      // the BAN resolver's answer — it freezes whenever the producer holds a
+      // heroBans override and falls back to the last COMPLETED map between
+      // maps, which kept this scene's giant map name stuck on the previous
+      // map for the rest of the series (producer bug report). hero-bans.html
+      // still labels from activeBanMapIdx — correct there, since that scene's
+      // subject IS the bans. Score-sum heuristic only when maps is genuinely
+      // empty (pre-sync).
+      var mapIdx = findCurrentMapIndex(maps);
       var currentMap = (mapIdx >= 0 && maps[mapIdx]) ? maps[mapIdx] : {};
       var mapNum = maps.length > 0 ? mapIdx + 1 : (scoreOf(t1) + scoreOf(t2) + 1);
 

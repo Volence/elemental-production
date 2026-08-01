@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.0.2 — Map Intro tracks the live map
+
+- **Map Intro / Casters Flythrough showed the previous map's name all series**
+  (producer bug report: "map name does not update after map 1 despite changing
+  the map and clicking play"). Both scenes labeled their map from
+  `activeBanMapIdx` — the hero-*ban* resolver's index, which intentionally
+  freezes while a heroBans override is held (any manual ban edit in FACEIT
+  mode sets one) and falls back to the last *completed* map between maps. The
+  scenes now derive the map from live series progression (current → next
+  upcoming → last played), so the intro always names the map about to be
+  played and updates the moment ▶ Play is clicked. Ban Reveal and Map Pick
+  keep the ban-resolver index on purpose — there the subject *is* the bans.
+- On-air workaround for older builds: release the 🔒 heroBans override
+  (Overrides banner, or `POST /api/overrides/clear` with
+  `{"path":"heroBans"}`), then change any map field to force a re-derive.
+
 ## v2.0.1 — Import self-heal
 
 - **Auto re-sync after a scene-collection import.** Importing the downloaded

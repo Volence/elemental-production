@@ -126,8 +126,9 @@
 
     // ── key: casters (names) + casterLayout + eventName for the header/cams,
     // PLUS the matchup context the info band now reads — teams (name/logo/
-    // score/color), maps ([name,mode,status]), activeBanMapIdx, bestOf,
-    // swapSides, theme team colors. ─────────────────────────────────────────
+    // score/color), maps ([name,mode,status]), bestOf, swapSides, theme team
+    // colors. NOT activeBanMapIdx — the band labels the LIVE map (see the
+    // render() map-context comment). ────────────────────────────────────────
     function key(state) {
       var theme = state.theme || {};
       var teams = state.teams || {};
@@ -139,7 +140,7 @@
         casters, state.casterLayout, state.eventName,
         t1.name, t1.logo, t1.score, t1.color,
         t2.name, t2.logo, t2.score, t2.color,
-        maps, state.activeBanMapIdx, state.bestOf, state.swapSides,
+        maps, state.bestOf, state.swapSides,
         theme.team1Color, theme.team2Color
       ];
     }
@@ -183,10 +184,12 @@
       var maps = state.maps || [];
       var bestOf = state.bestOf || maps.length || 5;
 
-      // Map context — prefer the server's derived activeBanMapIdx (same as
-      // map-intro / hero-bans), fall back to findCurrentMapIndex.
-      var abIdx = (typeof state.activeBanMapIdx === 'number') ? state.activeBanMapIdx : -1;
-      var mapIdx = (abIdx >= 0 && maps[abIdx]) ? abIdx : findCurrentMapIndex(maps);
+      // Map context — the LIVE map (current → next upcoming → last played)
+      // via findCurrentMapIndex, same as map-intro. Deliberately NOT
+      // activeBanMapIdx: the ban resolver freezes under a heroBans override
+      // and falls back to the last COMPLETED map between maps, which stuck
+      // this chip (and map-intro's name) on the previous map all series.
+      var mapIdx = findCurrentMapIndex(maps);
       var currentMap = (mapIdx >= 0 && maps[mapIdx]) ? maps[mapIdx] : {};
 
       var threshold = Math.floor(bestOf / 2) + 1;
