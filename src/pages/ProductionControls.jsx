@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { DEFAULT_SCENES } from '../lib/scenes.js'
 
 // Audio mixer groups — only actual audio sources (no browser sources)
 const AUDIO_GROUPS = {
@@ -308,7 +309,7 @@ export default function ProductionControls({ state, updateState, api }) {
 
   const sceneList = scenes.length > 0
     ? scenes.map(s => s.sceneName)
-    : ['Starting', 'Map Pick', 'Map Pool', 'Ban Reveal', 'Map Intro', 'Casters Flythrough', 'Gameplay', 'Casters', 'Casters Lobby', 'Casters Scoreboard', 'Map Score', 'Between Matches', 'BRB', 'Interview', 'Series Winner', 'Ending'];
+    : DEFAULT_SCENES;
 
   return (
     <div className="fade-in">

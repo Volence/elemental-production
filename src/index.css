@@ -839,15 +839,17 @@ input[type="checkbox"]:checked::after {
   background: var(--bg-primary);
 }
 
+/* Wraps rather than scrolls: it used to be an overflow-x scroller with the
+   scrollbar hidden and no wheel handler, so the last v2 scenes (16 scenes
+   ≈1600px vs ~1116px available) were simply unreachable. */
 .scene-toolbar-inner {
   display: flex;
+  flex-wrap: wrap;
   gap: 2px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  row-gap: 4px;
+  overflow-x: visible;
   align-items: center;
 }
-
-.scene-toolbar-inner::-webkit-scrollbar { display: none; }
 
 .scene-toolbar-btn {
   display: flex;

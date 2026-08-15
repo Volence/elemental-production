@@ -104,7 +104,8 @@ export function onEvent(eventName, callback) {
 
 
 export async function getScenes() {
-  if (!connected) return [];
+  // Same shape connected or not — callers do `d.scenes || []` on the JSON.
+  if (!connected) return { scenes: [], currentScene: '' };
   try {
     const { scenes, currentProgramSceneName } = await obs.call('GetSceneList');
     return { scenes: scenes.reverse(), currentScene: currentProgramSceneName };

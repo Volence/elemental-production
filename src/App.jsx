@@ -6,6 +6,7 @@ import Settings from './pages/Settings'
 import StatusBar from './components/StatusBar'
 import ConfirmModal from './components/ConfirmModal'
 import { sampleBuckets, pickTwoColors, ELMT_ACCENT_FALLBACK } from './lib/color-extract.js'
+import { DEFAULT_SCENES } from './lib/scenes.js'
 
 // Resolves { primary, secondary } — secondary is the logo's second distinct
 // color (null when the logo only has one color family). Scenes that want a
@@ -43,7 +44,8 @@ const PAGES = [
 ];
 
 const SCENE_ICONS = {
-  'Starting': '🟢', 'Map Pick': '🗺️', 'Map Intro': '📍', 'Gameplay': '🎮',
+  'Starting': '🟢', 'Map Pool': '🗺️', 'Map Pick': '📌', 'Ban Reveal': '🚫',
+  'Map Intro': '📍', 'Casters Flythrough': '🎥', 'Gameplay': '🎮',
   'Casters': '🎙️', 'Casters Lobby': '📋', 'Casters Scoreboard': '📊',
   'Map Score': '🏆', 'Between Matches': '⏳', 'BRB': '☕',
   'Interview': '🎤', 'Series Winner': '🥇', 'Ending': '🔴',
@@ -84,6 +86,13 @@ export default function App() {
     }
   }, []);
 
+  const loadScenes = useCallback(() => {
+    fetch(`${API}/api/obs/scenes`).then(r => r.json()).then(d => {
+      setScenes(d.scenes || []);
+      setCurrentScene(d.currentScene || '');
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetchState();
 
@@ -100,10 +109,7 @@ export default function App() {
     const checkObs = () => fetch(`${API}/api/obs/status`).then(r => r.json()).then(d => setObsConnected(d.connected)).catch(() => {});
     checkObs();
     const obsPoll = setInterval(checkObs, 5000);
-    fetch(`${API}/api/obs/scenes`).then(r => r.json()).then(d => {
-      setScenes(d.scenes || []);
-      setCurrentScene(d.currentScene || '');
-    }).catch(() => {});
+    loadScenes();
 
     // Load custom fonts
     fetch(`${API}/api/fonts`).then(r => r.json()).then(fonts => {
@@ -116,7 +122,16 @@ export default function App() {
     }).catch(() => {});
 
     return () => { es.close(); clearInterval(obsPoll); };
-  }, [fetchState]);
+  }, [fetchState, loadScenes]);
+
+  // The app usually starts before OBS does; the mount fetch then comes back
+  // empty and nothing ever asked again (the strip sat on the fallback list all
+  // show). Re-fetch on the disconnected→connected edge of the 5s status poll.
+  const wasObsConnected = useRef(false);
+  useEffect(() => {
+    if (obsConnected && !wasObsConnected.current) loadScenes();
+    wasObsConnected.current = obsConnected;
+  }, [obsConnected, loadScenes]);
 
   // Keep current scene in sync
   useEffect(() => {
@@ -168,7 +183,7 @@ export default function App() {
 
   const sceneList = scenes.length > 0
     ? scenes.map(s => s.sceneName)
-    : ['Starting', 'Map Pick', 'Map Intro', 'Gameplay', 'Casters', 'Casters Lobby', 'Casters Scoreboard', 'Map Score', 'Between Matches', 'BRB', 'Interview', 'Series Winner', 'Ending'];
+    : DEFAULT_SCENES;
 
   return (
     <>
