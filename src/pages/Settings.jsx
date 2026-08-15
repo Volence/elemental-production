@@ -12,6 +12,14 @@ const BUILTIN_FONTS = {
   'Orbitron': 'https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap',
 };
 
+// Pre-rendered stinger (scripts/render-stinger.mjs → public/, served from
+// /assets with Content-Disposition: attachment so it downloads instead of
+// playing in a tab). STINGER_TRANSITION_POINT_MS is the render script's
+// measured peak-coverage frame — re-render and update both together if the
+// stinger art changes.
+const STINGER_WEBM_URL = 'http://localhost:3001/assets/stinger-transition.webm';
+const STINGER_TRANSITION_POINT_MS = 550;
+
 export default function Settings({ state, updateState, api, obsConnected, setObsConnected, customFonts, setCustomFonts, onDirtyChange }) {
   const [hotkeys, setHotkeys] = useState(state.hotkeys || {});
   const [hotkeysDirty, setHotkeysDirty] = useState(false);
@@ -709,7 +717,9 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
           { name: 'Lower Third', url: `http://localhost:3001/overlays/lower-third.html` },
           { name: 'Series Winner', url: `http://localhost:3001/overlays/series-winner.html` },
           { name: 'End of Stream', url: `http://localhost:3001/overlays/end-of-stream.html` },
-          { name: 'Stinger Transition', url: `http://localhost:3001/overlays/stinger-transition.html` },
+          // No 'Stinger Transition' browser source: the stinger is a real OBS
+          // transition now (the WebM row below). Adding the HTML as a source was
+          // the old workaround and it contradicts the setup steps underneath.
           { name: 'Casters Fly HUD', url: `http://localhost:3001/overlays/casters-flythrough-hud.html` },
         ].map(overlay => (
           <div key={overlay.name} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -723,25 +733,27 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
 
         {/* Stinger transition — the WebM render of stinger-transition.html.
             OBS's native Stinger transition needs a media FILE, so this is a
-            download link (the server sends it as an attachment), not a browser
-            source URL. Regenerate with `node scripts/render-stinger.mjs`; the
-            550ms transition point below is that script's measured peak-coverage
-            frame — update both together if the art changes. */}
+            download, not a browser source URL. Same row geometry as the 17
+            source rows above (minWidth 140 label, marginBottom 8) so the code
+            column stays aligned. */}
         <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>🎬 Stinger transition (WebM)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <span style={{ fontWeight: 600, fontSize: '0.8rem', minWidth: 140 }}>🎬 Stinger (WebM)</span>
             <code style={{ flex: 1, padding: '6px 10px', background: 'var(--bg-input)', borderRadius: 6, fontSize: '0.75rem', color: 'var(--accent)', wordBreak: 'break-all' }}>
-              http://localhost:3001/assets/stinger-transition.webm
+              {STINGER_WEBM_URL}
             </code>
-            <a className="btn btn-primary btn-sm" href="http://localhost:3001/assets/stinger-transition.webm"
+            <a className="btn btn-primary btn-sm" href={STINGER_WEBM_URL}
               target="_blank" rel="noreferrer" style={{ whiteSpace: 'nowrap', textDecoration: 'none' }}>⬇ Download</a>
             <button className="btn btn-ghost btn-sm"
-              onClick={() => navigator.clipboard.writeText('http://localhost:3001/assets/stinger-transition.webm')}>Copy</button>
+              onClick={() => navigator.clipboard.writeText(STINGER_WEBM_URL)}>Copy</button>
           </div>
-          <ol style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '10px 0 0', paddingLeft: 20, lineHeight: 1.7 }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+            The branded stinger transition, pre-rendered with alpha for OBS:
+          </p>
+          <ol style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>
             <li>OBS → <strong>Scene Transitions</strong> dock → <strong>+</strong> → <strong>Stinger</strong>.</li>
             <li><strong>Video File</strong> → browse to the downloaded <code>stinger-transition.webm</code>.</li>
-            <li><strong>Transition Point: 550 ms</strong> → OK, then pick it as the active transition (or assign it to specific scene switches).</li>
+            <li><strong>Transition Point: {STINGER_TRANSITION_POINT_MS} ms</strong> → OK, then pick it as the active transition (per-scene overrides: right-click a scene in the Scenes dock → Transition Override).</li>
           </ol>
         </div>
       </div>

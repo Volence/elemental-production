@@ -39,6 +39,7 @@
       "data/obs-scene-collection.json",
       "data/obs-scene-collection-windows.json",
       "dist/**/*",
+      "!dist/stinger-transition.webm",
       "public/**/*",
       "package.json",
       ".env.example"

@@ -44,29 +44,44 @@ Grab the latest release from the [Releases](https://github.com/Volence/elemental
 The ELMT stinger is a 1.3s branded wipe (two counter-spinning pinwheels, a
 four-colour trail band, and an `ELMT` wordmark) that plays *over* the cut
 between two scenes. It ships pre-rendered as a transparent VP9 WebM so OBS can
-drive it natively — you no longer need the old workaround of parking
-`stinger-transition.html` as a browser source at the top of every scene and
-cutting through it by hand.
+drive it natively — replacing the old workaround, where
+`stinger-transition.html` was added as its own scene and producers manually cut
+to it and back out again once the animation had played.
 
-1. **Settings → OBS Browser Source URLs → 🎬 Stinger transition (WebM)** →
-   **⬇ Download** (saves `stinger-transition.webm`).
+1. **Settings → OBS Browser Source URLs → 🎬 Stinger (WebM)** → **⬇ Download**
+   (saves `stinger-transition.webm`).
 2. OBS → **Scene Transitions** dock → **+** → **Stinger** → **Video File** →
    the file you just downloaded.
 3. **Transition Point: 550 ms** → **OK**, then select the stinger as the active
-   transition (or assign it per scene switch from the same dock).
+   transition. To use it for *specific* scene switches only, leave the default
+   as Fade and right-click a scene in the **Scenes** dock → **Transition
+   Override** → Stinger.
 
 The transition point is the moment OBS swaps scenes underneath the stinger:
 550 ms is where the animation covers the most screen, measured at render time.
+
+### Re-rendering it
 
 The WebM is generated from `overlays/stinger-transition.html`, which stays the
 master reference. If the art changes, re-render and commit the result:
 
 ```bash
-node scripts/render-stinger.mjs        # headless Chrome + ffmpeg (libvpx-vp9, alpha)
+node scripts/render-stinger.mjs
 ```
 
-The script prints the measured transition point — keep it in sync with the
-number shown in Settings and above.
+Prerequisites: `google-chrome-stable` (headless, drives the capture over CDP)
+and `ffmpeg`/`ffprobe` built with `libvpx-vp9` + `yuva420p`. ImageMagick
+(`magick` or `convert`) is optional but recommended — without it the script
+can't measure the coverage curve, so it falls back to the 550 ms default and
+skips the alpha verification passes.
+
+The script prints the measured transition point; keep it in sync with the number
+shown in Settings (`STINGER_TRANSITION_POINT_MS` in `src/pages/Settings.jsx`)
+and above. Note that every re-render commits a fresh ~4 MB binary into git
+history, so re-render when the art actually changes, not to shave a few KB.
+The WebM ships once, from `public/` — `vite build` also copies it into `dist/`,
+which `package.json` `build.files` excludes so packaged installs carry a single
+copy.
 
 ## Development
 
