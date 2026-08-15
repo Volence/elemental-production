@@ -71,6 +71,22 @@ describe('buildMapsUpdate', () => {
     expect(u[0].roundScore).toBe('2-0');
     expect(u[2].name).toBe('Nepal');
   });
+
+  it('preserves a producer-entered roundScore while FACEIT has none, and yields once FACEIT reports one', () => {
+    const producerScored = [
+      { name: 'Oasis', mode: 'Control', image: 'local-oasis.png', status: 'current', winner: null, roundScore: '2-1', picker: 'team1' },
+      { name: 'Dorado', mode: 'Escort', image: 'local-dorado.png', status: 'upcoming', winner: null, roundScore: '3-2' },
+    ];
+    // faceitMaps[0] has no roundScore yet -> producer's '2-1' survives.
+    // faceitMaps[1] has reported '4-3' -> FACEIT wins over the producer's '3-2'.
+    const faceitWithScore = [
+      { name: 'Oasis', mode: 'Control', image: 'oasis-sm.jpg', status: 'current', winner: null, roundScore: null },
+      { name: 'Dorado', mode: 'Escort', image: 'dorado-sm.jpg', status: 'current', winner: null, roundScore: '4-3' },
+    ];
+    const u = buildMapsUpdate({ currentMaps: producerScored, faceitMaps: faceitWithScore, perMapBans, mapsOverridden: true });
+    expect(u[0].roundScore).toBe('2-1');
+    expect(u[1].roundScore).toBe('4-3');
+  });
 });
 
 describe('getActiveBanIdx', () => {

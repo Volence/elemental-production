@@ -1900,7 +1900,7 @@ app.post('/api/reset', (req, res) => {
     faceitMatchUrl: '',
     faceitAutoSync: false,
     players: { team1: [], team2: [] },
-    maps: (s.maps || []).map(m => ({ ...m, status: 'upcoming', winner: null, roundScore: '' })),
+    maps: (s.maps || []).map(m => ({ ...m, status: 'upcoming', winner: null, roundScore: null })),
   };
 
   if (keepTeams) {

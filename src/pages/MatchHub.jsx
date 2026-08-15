@@ -30,6 +30,42 @@ const OW2_MAPS = [
   { name: 'Aatlis', mode: 'Flashpoint' },
 ];
 
+// roundScore is read by all four score-displaying overlays' render keys, so a
+// per-keystroke PATCH (the pattern the sibling team-name inputs use — those are
+// typed pre-match, off-air) would rebuild the live overlay and restart
+// map-pool's card entrance animation on every character while a producer types
+// mid-broadcast. Keep a local draft and commit on blur/Enter instead; resync
+// the draft from props only when the value changes externally (FACEIT poll,
+// Undo, etc.) so we don't clobber in-progress typing or reset the caret.
+function MapScoreInput({ value, onCommit }) {
+  const [draft, setDraft] = useState(value || '');
+  const lastPropValue = useRef(value);
+
+  useEffect(() => {
+    if (value !== lastPropValue.current) {
+      lastPropValue.current = value;
+      setDraft(value || '');
+    }
+  }, [value]);
+
+  const commit = () => {
+    const next = draft || null;
+    lastPropValue.current = next;
+    onCommit(next);
+  };
+
+  return (
+    <input className="input" style={{ width: 64, fontSize: '0.6rem', padding: '2px 4px', height: 'auto' }}
+      placeholder="2-1"
+      title={draft || 'Map score shown on overlays (e.g. 2-1). In FACEIT mode, FACEIT\'s own score takes over once reported.'}
+      value={draft}
+      onClick={e => e.stopPropagation()}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); e.currentTarget.blur(); } }} />
+  );
+}
+
 export default function MatchHub({ state, updateState, api }) {
   const [matchUrl, setMatchUrl] = useState(state.faceitMatchUrl || '');
   const [loading, setLoading] = useState(false);
@@ -792,16 +828,16 @@ export default function MatchHub({ state, updateState, api }) {
                           updateState(updates);
                         }}>⇄ Bans</button>
                     )}
-                    {/* Map score shown on overlays — always available (manual/scrim + FACEIT override) */}
-                    <input className="input" style={{ width: 64, fontSize: '0.6rem', padding: '2px 4px', height: 'auto' }}
-                      placeholder="2-1" title="Map score shown on overlays (free text, e.g. 2-1)"
-                      value={m.roundScore || ''}
-                      onClick={e => e.stopPropagation()}
-                      onChange={e => {
-                        e.stopPropagation();
-                        updateState({ maps: state.maps.map((mm, ii) => ii === i ? { ...mm, roundScore: e.target.value } : mm) });
-                        if (state.mode === 'faceit' && state.faceitMatchId) setOverride('maps');
-                      }} />
+                    {/* Map score shown on overlays — always available (manual/scrim + FACEIT).
+                        No setOverride('maps') here: the merge (server/faceit-merge.js:41,
+                        server.js:~1054) resolves `f.roundScore || m.roundScore || null`, so
+                        FACEIT's own score wins the moment it's reported regardless of the
+                        maps lock anyway (intended precedence) — while taking the lock would
+                        cost real functionality (FACEIT maps beyond the current list get
+                        dropped; name/mode/image stop syncing until the producer releases
+                        the 🔒) for zero protection benefit. */}
+                    <MapScoreInput value={m.roundScore}
+                      onCommit={(val) => updateState({ maps: state.maps.map((mm, ii) => ii === i ? { ...mm, roundScore: val } : mm) })} />
                     {/* Map picker toggle — always available */}
                     <select className="input" style={{ width: 80, fontSize: '0.6rem', padding: '2px 4px', height: 'auto' }}
                       value={state.perMapBans?.[i]?.picker || m.picker || ''}
