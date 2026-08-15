@@ -59,11 +59,15 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
   ]);
   // Comparison-only normalization: OverFast's catalog names use typographic
   // apostrophes ("King's Row") while an older save/manual edit of state.mapPool
-  // may carry the ASCII form. Kept in sync with overlays/theme-helpers.js's
-  // normMapName (same semantics) — duplicated rather than imported since this
-  // file isn't part of the overlays' plain-script bundle. state.mapPool itself
+  // may carry the ASCII form. Kept in sync BY HAND with
+  // overlays/theme-helpers.js's normMapName (same folding rules: apostrophe
+  // kept, folded to straight ASCII, lowercase/trim only) — duplicated rather
+  // than imported since theme-helpers.js has no ESM export and this file
+  // isn't part of the overlays' plain-script bundle. state.mapPool itself
   // still stores display names verbatim; only membership checks and the
-  // save-time dedupe use this key.
+  // save-time dedupe use this key. NOT the same shape as
+  // server/map-image-resolver.js's normalizeMapName (that one strips
+  // apostrophes and builds hyphenated file-key slugs) — don't cross-wire them.
   const normMapKey = (name) => String(name || '')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[‘’']/g, "'")
@@ -370,6 +374,9 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Loading map list…</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
+            {/* Keep in sync with MODE_ORDER in overlays/map-pool.html — no
+                shared module between the React app and the plain-script
+                overlay. */}
             {['control', 'escort', 'hybrid', 'push', 'flashpoint', 'clash'].map(mode => (
               <div key={mode}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)', marginBottom: 6 }}>{mode}</div>

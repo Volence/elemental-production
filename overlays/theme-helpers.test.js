@@ -73,11 +73,27 @@ describe('proxyImg', () => {
 });
 
 describe('normMapName', () => {
+  // Pinned exact output — a same-output-for-both-inputs assertion alone would
+  // pass even for a constant-returning stub. This is a DISPLAY-name key
+  // (apostrophe kept, just folded to straight ASCII); it is deliberately NOT
+  // the same as server/map-image-resolver.js's normalizeMapName, which strips
+  // apostrophes entirely to build filesystem-safe slugs ("kings-row").
+  it('lowercases and folds a straight apostrophe through unchanged', () => {
+    expect(normMapName("King's Row")).toBe("king's row");
+  });
   it('folds curly and straight apostrophes to the same key', () => {
     expect(normMapName("King's Row")).toBe(normMapName('King’s Row'));
+    expect(normMapName('King’s Row')).toBe("king's row");
   });
   it('strips diacritics', () => {
     expect(normMapName('Paraíso')).toBe('paraiso');
+  });
+  it('trims surrounding whitespace and lowercases', () => {
+    expect(normMapName('  ILIOS ')).toBe('ilios');
+  });
+  it('handles null/undefined as empty string', () => {
+    expect(normMapName(null)).toBe('');
+    expect(normMapName(undefined)).toBe('');
   });
 });
 

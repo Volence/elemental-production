@@ -73,6 +73,7 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .mpo-card-out .mpo-card-img { filter: grayscale(1) brightness(0.45); }
+    .mpo-card-out .mpo-art-placeholder { filter: brightness(0.6); }
     .mpo-card-out .mpo-card-name { color: rgba(255,255,255,0.45); }
     .mpo-card-live { border: 2px solid #fff; box-shadow: 0 0 30px rgba(255,255,255,0.25); }
     /* Completed in-pool map: full color kept (it's not "out", it's already
@@ -82,6 +83,10 @@
     .mpo-played-tag {
       position: absolute; top: 8px; right: 8px; font-size: 12px; font-weight: 800;
       letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.55);
+      /* Same plate convention as .mpo-score-tag — plain text alone is
+         unreadable over bright art (e.g. New Queen Street's daylight sky). */
+      background: rgba(8,10,15,0.92); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: var(--panel-radius); padding: 4px 10px;
     }
     /* Missing catalog art (e.g. season pool includes a map OverFast hasn't
        shipped a screenshot for yet) — same look as map-pick's placeholder. */
@@ -147,8 +152,11 @@
     // former local copy — see overlays/theme-helpers.js for the doc comment).
 
     // Dep: the full map catalog (art + modes) for pool cards. Per-dep catch in
-    // overlay-core means a fetch failure leaves an empty catalog (cards render
-    // name-only) rather than blocking the scene.
+    // overlay-core means a fetch failure leaves an empty catalog rather than
+    // blocking the scene — but since every pool map is grouped into its mode
+    // column via this catalog's `gamemodes`, an empty catalog means every
+    // column's name list stays empty and gets skipped: the grid renders ZERO
+    // columns (not name-only cards) until the catalog loads successfully.
     function loadMapCatalog() {
       return fetch(API + '/api/maps')
         .then(function (r) { return r.json(); })
@@ -163,6 +171,9 @@
     }
 
     // Mode display order (columns appear only for modes the pool contains).
+    // Keep in sync with the identical literal in src/pages/Settings.jsx's
+    // Season Map Pool editor (mode column list) — no shared module between
+    // this plain-script overlay and the React app.
     var MODE_ORDER = ['control', 'escort', 'hybrid', 'push', 'flashpoint', 'clash'];
 
     function proxied(url) {
@@ -242,7 +253,7 @@
 
       var art = img
         ? safeImg(img, { 'class': 'mpo-card-img', alt: name })
-        : '<div class="mpo-art-placeholder"><div class="mpo-art-placeholder-text">' + escapeHtml(name) + '</div></div>';
+        : '<div class="mpo-art-placeholder"><div class="mpo-art-placeholder-text">' + escapeHtml(name || '—') + '</div></div>';
 
       return '<div class="' + cls + '" style="animation: fadeIn 0.4s ease-out ' + delay.toFixed(2) + 's both;">' +
         art +
@@ -324,10 +335,13 @@
         // Ilios picked/banned this match but not in the season pool) still
         // needs to gray out its sibling pool maps in the same mode. Was: a
         // pool-only scan, so an off-pool map's mode column never froze
-        // (Peninsula bug).
+        // (Peninsula bug). Still catalog-dependent though: a series map with
+        // no matching catalog entry (unrecognized/misspelled name, or the
+        // catalog fetch failed — see loadMapCatalog above) contributes no
+        // mode and simply doesn't gray anything, silently.
         var takenModes = {};
         for (var mi = 0; mi < maps.length; mi++) {
-          var mCat = mapDataByName[normMapName(maps[mi].name)];
+          var mCat = maps[mi] && maps[mi].name ? mapDataByName[normMapName(maps[mi].name)] : null;
           var mGamemodes = (mCat && mCat.gamemodes) || [];
           for (var g = 0; g < mGamemodes.length; g++) takenModes[mGamemodes[g]] = true;
         }

@@ -151,6 +151,18 @@ function findCurrentMap(maps) {
 // as normHeroName/_mapAbbrev. Kept verbatim in sync with map-pool.html's
 // former local copy — do not change semantics, existing render keys depend
 // on this exact output.
+//
+// NOT the same function as server/map-image-resolver.js's normalizeMapName,
+// on purpose: that one strips apostrophes entirely and collapses punctuation
+// to hyphens to build filesystem-safe file keys ("kings-row"); this one keeps
+// the apostrophe (folded to straight ASCII) and only lowercases/trims to
+// build a display-name comparison key ("king's row"). Do not unify them —
+// each output shape is load-bearing for its own callers.
+//
+// src/pages/Settings.jsx duplicates this function's semantics as
+// `normMapKey` (same folding rules) because theme-helpers.js has no ESM
+// export — Settings.jsx isn't part of the overlays' plain-script bundle and
+// can't `<script src>` this file. Keep the two in sync by hand.
 function normMapName(name) {
   return String(name || '')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')

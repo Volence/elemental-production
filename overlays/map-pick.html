@@ -200,14 +200,23 @@
     // Local API (cached server-side, local-first pack) match against a map
     // name — normMapName (theme-helpers.js) handles the OverFast curly-
     // apostrophe / diacritic mismatches a raw lowercase compare falls through
-    // on (was silently landing on the tiny FACEIT fallback image).
+    // on (was silently landing on the tiny FACEIT fallback image). The `key`
+    // fallback matters separately: manual/scrim entries and faceit.js's
+    // `{id, name:id}` degenerate case produce slug-shaped names ("kings-row"),
+    // which normMapName's display-name comparison never matches — slugify the
+    // incoming name the same way server/map-image-resolver.js's
+    // normalizeMapName does (apostrophes stripped outright, not folded) and
+    // compare against the catalog's `key`.
     function getMapScreenshot(mapName, faceitImage) {
       if (!mapName) return proxyImg(faceitImage);
       var n = normMapName(mapName);
+      var slug = mapName.normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[‘’']/g, '').toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
       var match = null;
       for (var i = 0; i < mapData.length; i++) {
         var m = mapData[i];
-        if (m && m.name && normMapName(m.name) === n) { match = m; break; }
+        if (m && m.name && (normMapName(m.name) === n || m.key === slug)) { match = m; break; }
       }
       return proxyImg(match ? match.screenshot : faceitImage);
     }
