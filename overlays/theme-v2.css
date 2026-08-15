@@ -316,18 +316,23 @@
    (animated:false) must be visible immediately. The animated variant's
    inline `animation:...both` shorthand supplies its own 0%-keyframe opacity
    during the delay, overriding this default without needing a base 0 here. */
+/* The small 56px banTile() ban wing (its OWN inline "v2-ban-slash" copy in
+   components-v2.js, not this class) deliberately does NOT replicate the
+   drop-shadow glow below — at that tiny tile size the glow read as mush
+   rather than a highlight, so it was dropped there on purpose; keep the two
+   copies' gradients in sync but leave the glow reveal-scale-only. */
 .v2-ban-art-slash {
   position: absolute; inset: 0; pointer-events: none;
   --slash-core: 5px;   /* half-width of the red core; deck tiles override to 2px */
   background-image: linear-gradient(45deg,
-    transparent      calc(50% - var(--slash-core) - 2px),
-    rgba(0,0,0,0.9)  calc(50% - var(--slash-core) - 2px),
-    rgba(0,0,0,0.9)  calc(50% - var(--slash-core)),
-    #ff2323          calc(50% - var(--slash-core)),
-    #ff2323          calc(50% + var(--slash-core)),
-    rgba(0,0,0,0.9)  calc(50% + var(--slash-core)),
-    rgba(0,0,0,0.9)  calc(50% + var(--slash-core) + 2px),
-    transparent      calc(50% + var(--slash-core) + 2px));
+    transparent      calc(50% - var(--slash-core, 5px) - 2px),
+    rgba(0,0,0,0.9)  calc(50% - var(--slash-core, 5px) - 2px),
+    rgba(0,0,0,0.9)  calc(50% - var(--slash-core, 5px)),
+    #ff2323          calc(50% - var(--slash-core, 5px)),
+    #ff2323          calc(50% + var(--slash-core, 5px)),
+    rgba(0,0,0,0.9)  calc(50% + var(--slash-core, 5px)),
+    rgba(0,0,0,0.9)  calc(50% + var(--slash-core, 5px) + 2px),
+    transparent      calc(50% + var(--slash-core, 5px) + 2px));
   filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.40));
 }
 /* animated:true's sweep-in keyframe (moved here from hero-bans.html's local

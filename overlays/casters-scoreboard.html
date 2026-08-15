@@ -377,8 +377,13 @@
         ? safeImg(teamData.logo, { 'class': 'sb-team-logo v2-idle-breathe', alt: team.name || '' }) : '';
       var winBadge = (team.stats && team.stats.teamWin) ? '<span class="sb-win-badge">Win</span>' : '';
 
-      return '<div class="sb-team-block" style="border-top:3px solid ' + escapeHtml(color) + '">' +
-        '<div class="sb-team-heading" style="color:' + escapeHtml(legibleColor(color, 0.45)) + '">' +
+      // Legibility floor per theme-helpers' legibleColor doc: applies to
+      // text AND thin strokes (this 3px border-top qualifies), not just
+      // fills/washes/swatches — so both the border and the heading text use
+      // the same lifted color.
+      var legible = legibleColor(color, 0.45);
+      return '<div class="sb-team-block" style="border-top:3px solid ' + escapeHtml(legible) + '">' +
+        '<div class="sb-team-heading" style="color:' + escapeHtml(legible) + '">' +
           '<div class="sb-team-info">' + logoHtml +
             '<span class="sb-team-name">' + escapeHtml(team.name || '') + '</span></div>' +
           winBadge +
@@ -450,6 +455,10 @@
       var theme = state.theme || {};
       var t1Color = theme.team1Color || t1.color || '#3b82f6';
       var t2Color = theme.team2Color || t2.color || '#ef4444';
+      // Raw team-color TEXT (not fills) — legibility floor, hoisted once for
+      // this render's header score span (same pattern as totalsHtml above).
+      var t1Legible = legibleColor(t1Color, 0.45);
+      var t2Legible = legibleColor(t2Color, 0.45);
 
       var layout = normalizeLayout(state.casterLayout);
       var camRects = layout === 0 ? [] : (layout === 1 ? CAM_LAYOUTS.desk.single : CAM_LAYOUTS.desk.dual);
@@ -499,9 +508,9 @@
           '</div>' +
           '<div class="sb-header-right">' +
             '<div class="sb-score">' +
-              '<span style="color:' + escapeHtml(legibleColor(t1Color, 0.45)) + '">' + scoreOf(t1) + '</span>' +
+              '<span style="color:' + escapeHtml(t1Legible) + '">' + scoreOf(t1) + '</span>' +
               '<span class="sb-dash"> - </span>' +
-              '<span style="color:' + escapeHtml(legibleColor(t2Color, 0.45)) + '">' + scoreOf(t2) + '</span>' +
+              '<span style="color:' + escapeHtml(t2Legible) + '">' + scoreOf(t2) + '</span>' +
             '</div>' +
             '<div class="sb-map-selector">' + mapBtns + '</div>' +
           '</div>' +

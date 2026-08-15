@@ -130,18 +130,20 @@ describe('textOnColor', () => {
     expect(textOnColor('#FFD700')).toBe('#0a0c11');
   });
 
-  it('picks the higher-contrast option on a mid-bright blue (black wins: 5.3:1 vs white 3.7:1)', () => {
-    // Deviation note: the plan's Step 1 example literal for this color
-    // ('#ffffff') doesn't match its own Step 2 WCAG-relative-luminance
-    // formula applied verbatim — #0a0c11 against #3b82f6 measures ~5.32:1
-    // contrast vs. white's ~3.68:1, so the algorithm (correctly) picks the
-    // dark option. Implementation follows the plan's formula verbatim;
-    // this expectation follows the math, not the plan's example value.
-    expect(textOnColor('#3b82f6')).toBe('#0a0c11');
+  it('picks white text on a mid-bright blue (bias-to-white: clears the 3.5:1 band)', () => {
+    expect(textOnColor('#3b82f6')).toBe('#ffffff');
   });
 
   it('picks near-black text on bright green', () => {
     expect(textOnColor('#22c55e')).toBe('#0a0c11');
+  });
+
+  it('keeps white right at the bias band edge (mid gray, ~3.95:1)', () => {
+    expect(textOnColor('#808080')).toBe('#ffffff');
+  });
+
+  it('the white bias does not leak onto a genuinely bright fill (hot pink, ~2.65:1)', () => {
+    expect(textOnColor('#ff69b4')).toBe('#0a0c11');
   });
 
   it('defaults to white for non-hex passthrough input', () => {

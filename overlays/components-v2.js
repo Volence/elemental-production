@@ -30,15 +30,21 @@ function _hexToAlpha(hex, alpha) {
 
 // Private copy of theme-helpers.js's textOnColor — same "can't require()
 // theme-helpers.js from this classic script" reason as _hexToAlpha above.
-// Foreground (near-black vs white) readable ON a team-color FILL, via WCAG
-// relative luminance (not YIQ). Keep in sync with theme-helpers.js's version.
+// Foreground (near-black vs white) readable ON a team-color FILL. Uses WCAG
+// relative luminance (not YIQ) to compute white's contrast against the
+// fill, but biases TOWARD white rather than picking whichever of white/
+// #0a0c11 wins outright — the broadcast convention for large bold type on a
+// mid-tone fill. White is kept whenever it clears 3.5:1 (above WCAG's 3:1
+// large-text floor, with headroom) and only yields to near-black on
+// genuinely bright fills (yellow/green/pink). Keep in sync with
+// theme-helpers.js's version (byte-identical body).
 function _textOnColor(hex) {
   var m = /^#([0-9a-f]{6})$/i.exec(String(hex || '').trim());
   if (!m) return '#ffffff';
   var n = parseInt(m[1], 16);
   var lin = function (c) { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
   var L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-  return (1.05 / (L + 0.05)) >= ((L + 0.05) / 0.055) ? '#ffffff' : '#0a0c11';
+  return (1.05 / (L + 0.05)) >= 3.5 ? '#ffffff' : '#0a0c11';
 }
 
 function _proxyImg(u) {
@@ -323,9 +329,10 @@ function banArtTile(opts) {
       '</div>';
   }
 
-  // Slash core thickness (theme-v2.css --slash-core): reveal-scale (no
-  // `size`) gets the full 5px core; deck-scale tiles get a thinner 2px core
-  // so the line doesn't overwhelm the small bust.
+  // Slash core HALF-width (theme-v2.css --slash-core mirrors it either side
+  // of center, so the actual core is 2x this): reveal-scale (no `size`) gets
+  // a 5px half-width (10px core); deck-scale tiles get a thinner 2px
+  // half-width (4px core) so the line doesn't overwhelm the small bust.
   var slashCoreStyle = '--slash-core:' + (size ? 2 : 5) + 'px;';
   var slashStyle = animated
     ? (slashCoreStyle + 'animation:hbSlashSweep 0.5s ease-out ' + (delay + 0.35).toFixed(2) + 's both')

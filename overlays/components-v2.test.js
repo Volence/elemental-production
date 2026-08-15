@@ -90,6 +90,14 @@ describe('mapPips', () => {
     expect(html).toContain('v2-pip-live');   // white-glow live pip
     expect(html).toContain('v2-pip-empty');  // unplayed pad
   });
+  it('winner pip text uses _textOnColor contrast against the winner fill', () => {
+    const html = mapPips({
+      maps: [{ name: 'Ilios', status: 'completed', winner: 'team1' }],
+      bestOf: 1, team1Color: '#FFD700', team2Color: '#22c55e',
+    });
+    expect(html).toContain('background:#FFD700');
+    expect(html).toContain('color:#0a0c11');
+  });
   it('shows 2-3 letter abbreviations', () => {
     const html = mapPips({ maps, bestOf: 2, team1Color: '#111111', team2Color: '#222222' });
     expect(html).toContain('BUS');
@@ -219,6 +227,14 @@ describe('banArtTile', () => {
   it('animated:true sets the FULL inline animation shorthand on the slash', () => {
     const html = banArtTile({ renderUrl: 'x.png', portrait: '', heroName: 'Ana', teamColor: '#f00', animated: true, delay: 0.15 });
     expect(html).toContain('animation:hbSlashSweep 0.5s ease-out 0.50s both');
+  });
+  it('reveal scale (no size) emits the full 5px slash-core half-width', () => {
+    const html = banArtTile({ renderUrl: 'x.png', portrait: '', heroName: 'Ana', teamColor: '#f00' });
+    expect(html).toContain('--slash-core:5px');
+  });
+  it('deck scale (size set) emits the thinner 2px slash-core half-width', () => {
+    const html = banArtTile({ renderUrl: 'x.png', portrait: '', heroName: 'Ana', teamColor: '#f00', size: 108 });
+    expect(html).toContain('--slash-core:2px');
   });
   it('nameOverlay renders the bottom name bar; omitted by default', () => {
     const withOverlay = banArtTile({ renderUrl: 'x.png', portrait: '', heroName: 'Ana', teamColor: '#f00', nameOverlay: true });

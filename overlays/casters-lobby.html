@@ -365,6 +365,10 @@
       var theme = state.theme || {};
       var t1Color = theme.team1Color || t1.color || '#3b82f6';
       var t2Color = theme.team2Color || t2.color || '#ef4444';
+      // Raw team-color TEXT (not fills) — legibility floor per theme-helpers'
+      // legibleColor, same treatment as casters-map-score's teamHeaderHtml.
+      var t1Legible = legibleColor(t1Color, 0.45);
+      var t2Legible = legibleColor(t2Color, 0.45);
       var maps = state.maps || [];
       var bestOf = state.bestOf || 5;
       var perMapBans = state.perMapBans || [];
@@ -405,13 +409,13 @@
         '<div class="lb-panel v2-panel">' +
           '<div class="lb-match-header">' +
             '<div class="lb-match-team">' + t1Logo +
-              '<span class="lb-name" style="color:' + escapeHtml(t1Color) + '">' + escapeHtml(t1.name || '') + '</span>' +
-              '<span class="lb-score" style="color:' + escapeHtml(t1Color) + '">' + scoreOf(t1) + '</span>' +
+              '<span class="lb-name" style="color:' + escapeHtml(t1Legible) + '">' + escapeHtml(t1.name || '') + '</span>' +
+              '<span class="lb-score" style="color:' + escapeHtml(t1Legible) + '">' + scoreOf(t1) + '</span>' +
             '</div>' +
             '<div class="lb-match-vs">VS</div>' +
             '<div class="lb-match-team right">' + t2Logo +
-              '<span class="lb-name" style="color:' + escapeHtml(t2Color) + '">' + escapeHtml(t2.name || '') + '</span>' +
-              '<span class="lb-score" style="color:' + escapeHtml(t2Color) + '">' + scoreOf(t2) + '</span>' +
+              '<span class="lb-name" style="color:' + escapeHtml(t2Legible) + '">' + escapeHtml(t2.name || '') + '</span>' +
+              '<span class="lb-score" style="color:' + escapeHtml(t2Legible) + '">' + scoreOf(t2) + '</span>' +
             '</div>' +
           '</div>' +
           '<div class="lb-match-meta">Best of ' + escapeHtml(String(bestOf)) + '</div>' +
@@ -423,12 +427,12 @@
           '<div class="lb-rosters">' +
             '<div class="lb-roster-col">' +
               '<div class="lb-roster-header">' + r1Logo +
-                '<span class="lb-roster-name" style="color:' + escapeHtml(t1Color) + '">' + escapeHtml(t1.name || '') + '</span>' +
+                '<span class="lb-roster-name" style="color:' + escapeHtml(t1Legible) + '">' + escapeHtml(t1.name || '') + '</span>' +
               '</div>' + rosterHtml(players1) +
             '</div>' +
             '<div class="lb-roster-col">' +
               '<div class="lb-roster-header">' + r2Logo +
-                '<span class="lb-roster-name" style="color:' + escapeHtml(t2Color) + '">' + escapeHtml(t2.name || '') + '</span>' +
+                '<span class="lb-roster-name" style="color:' + escapeHtml(t2Legible) + '">' + escapeHtml(t2.name || '') + '</span>' +
               '</div>' + rosterHtml(players2) +
             '</div>' +
           '</div>' +
