@@ -46,12 +46,22 @@ overrides a shipped `.webp`. Recommended resolution: **1200px wide or
 larger** — these are used full-bleed on stream, so anything smaller will
 look soft.
 
+## What ships today
+
+| File | Source | Why |
+| --- | --- | --- |
+| `neon-junction.webp` (2193×1187) | Overwatch Wiki, `NeonJunction1.png` | OverFast has no Neon Junction screenshot at all — the card was blank |
+| `kings-row.webp` (1920×1200) | Overwatch Wiki, `Kings Row 007.jpg` | OverFast's name uses a curly apostrophe; the FACEIT fallback was a 110×55 thumbnail upscaled ~12× |
+
+Both are in-game screenshots of the map itself (no HUD, no watermark),
+re-encoded to WebP at quality 90. Blizzard owns the underlying artwork; these
+are used the same way the live OverFast/FACEIT map art already was.
+
 ## Priority: producers have flagged these as blurry
 
-**King's Row** and **Antarctic Peninsula** are the maps producers have
-specifically reported as blurry via the OverFast screenshot — if you're only
-sourcing a handful of images to start, start with `kings-row` and
-`antarctic-peninsula`.
+**Antarctic Peninsula** is the remaining map producers have specifically
+reported as blurry via the OverFast screenshot — if you're sourcing more
+images, start with `antarctic-peninsula`.
 
 ## Current map pool (competitive gamemodes)
 
