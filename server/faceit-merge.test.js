@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTeamsUpdate, buildMapsUpdate, getActiveBanIdx, computeHeroBans, computeActiveBan, heroNameToKey, deriveActiveBanState } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, getActiveBanIdx, computeHeroBans, computeActiveBan, heroNameToKey, deriveActiveBanState, deriveScores } from './faceit-merge.js';
 
 const faction1 = { id: 'f1', name: 'Alpha', avatar: 'a.png', roster: [] };
 const faction2 = { id: 'f2', name: 'Beta', avatar: 'b.png', roster: [] };
@@ -110,6 +110,31 @@ describe('getActiveBanIdx', () => {
 
   it('handles an empty maps array without throwing', () => {
     expect(getActiveBanIdx([], -1, [])).toBe(-1);
+  });
+
+  it('picks the LAST current map when bad state carries two live maps', () => {
+    const maps = [{ status: 'current' }, { status: 'current' }, { status: 'upcoming' }];
+    expect(getActiveBanIdx(maps, -1, [bans('A'), bans('B'), null])).toBe(1);
+  });
+});
+
+describe('deriveScores', () => {
+  it('counts map winners per team', () => {
+    const maps = [
+      { winner: 'team1' }, { winner: 'team2' }, { winner: 'team1' }, { winner: null },
+    ];
+    expect(deriveScores(maps)).toEqual({ team1: 2, team2: 1 });
+  });
+
+  it('counts producer-appended maps past the FACEIT list (the dropped-decider bug)', () => {
+    const faceitMaps = [{ winner: 'team1' }, { winner: 'team2' }];
+    const withAppendedDecider = faceitMaps.concat([{ winner: 'team2' }]);
+    expect(deriveScores(withAppendedDecider)).toEqual({ team1: 1, team2: 2 });
+  });
+
+  it('tolerates null entries and non-arrays', () => {
+    expect(deriveScores([null, { winner: 'team1' }, undefined])).toEqual({ team1: 1, team2: 0 });
+    expect(deriveScores(undefined)).toEqual({ team1: 0, team2: 0 });
   });
 });
 

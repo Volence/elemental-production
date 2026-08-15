@@ -171,8 +171,10 @@ export function resetState() {
  */
 export function normalizeSingleCurrent(maps) {
   if (!Array.isArray(maps)) return maps;
-  const lastCurrent = maps.reduce((acc, m, i) => (m && m.status === 'current' ? i : acc), -1);
-  if (lastCurrent === -1) return maps;
+  let lastCurrent = -1;
+  let count = 0;
+  maps.forEach((m, i) => { if (m && m.status === 'current') { lastCurrent = i; count++; } });
+  if (count <= 1) return maps;
   return maps.map((m, i) =>
     m && m.status === 'current' && i !== lastCurrent
       ? { ...m, status: m.winner ? 'completed' : 'upcoming' }
@@ -186,6 +188,8 @@ export function loadState() {
     if (fs.existsSync(STATE_FILE)) {
       const data = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
       state = deepMerge(JSON.parse(JSON.stringify(defaultState)), data);
+      // Heal a state.json written before the single-current invariant existed
+      state.maps = normalizeSingleCurrent(state.maps);
     }
   } catch (e) {
     console.warn('[State] Failed to load state, using defaults:', e.message);

@@ -459,7 +459,7 @@
       var banColIdx = (typeof state.activeBanMapIdx === 'number' && state.activeBanMapIdx >= 0)
         ? state.activeBanMapIdx : -1;
       if (banColIdx < 0) {
-        for (var bc = 0; bc < maps.length; bc++) { if (maps[bc] && maps[bc].status === 'current') { banColIdx = bc; break; } }
+        for (var bc = 0; bc < maps.length; bc++) { if (maps[bc] && maps[bc].status === 'current') banColIdx = bc; }
         if (banColIdx < 0) { for (var bd = maps.length - 1; bd >= 0; bd--) { if (maps[bd] && maps[bd].status === 'completed') { banColIdx = bd; break; } } }
       }
 

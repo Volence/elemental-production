@@ -231,7 +231,8 @@ export default function MatchHub({ state, updateState, api }) {
     setOverride('maps');
   };
 
-  const setMapStatus = (idx, status, winner = null) => {
+  // `extra` rides along in the same PATCH (Undo sends the score decrement with it)
+  const setMapStatus = (idx, status, winner = null, extra = null) => {
     const maps = state.maps.map((m, i) => {
       if (i === idx) return { ...m, status, winner };
       // single-current invariant: promoting a map demotes any other live map
@@ -240,7 +241,7 @@ export default function MatchHub({ state, updateState, api }) {
       }
       return m;
     });
-    updateState({ maps });
+    updateState({ maps, ...(extra || {}) });
   };
 
   // Index of the map that ban edits apply to. Never a completed map: once a
@@ -757,9 +758,9 @@ export default function MatchHub({ state, updateState, api }) {
                           onClick={(e) => {
                             e.stopPropagation();
                             const oldWinner = m.winner;
-                            const updatedMaps = state.maps.map((mm, ii) => ii === i ? { ...mm, status: 'current', winner: null } : mm);
-                            updateState({
-                              maps: updatedMaps,
+                            // via setMapStatus so re-opening this map demotes any
+                            // other live map (single-current invariant)
+                            setMapStatus(i, 'current', null, {
                               teams: {
                                 ...state.teams,
                                 [oldWinner]: { ...state.teams[oldWinner], score: Math.max(0, state.teams[oldWinner].score - 1) },

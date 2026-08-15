@@ -45,6 +45,20 @@ export function buildMapsUpdate({ currentMaps, faceitMaps, perMapBans, mapsOverr
 }
 
 /**
+ * Series score = maps won. Scores are STORED in state, not derived, so every
+ * writer recomputes them here from the maps that actually land in state —
+ * never from the FACEIT-index list, whose length stops at details.pickedMaps
+ * and would drop a producer-appended decider's winner.
+ */
+export function deriveScores(maps) {
+  const list = Array.isArray(maps) ? maps : [];
+  return {
+    team1: list.filter(m => m && m.winner === 'team1').length,
+    team2: list.filter(m => m && m.winner === 'team2').length,
+  };
+}
+
+/**
  * Which map's bans should populate heroBans (what the overlays display):
  *   1. producer-selected map (explicit override), else
  *   2. the live ('current') map, else
@@ -64,7 +78,9 @@ export function getActiveBanIdx(maps, selectedMapIdx = -1, perMapBans = []) {
   if (Number.isInteger(selectedMapIdx) && selectedMapIdx >= 0 && selectedMapIdx < maps.length) {
     return selectedMapIdx;
   }
-  const currentIdx = maps.findIndex(m => m.status === 'current');
+  // LAST current, matching findCurrentMapIndex/normalizeSingleCurrent: if bad
+  // state ever carries two live maps, server and overlays must pick the same one.
+  const currentIdx = maps.reduce((acc, m, i) => (m && m.status === 'current' ? i : acc), -1);
   if (currentIdx >= 0) return currentIdx;
   const hasBans = (b) => !!b && (b.team1Ban || b.team2Ban);
   const upcomingIdx = maps.findIndex(m => m.status === 'upcoming');

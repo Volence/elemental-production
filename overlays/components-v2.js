@@ -439,9 +439,11 @@ function _pinwheel(opts) {
 // findCurrentMapIndex; keep in sync if that function's order ever changes.
 function _fallbackMapName(maps) {
   var i;
+  var lastCurrent = -1;
   for (i = 0; i < maps.length; i++) {
-    if (maps[i] && maps[i].status === 'current') return maps[i].name || '';
+    if (maps[i] && maps[i].status === 'current') lastCurrent = i;
   }
+  if (lastCurrent !== -1) return maps[lastCurrent].name || '';
   for (i = 0; i < maps.length; i++) {
     if (maps[i] && maps[i].status === 'upcoming') return maps[i].name || '';
   }

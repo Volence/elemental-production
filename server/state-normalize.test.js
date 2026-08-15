@@ -32,6 +32,24 @@ describe('normalizeSingleCurrent', () => {
     expect(normalizeSingleCurrent(maps)).toBe(maps);
   });
 
+  it('does not mutate the input array or its entries', () => {
+    const first = { name: 'Ilios', status: 'current' };
+    const maps = [first, { name: 'Runasapi', status: 'current' }];
+    const out = normalizeSingleCurrent(maps);
+    expect(first.status).toBe('current');
+    expect(maps[0]).toBe(first);
+    expect(out[0]).not.toBe(first);
+  });
+
+  it('tolerates null entries', () => {
+    const maps = [null, { name: 'Ilios', status: 'current' }, undefined, { name: 'Busan', status: 'current' }];
+    const out = normalizeSingleCurrent(maps);
+    expect(out[0]).toBe(null);
+    expect(out[2]).toBe(undefined);
+    expect(out[1].status).toBe('upcoming');
+    expect(out[3].status).toBe('current');
+  });
+
   it('passes through non-arrays', () => {
     expect(normalizeSingleCurrent(undefined)).toBe(undefined);
     expect(normalizeSingleCurrent(null)).toBe(null);

@@ -24,7 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
-import { buildTeamsUpdate, buildMapsUpdate, computeActiveBan, deriveActiveBanState } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, computeActiveBan, deriveActiveBanState, deriveScores } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
 
@@ -270,9 +270,12 @@ async function syncToOBS(state) {
 
   // Flythrough video sync — update OBS media source when current map changes.
   // Fallback order: live map → next upcoming map (so adding a map in
-  // manual/scrim mode updates the flythrough without clicking Play) → first map
+  // manual/scrim mode updates the flythrough without clicking Play) → first map.
+  // "Live" is the LAST current map (matches findCurrentMapIndex) so a stray
+  // extra live map can't point the flythrough at a different map than the
+  // overlays name.
   const maps = state.maps || [];
-  const currentMap = maps.find(m => m.status === 'current')
+  const currentMap = maps.reduce((acc, m) => (m && m.status === 'current' ? m : acc), null)
     || maps.find(m => m.status === 'upcoming')
     || maps[0];
   const currentMapName = currentMap?.name || '';
@@ -866,9 +869,10 @@ app.post('/api/faceit/match', async (req, res) => {
     }
 
     // Compute score from completed maps to avoid FACEIT reporting partial
-    // scores mid-control-map (e.g. Lijiang Tower objective wins)
-    const computedScore1 = maps.filter(m => m.winner === 'team1').length;
-    const computedScore2 = maps.filter(m => m.winner === 'team2').length;
+    // scores mid-control-map (e.g. Lijiang Tower objective wins). Derived from
+    // the maps that actually land in state, so a kept (overridden) list with
+    // producer-appended maps still counts.
+    const { team1: computedScore1, team2: computedScore2 } = deriveScores(update.maps || getState().maps);
 
     // Team 1 fields
     const t1 = {};
@@ -948,14 +952,19 @@ async function refreshFromFaceit() {
   }
   if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
   if (!isOverridden('maps')) {
-    update.maps = maps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null }));
+    // Relinquishing the `maps` override hands the FACEIT list back, but maps the
+    // producer appended past details.pickedMaps.length (a hand-added decider and
+    // its winner) are theirs — keep the tail instead of deleting it.
+    const tail = (currentState.maps || []).slice(maps.length);
+    update.maps = normalizeSingleCurrent(
+      maps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null })).concat(tail));
   }
   if (!isOverridden('players')) {
     update.players = { team1: faction1.roster, team2: faction2.roster };
   }
 
-  const computedScore1 = maps.filter(m => m.winner === 'team1').length;
-  const computedScore2 = maps.filter(m => m.winner === 'team2').length;
+  const { team1: computedScore1, team2: computedScore2 } =
+    deriveScores(update.maps || currentState.maps);
 
   const t1 = { color: '#3b82f6', faceitId: faction1.id };
   if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
@@ -1055,12 +1064,12 @@ async function faceitPollTick() {
     // Build update, respecting overrides; unlike the one-shot loader, colors are preserved and overridden maps still advance progress
     const update = {};
     if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
-    update.maps = buildMapsUpdate({
+    update.maps = normalizeSingleCurrent(buildMapsUpdate({
       currentMaps: currentState.maps,
       faceitMaps: maps,
       perMapBans,
       mapsOverridden: isOverridden('maps'),
-    });
+    }));
     if (!isOverridden('players')) {
       update.players = { team1: faction1.roster, team2: faction2.roster };
     }
@@ -1071,11 +1080,10 @@ async function faceitPollTick() {
       update.activeBanMapIdx = activeBan.idx;
     }
 
-    // Compute score from the MERGED maps (update.maps), not the FACEIT-index
-    // list: manually appended maps live past details.pickedMaps.length and
-    // their winners would never count.
-    const computedScore1 = update.maps.filter(m => m.winner === 'team1').length;
-    const computedScore2 = update.maps.filter(m => m.winner === 'team2').length;
+    // Score from the MERGED maps (update.maps), not the FACEIT-index list:
+    // manually appended maps live past details.pickedMaps.length and their
+    // winners would never count.
+    const { team1: computedScore1, team2: computedScore2 } = deriveScores(update.maps);
 
     update.teams = buildTeamsUpdate({
       currentTeams: currentState.teams,
@@ -1160,23 +1168,33 @@ app.post('/api/overrides/clear', (req, res) => {
  * so the Stream Deck endpoint behaves identically to the dashboard button.
  */
 app.delete('/api/overrides', async (req, res) => {
+  const released = { ...(getState().overrides || {}) };
   clearAllOverrides();
   reconcileHeroBans();
   const s = getState();
+  let refreshed = false;
   if (s.mode === 'faceit' && s.faceitMatchId) {
-    try { await refreshFromFaceit(); } catch (e) { console.error('[overrides] refresh failed:', e.message); }
-  } else {
-    const maps = s.maps || [];
-    setState({ teams: {
-      ...s.teams,
-      team1: { ...s.teams.team1, score: maps.filter(m => m.winner === 'team1').length },
-      team2: { ...s.teams.team2, score: maps.filter(m => m.winner === 'team2').length },
-    } });
+    // refreshFromFaceit broadcasts + syncs on its own
+    try { await refreshFromFaceit(); refreshed = true; }
+    catch (e) { console.error('[Overrides] FACEIT refresh failed, deriving scores locally:', e.message); }
+  }
+  if (!refreshed) {
+    // Only re-derive scores the producer actually took over: outside FACEIT a
+    // hand-typed 2-1 with no per-map winners is the real score, not 0-0.
+    if (released['teams.team1.score'] || released['teams.team2.score']) {
+      const scores = deriveScores(s.maps);
+      setState({ teams: {
+        ...s.teams,
+        team1: { ...s.teams.team1, score: scores.team1 },
+        team2: { ...s.teams.team2, score: scores.team2 },
+      } });
+    }
+    const derived = getState();
+    broadcast('state', derived);
+    syncToOBS(derived);
   }
   const updated = getState();
-  broadcast('state', updated);
-  syncToOBS(updated);
-  res.json({ success: true, overrides: updated.overrides });
+  res.json({ success: true, refreshed, overrides: updated.overrides });
 });
 
 // ============ MAPS API ============
