@@ -435,6 +435,12 @@
         ['Healing', a.healingDone, b.healingDone, false, false]
       ];
 
+      // data-cu-target/data-cu-ratio: the RAW numeric value + format hint,
+      // read back by animateCountUp() below. The text content rendered here
+      // is still the real final value (not "0") — animateCountUp only
+      // overrides it when this is a genuinely new totals key; a forceRender
+      // repaint (font-ready / 1200ms refit) with unchanged totals must show
+      // the correct numbers immediately, never a stale zero.
       var rowHtml = function (row) {
         var label = row[0], v1 = row[1], v2 = row[2], lowerBetter = row[3], isRatio = row[4];
         var d1 = isRatio ? v1.toFixed(2) : Number(v1 || 0).toLocaleString();
@@ -443,10 +449,11 @@
         var h2 = lowerBetter ? (v2 < v1) : (v2 > v1);
         var st1 = h1 ? '' : (' style="color:' + escapeHtml(t1Legible) + '"');
         var st2 = h2 ? '' : (' style="color:' + escapeHtml(t2Legible) + '"');
+        var ratioFlag = isRatio ? '1' : '0';
         return '<div class="fs-totals-row">' +
-          '<div class="fs-totals-val-left ' + (h1 ? 'higher' : '') + '"' + st1 + '>' + d1 + '</div>' +
+          '<div class="fs-totals-val-left ' + (h1 ? 'higher' : '') + '" data-cu-target="' + v1 + '" data-cu-ratio="' + ratioFlag + '"' + st1 + '>' + d1 + '</div>' +
           '<div class="fs-totals-label">' + escapeHtml(label) + '</div>' +
-          '<div class="fs-totals-val-right ' + (h2 ? 'higher' : '') + '"' + st2 + '>' + d2 + '</div>' +
+          '<div class="fs-totals-val-right ' + (h2 ? 'higher' : '') + '" data-cu-target="' + v2 + '" data-cu-ratio="' + ratioFlag + '"' + st2 + '>' + d2 + '</div>' +
           '</div>';
       };
 
@@ -472,6 +479,46 @@
           colHtml(rows.slice(half)) +
         '</div>' +
         '</div>';
+    }
+
+    // One-shot count-up on the totals row (spec §16 "final-stats: ...a
+    // one-shot count-up on the totals row at entrance"). Fires only when the
+    // totals actually changed — never on a forceRender repaint (font-ready /
+    // 1200ms refit in this file) with identical numbers, and never again on
+    // an unrelated key change (e.g. a caster name edit) that leaves the
+    // totals untouched. ES2019-safe: no arrow functions, `var` throughout.
+    var lastCountUpKey = null;
+    function animateCountUp(root) {
+      var nodes = root.querySelectorAll('.fs-totals-val-left, .fs-totals-val-right');
+      var DURATION = 800;
+      var i;
+      // Zero synchronously so the FIRST paint after this call already shows
+      // 0 — otherwise the real values (written by totalsHtml) would flash
+      // for one frame before the first rAF callback lands.
+      for (i = 0; i < nodes.length; i++) {
+        nodes[i].textContent = nodes[i].getAttribute('data-cu-ratio') === '1' ? '0.00' : '0';
+      }
+      var start = null;
+      function paint(progress) {
+        for (var j = 0; j < nodes.length; j++) {
+          var node = nodes[j];
+          var target = parseFloat(node.getAttribute('data-cu-target')) || 0;
+          var value = target * progress;
+          node.textContent = node.getAttribute('data-cu-ratio') === '1'
+            ? value.toFixed(2) : Math.round(value).toLocaleString();
+        }
+      }
+      function tick(ts) {
+        if (start === null) start = ts;
+        var progress = Math.min(1, (ts - start) / DURATION);
+        if (progress < 1) {
+          paint(progress);
+          requestAnimationFrame(tick);
+        } else {
+          paint(1); // snap to exact targets — avoids float rounding drift
+        }
+      }
+      requestAnimationFrame(tick);
     }
 
     function render(state) {
@@ -542,6 +589,15 @@
           teamHtml +
           totalsHtml(sides, t1, t2, t1Color, t2Color) +
         '</div>';
+
+      // Count-up only on a genuine totals change (see animateCountUp doc) —
+      // keyed on the aggregated totals themselves, not the full render key,
+      // so an unrelated leaf (caster name, cam layout) never re-triggers it.
+      var countUpKey = JSON.stringify([sides.team1.totals, sides.team2.totals]);
+      if (countUpKey !== lastCountUpKey) {
+        lastCountUpKey = countUpKey;
+        animateCountUp(deck);
+      }
 
       // Zoom-shrink the DECK PANEL only (never the cam frames, whose OBS
       // caster sources are aligned to the canonical rects).
