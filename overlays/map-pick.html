@@ -127,12 +127,6 @@
       text-shadow: 0 1px 6px rgba(0,0,0,0.7);
     }
 
-    .mp-if-needed {
-      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-      color: rgba(255,255,255,0.4); font-weight: 800; font-size: 20px;
-      letter-spacing: 3px; text-transform: uppercase; text-align: center;
-    }
-
     .mp-col-foot { padding: 12px 8px 16px; text-align: center; flex: 0 0 auto; }
     .mp-col-name {
       font-size: 34px; font-weight: 800; color: #fff; text-transform: uppercase;
@@ -328,9 +322,11 @@
     //  - completed: team-color border/wash + circled winner logo + roundScore
     //  - current (live): white glow border, LIVE chip, name >=40px
     //  - decider: LAST column, still unplayed (not completed/current) — dimmed
-    //    + "IF NEEDED" watermark. A plain "upcoming, not last" column (will
-    //    definitely be played) gets none of the completed/current/decider
-    //    treatment — just the base panel + its picker pill.
+    //    (a decider can be played out even when the series is already
+    //    decided, so no conditional-play watermark — just the DECIDER pill
+    //    in the foot). A plain "upcoming, not last" column (will definitely
+    //    be played) gets none of the completed/current/decider treatment —
+    //    just the base panel + its picker pill.
     function mapColumn(i, map, ctx) {
       map = map || {};
       var status = map.status || 'upcoming';
@@ -378,9 +374,7 @@
         winnerHtml = '<div class="mp-winner-wrap">' + wlogoHtml + scoreHtml + '</div>';
       }
 
-      var ifNeededHtml = isDecider ? '<div class="mp-if-needed">IF NEEDED</div>' : '';
-
-      var artHtml = '<div class="mp-col-art">' + artInner + winnerHtml + ifNeededHtml + chipHtml + liveChipHtml + '</div>';
+      var artHtml = '<div class="mp-col-art">' + artInner + winnerHtml + chipHtml + liveChipHtml + '</div>';
 
       // Footer: name + picker pill + bans (on every played column that has
       // them; ctx.banColIdx just picks the 84px vs 56px tile size). Only
