@@ -75,6 +75,24 @@
     .mpo-card-out .mpo-card-img { filter: grayscale(1) brightness(0.45); }
     .mpo-card-out .mpo-card-name { color: rgba(255,255,255,0.45); }
     .mpo-card-live { border: 2px solid #fff; box-shadow: 0 0 30px rgba(255,255,255,0.25); }
+    /* Completed in-pool map: full color kept (it's not "out", it's already
+       played) — just a brighter border + a PLAYED marker when there's no
+       score tag to already say so. */
+    .mpo-card-played { border-color: rgba(255,255,255,0.45); }
+    .mpo-played-tag {
+      position: absolute; top: 8px; right: 8px; font-size: 12px; font-weight: 800;
+      letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.55);
+    }
+    /* Missing catalog art (e.g. season pool includes a map OverFast hasn't
+       shipped a screenshot for yet) — same look as map-pick's placeholder. */
+    .mpo-art-placeholder {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #2e3440, #1b1f28); padding: 12px; text-align: center;
+    }
+    .mpo-art-placeholder-text {
+      font-size: 18px; font-weight: 800; color: rgba(255,255,255,0.35);
+      text-transform: uppercase; letter-spacing: 1px;
+    }
     .mpo-badge {
       position: absolute; top: 8px; left: 8px; display: flex; align-items: center; gap: 8px;
       background: rgba(8,10,15,0.92); border-radius: var(--panel-radius); padding: 4px 8px;
@@ -145,7 +163,7 @@
     }
 
     // Mode display order (columns appear only for modes the pool contains).
-    var MODE_ORDER = ['control', 'escort', 'hybrid', 'push', 'flashpoint'];
+    var MODE_ORDER = ['control', 'escort', 'hybrid', 'push', 'flashpoint', 'clash'];
 
     function proxied(url) {
       if (!url) return '';
@@ -192,10 +210,19 @@
       var img = proxied(cat.screenshot);
       var cls = 'mpo-card';
       var overlays = '';
+      // "Played" is series-status-derived, NOT gated on picker/roundScore
+      // being present (that gap was the Peninsula bug: a completed map with
+      // neither field rendered as if it were still available). The PLAYED
+      // corner tag only fires when the score tag won't also be shown there
+      // (same top-right corner) — the score itself already reads as played.
+      var played = !!(series && series.status === 'completed');
 
       if (series && (series.status === 'current' || series.status === 'in_progress')) {
         cls += ' mpo-card-live';
         overlays += '<div class="mpo-live-tag">LIVE</div>';
+      } else if (played) {
+        cls += ' mpo-card-played';
+        if (!series.roundScore) overlays += '<div class="mpo-played-tag">PLAYED</div>';
       } else if (!series && modeTaken) {
         cls += ' mpo-card-out';
       }
@@ -209,12 +236,16 @@
           (t2.logo ? safeImg(t2.logo, { 'class': 'mpo-badge-logo', alt: t2.name || '' }) : '') +
           escapeHtml(teamShort(t2, 'TEAM 2')) + ' PICK</div>';
       }
-      if (series && series.status === 'completed' && series.roundScore) {
+      if (played && series.roundScore) {
         overlays += '<div class="mpo-score-tag">' + escapeHtml(series.roundScore) + '</div>';
       }
 
+      var art = img
+        ? safeImg(img, { 'class': 'mpo-card-img', alt: name })
+        : '<div class="mpo-art-placeholder"><div class="mpo-art-placeholder-text">' + escapeHtml(name) + '</div></div>';
+
       return '<div class="' + cls + '" style="animation: fadeIn 0.4s ease-out ' + delay.toFixed(2) + 's both;">' +
-        (img ? safeImg(img, { 'class': 'mpo-card-img', alt: name }) : '') +
+        art +
         overlays +
         '<div class="mpo-card-name">' + escapeHtml(name) + '</div>' +
         '</div>';
@@ -288,6 +319,18 @@
         gridHtml = '<div class="mpo-empty"><div class="mpo-empty-chip">No map pool set<br>' +
           '<span style="font-size:18px;letter-spacing:2px">Settings → Season Map Pool</span></div></div>';
       } else {
+        // Taken modes are derived from the SERIES's maps (state.maps), not
+        // from pool membership — a series map outside the saved pool (e.g.
+        // Ilios picked/banned this match but not in the season pool) still
+        // needs to gray out its sibling pool maps in the same mode. Was: a
+        // pool-only scan, so an off-pool map's mode column never froze
+        // (Peninsula bug).
+        var takenModes = {};
+        for (var mi = 0; mi < maps.length; mi++) {
+          var mCat = mapDataByName[normMapName(maps[mi].name)];
+          var mGamemodes = (mCat && mCat.gamemodes) || [];
+          for (var g = 0; g < mGamemodes.length; g++) takenModes[mGamemodes[g]] = true;
+        }
         var cols = '';
         var colIdx = 0;
         for (var mo = 0; mo < MODE_ORDER.length; mo++) {
@@ -299,15 +342,11 @@
             if (modes.indexOf(mode) !== -1) names.push(pool[p]);
           }
           if (names.length === 0) continue;
-          // One pass to learn whether this mode column is already "taken"
-          // (some map here was picked/played in the series) before rendering.
           var entries = [];
-          var modeTaken = false;
           for (var e = 0; e < names.length; e++) {
-            var se = seriesEntry(maps, names[e]);
-            entries.push(se);
-            if (se) modeTaken = true;
+            entries.push(seriesEntry(maps, names[e]));
           }
+          var modeTaken = !!takenModes[mode];
           var cards = '';
           for (var c = 0; c < names.length; c++) {
             cards += cardHtml(names[c], entries[c], modeTaken, t1, t2, 0.15 + colIdx * 0.06 + c * 0.05);

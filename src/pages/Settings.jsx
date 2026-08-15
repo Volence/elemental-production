@@ -57,6 +57,17 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
   const STADIUM_ONLY_MAPS = new Set([
     'Arena Victoriae', 'Gogadoro', 'Wuxing University', 'Place Lacroix', 'Redwood Dam',
   ]);
+  // Comparison-only normalization: OverFast's catalog names use typographic
+  // apostrophes ("King's Row") while an older save/manual edit of state.mapPool
+  // may carry the ASCII form. Kept in sync with overlays/theme-helpers.js's
+  // normMapName (same semantics) — duplicated rather than imported since this
+  // file isn't part of the overlays' plain-script bundle. state.mapPool itself
+  // still stores display names verbatim; only membership checks and the
+  // save-time dedupe use this key.
+  const normMapKey = (name) => String(name || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[‘’']/g, "'")
+    .toLowerCase().trim();
   const [allMaps, setAllMaps] = useState([]);
   const [mapPoolSel, setMapPoolSel] = useState(() => new Set(state.mapPool || []));
   const [mapPoolDirty, setMapPoolDirty] = useState(false);
@@ -68,16 +79,40 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
   useEffect(() => {
     if (!mapPoolDirty) setMapPoolSel(new Set(state.mapPool || []));
   }, [state.mapPool, mapPoolDirty]);
+  const mapPoolHas = (name) => {
+    const key = normMapKey(name);
+    for (const n of mapPoolSel) if (normMapKey(n) === key) return true;
+    return false;
+  };
   const toggleMapPool = (name) => {
     setMapPoolSel(prev => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
+      const key = normMapKey(name);
+      let existing = null;
+      for (const n of next) { if (normMapKey(n) === key) { existing = n; break; } }
+      // Normalize before membership: toggling off must remove whichever
+      // spelling is actually stored (possibly not byte-identical to `name`),
+      // and toggling on must never append a second spelling of a name
+      // that's already present (the King's Row phantom-unchecked + duplicate
+      // append bug).
+      if (existing !== null) next.delete(existing); else next.add(name);
       return next;
     });
     setMapPoolDirty(true);
   };
   const saveMapPool = async () => {
-    await updateState({ mapPool: [...mapPoolSel] });
+    // Dedupe by normalized key, keeping the first display name seen, in case
+    // mapPoolSel ever ends up holding two spellings of the same map (stale
+    // state from before this normalization landed).
+    const seen = new Set();
+    const deduped = [];
+    for (const n of mapPoolSel) {
+      const key = normMapKey(n);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(n);
+    }
+    await updateState({ mapPool: deduped });
     setMapPoolDirty(false);
   };
   const [browseTarget, setBrowseTarget] = useState(null); // 'flythroughs' | 'mapMusic' | 'bgMusic' | null
@@ -335,7 +370,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Loading map list…</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
-            {['control', 'escort', 'hybrid', 'push', 'flashpoint'].map(mode => (
+            {['control', 'escort', 'hybrid', 'push', 'flashpoint', 'clash'].map(mode => (
               <div key={mode}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)', marginBottom: 6 }}>{mode}</div>
                 <div style={{ display: 'grid', gap: 4 }}>
@@ -343,7 +378,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
                     <label key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
-                        checked={mapPoolSel.has(m.name)}
+                        checked={mapPoolHas(m.name)}
                         onChange={() => toggleMapPool(m.name)}
                       />
                       {m.name}
