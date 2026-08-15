@@ -12,6 +12,28 @@ let listenersRegistered = false;
 let reconnectTimer = null;
 let lastConn = { host: 'localhost', port: 4455, password: '' };
 
+// Fired after every SUCCESSFUL identification — the boot connect and every
+// scheduleReconnect() retry alike (retries go through connect()). Consumers use
+// it to re-push state and re-heal browser sources, which is what makes
+// "start the app, then start OBS" work without a restart.
+const connectHandlers = [];
+
+/** Register a callback to run each time OBS connects (or reconnects). */
+export function onConnected(fn) {
+  if (typeof fn === 'function') connectHandlers.push(fn);
+}
+
+function fireConnected() {
+  for (const fn of connectHandlers) {
+    try {
+      const r = fn();
+      if (r && typeof r.catch === 'function') r.catch(e => console.error('[OBS] onConnected handler failed:', e.message));
+    } catch (e) {
+      console.error('[OBS] onConnected handler failed:', e.message);
+    }
+  }
+}
+
 function scheduleReconnect() {
   if (reconnectTimer) return;
   reconnectTimer = setTimeout(() => {
@@ -61,6 +83,7 @@ export async function connect(host = 'localhost', port = 4455, password = '') {
     connected = true;
     console.log('[OBS] Connected to', url);
     registerListeners();
+    fireConnected();
     return { connected: true };
   } catch (e) {
     connected = false;

@@ -27,6 +27,7 @@ import * as mapMusic from './map-music.js';
 import { buildTeamsUpdate, buildMapsUpdate, computeActiveBan, deriveActiveBanState, deriveScores } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
+import { BROWSER_SOURCES } from './browser-sources.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -548,9 +549,12 @@ app.post('/api/obs/connect', async (req, res) => {
   const result = await obs.connect(h, p, pw);
   if (result.connected) {
     setState({ obsConnection: { host: h, port: p, password: pw } });
-    setTimeout(() => {
-      syncToOBS(getState());
-      hideAudioSourceVideo();
+    // obs.onConnected already re-armed the browser-source latch, so this pass
+    // is the one that heals — its later twin from the hook no-ops.
+    setTimeout(async () => {
+      await syncToOBS(getState()).catch(() => {});
+      await setupBrowserSources().catch(() => {});
+      await hideAudioSourceVideo().catch(() => {});
     }, 2000);
   }
   res.json(result);
@@ -2268,47 +2272,49 @@ if (getState().faceitAutoSync && getState().faceitMatchId) {
   startFaceitPoll();
 }
 
-// Browser source list (shared between startup and manual setup)
-const BROWSER_SOURCES = [
-  ['Gameplay HUD', 'gameplay-hud.html'],
-  ['Casters BS', 'casters.html'],
-  ['Casters Lobby BS', 'casters-lobby.html'],
-  ['Casters Scoreboard BS', 'casters-scoreboard.html'],
-  ['Casters Map Score BS', 'casters-map-score.html'],
-  ['Series Winner BS', 'series-winner.html'],
-  ['Between Matches BS', 'between-matches.html'],
-  ['Starting Soon BS', 'starting-soon.html'],
-  ['BRB BS', 'brb.html'],
-  ['Interview BS', 'interview.html'],
-  ['End Stream BS', 'end-of-stream.html'],
-  ['Map Intro BS', 'map-intro.html'],
-  ['Map Pick BS', 'map-pick.html'],
-  ['Casters Flythrough HUD', 'casters-flythrough-hud.html'],
-];
-
+// Per-CONNECTION latch, not a process-lifetime one: it's re-armed by the
+// onConnected hook below so every (re)connect heals the sources again. It only
+// latches after a pass that actually reached OBS — obs.connect() resolves
+// {connected:false} instead of rejecting, so latching optimistically used to
+// mean "app started before OBS" => sources were never set up at all.
 let browserSourcesConfigured = false;
 
 async function setupBrowserSources() {
+  if (!obs.isConnected()) {
+    console.log('[OBS] Not connected, skipping browser source setup');
+    return;
+  }
   if (browserSourcesConfigured) {
     console.log('[OBS] Browser sources already configured, skipping');
     return;
   }
-  browserSourcesConfigured = true;
 
   const base = `http://localhost:${PORT}/overlays`;
 
-  // Step 1: Set stable URLs (no cache buster — idempotent, won't trigger reload if already set)
+  // Step 1: Seed stable URLs on the known sources (no cache buster —
+  // idempotent, won't trigger a reload if the URL is already set)
   for (const [source, file] of BROWSER_SOURCES) {
     await obs.setBrowserSource(source, `${base}/${file}`).catch(() => {});
   }
 
-  // Step 2: Single pass refresh to bust any stale cache
+  // Step 2: Refresh every overlay browser source OBS actually has. Enumerated
+  // by URL (same pass as POST /api/overlays/refresh) rather than driven off
+  // BROWSER_SOURCES, so renamed or producer-added overlay sources heal too —
+  // and vdo.ninja caster cams are skipped for free (refreshing one drops a
+  // live camera feed mid-show).
   await new Promise(r => setTimeout(r, 1000));
-  for (const [source] of BROWSER_SOURCES) {
-    await obs.refreshBrowserSource(source).catch(() => {});
+  let refreshed = 0;
+  for (const input of await obs.getInputList()) {
+    if (input.inputKind !== 'browser_source') continue;
+    const settings = await obs.rawCall('GetInputSettings', { inputName: input.inputName });
+    const url = settings?.inputSettings?.url || '';
+    if (!url.includes('/overlays/')) continue;
+    if (await obs.refreshBrowserSource(input.inputName).catch(() => false)) refreshed++;
   }
 
-  console.log('[OBS] Browser sources configured for all overlays');
+  if (!obs.isConnected()) return; // connection dropped mid-pass — don't latch
+  browserSourcesConfigured = true;
+  console.log(`[OBS] Browser sources configured (${refreshed} overlay sources refreshed)`);
 }
 
 // Try to connect to OBS on startup (saved settings or env vars)
@@ -2316,50 +2322,55 @@ const _savedObs = getState().obsConnection;
 const _obsHost = process.env.OBS_WS_HOST || _savedObs?.host;
 const _obsPort = parseInt(process.env.OBS_WS_PORT) || _savedObs?.port || 4455;
 const _obsPw = process.env.OBS_WS_PASSWORD ?? _savedObs?.password ?? '';
-if (_obsHost) {
-  obs.connect(_obsHost, _obsPort, _obsPw).then(async () => {
-    // Initial sync of current state to OBS after connecting
-    setTimeout(async () => {
-      await syncToOBS(getState());
-      await setupBrowserSources();
-      await hideAudioSourceVideo();
-    }, 3000);
 
-    // Scene-collection switch (e.g. the producer imports the downloaded JSON
-    // and switches to it): the import replaced every media source with a
-    // blank-path version, but syncToOBS's lastSyncedState cache still says
-    // "already pushed" — so clear the cache and re-sync in full, exactly
-    // like /api/obs/force-sync. Without this the flythroughs and music stay
-    // silent until an app restart (producer bug report, post-v2.0.0).
-    obs.onEvent('onCollectionChanged', async (data) => {
-      console.log(`[OBS] Scene collection changed (${data?.sceneCollectionName || 'unknown'}) — full re-sync`);
-      lastSyncedState = {};
-      // Give OBS a beat to finish loading the new collection's sources.
-      setTimeout(async () => {
-        await syncToOBS(getState()).catch(() => {});
-        await setupBrowserSources().catch(() => {});
-        await hideAudioSourceVideo().catch(() => {});
-      }, 2000);
-    });
+// Scene-collection switch (e.g. the producer imports the downloaded JSON
+// and switches to it): the import replaced every media source with a
+// blank-path version, but syncToOBS's lastSyncedState cache still says
+// "already pushed" — so clear the cache and re-sync in full, exactly
+// like /api/obs/force-sync. Without this the flythroughs and music stay
+// silent until an app restart (producer bug report, post-v2.0.0).
+obs.onEvent('onCollectionChanged', async (data) => {
+  console.log(`[OBS] Scene collection changed (${data?.sceneCollectionName || 'unknown'}) — full re-sync`);
+  lastSyncedState = {};
+  browserSourcesConfigured = false; // the new collection's sources need seeding too
+  // Give OBS a beat to finish loading the new collection's sources.
+  setTimeout(async () => {
+    await syncToOBS(getState()).catch(() => {});
+    await setupBrowserSources().catch(() => {});
+    await hideAudioSourceVideo().catch(() => {});
+  }, 2000);
+});
 
-    // Auto-cycle replay clips when one finishes playing
-    obs.onEvent('onMediaEnd', async (data) => {
-      if (data.inputName === 'Replay') {
-        const state = getState();
-        const clips = state.replayClips || [];
-        if (clips.length === 0) return;
-        const nextIdx = ((state.replayIndex || 0) + 1) % clips.length;
-        setState({ replayIndex: nextIdx });
-        await obs.setMediaSource('Replay', clips[nextIdx], false);
-        console.log(`[Replay] Auto-cycling to clip ${nextIdx + 1}/${clips.length}`);
-      } else if (data.inputName === 'Background Music') {
-        advancePlaylist('Background Music', 'bgMusic');
-      } else if (data.inputName === 'Casters Background Music') {
-        advancePlaylist('Casters Background Music', 'castersBgMusic');
-      }
-    });
-  }).catch(() => {});
-}
+// Auto-cycle replay clips when one finishes playing
+obs.onEvent('onMediaEnd', async (data) => {
+  if (data.inputName === 'Replay') {
+    const state = getState();
+    const clips = state.replayClips || [];
+    if (clips.length === 0) return;
+    const nextIdx = ((state.replayIndex || 0) + 1) % clips.length;
+    setState({ replayIndex: nextIdx });
+    await obs.setMediaSource('Replay', clips[nextIdx], false);
+    console.log(`[Replay] Auto-cycling to clip ${nextIdx + 1}/${clips.length}`);
+  } else if (data.inputName === 'Background Music') {
+    advancePlaylist('Background Music', 'bgMusic');
+  } else if (data.inputName === 'Casters Background Music') {
+    advancePlaylist('Casters Background Music', 'castersBgMusic');
+  }
+});
+
+// Heal on EVERY successful connect — the boot attempt, the 5s auto-retry chain
+// (producer starts OBS after the app), and a manual reconnect from Settings.
+obs.onConnected(() => {
+  lastSyncedState = {};              // a fresh OBS knows nothing of our last push
+  browserSourcesConfigured = false;  // re-arm: the latch is per-connection
+  setTimeout(async () => {
+    await syncToOBS(getState()).catch(() => {});
+    await setupBrowserSources().catch(() => {});   // no-op if /api/obs/connect already healed
+    await hideAudioSourceVideo().catch(() => {});
+  }, 3000);
+});
+
+if (_obsHost) obs.connect(_obsHost, _obsPort, _obsPw).catch(() => {});
 
 // Pre-fetch heroes
 getHeroes().catch(() => {});
