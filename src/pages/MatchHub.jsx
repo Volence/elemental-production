@@ -215,6 +215,7 @@ export default function MatchHub({ state, updateState, api }) {
       ...map,
       image: mapImages[normalizeHeroName(map.name)] || '',
       status: 'upcoming', winner: null,
+      roundScore: null, picker: null,
     }];
     const updates = { maps };
     if (state.mode === 'scrim') updates.bestOf = maps.length;
@@ -678,7 +679,6 @@ export default function MatchHub({ state, updateState, api }) {
                       {m.winner === 'team1' ? state.teams.team1.name : state.teams.team2.name}
                     </div>
                   )}
-                  {m.roundScore && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 4 }}>{m.roundScore}</div>}
                   {/* Per-map ban indicators */}
                   {(() => {
                     const mapBans = state.perMapBans?.[i];
@@ -792,6 +792,16 @@ export default function MatchHub({ state, updateState, api }) {
                           updateState(updates);
                         }}>⇄ Bans</button>
                     )}
+                    {/* Map score shown on overlays — always available (manual/scrim + FACEIT override) */}
+                    <input className="input" style={{ width: 64, fontSize: '0.6rem', padding: '2px 4px', height: 'auto' }}
+                      placeholder="2-1" title="Map score shown on overlays (free text, e.g. 2-1)"
+                      value={m.roundScore || ''}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => {
+                        e.stopPropagation();
+                        updateState({ maps: state.maps.map((mm, ii) => ii === i ? { ...mm, roundScore: e.target.value } : mm) });
+                        if (state.mode === 'faceit' && state.faceitMatchId) setOverride('maps');
+                      }} />
                     {/* Map picker toggle — always available */}
                     <select className="input" style={{ width: 80, fontSize: '0.6rem', padding: '2px 4px', height: 'auto' }}
                       value={state.perMapBans?.[i]?.picker || m.picker || ''}
