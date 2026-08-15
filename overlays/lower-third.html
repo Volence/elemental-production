@@ -98,14 +98,20 @@
   </style>
 </head>
 <body>
-  <!-- v2-idle-breathe: this scene has no team-logo IMG (state.lowerThird is
-       title/subtitle/visible only — see file-header key notes); the entrance
-       transform (translateX) lives on #lt via a CSS transition, not a keyframe
-       `animation`, and #lt-pill owns no transform/animation of its own, so it
-       is itself a safe leaf one level below the entrance wrapper (theme-v2.css
-       idle-motion rule 1: no animated descendants, not the entrance owner). -->
+  <!-- v2-idle-glow: this scene has no team-logo IMG (state.lowerThird is
+       title/subtitle/visible only — see file-header key notes). #lt-pill
+       hosts live 24-30px text (#lt-title/#lt-subtitle); .v2-idle-breathe's
+       continuous transform:scale() re-rasterizes those glyphs every frame,
+       which is fine for a logo IMG but can shimmer on an encoded broadcast
+       feed for text. .v2-idle-glow (opacity/brightness only, no transform)
+       gives the same "alive" idle read without touching text layout. Either
+       class is a safe fit here: the entrance transform (translateX) lives on
+       #lt via a CSS transition, not a keyframe `animation`, and #lt-pill owns
+       no transform/animation of its own, so it is itself a safe leaf one
+       level below the entrance wrapper (theme-v2.css idle-motion rule 1: no
+       animated descendants, not the entrance owner). -->
   <div id="lt" class="lower-third">
-    <div id="lt-pill" class="lt-pill v2-panel v2-idle-breathe">
+    <div id="lt-pill" class="lt-pill v2-panel v2-idle-glow">
       <div id="lt-title" class="lt-title"></div>
       <div id="lt-subtitle" class="lt-subtitle"></div>
       <span class="v2-underline lt-underline"></span>

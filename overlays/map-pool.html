@@ -323,10 +323,16 @@
           '</div>' +
         '</div>';
 
-      // Grid — pool grouped into mode columns; cards stagger a slideUp entrance
-      // by column then row (colIdx*0.05 + rowIdx*0.08, capped 0.6s — render-output
-      // animations, full inline shorthand so state-sync's OBS-visibility replay
-      // path re-applies them, not just the class rule).
+      // Grid — pool grouped into mode columns. Mode labels stagger 0.12 +
+      // colIdx*0.05 (right after the 0.10 page header); cards stagger 0.15 +
+      // colIdx*0.05 + rowIdx*0.08 (starting after their own mode label, not
+      // before it). The row weight (0.08) exceeds the column weight (0.05),
+      // so playback doesn't cascade strictly column-by-column — columns
+      // interleave (e.g. column 2's top card can fire before column 0's
+      // third card). Math.min(0.75, ...) is a safety bound against an
+      // unusually wide/deep pool, not an expected value — render-output
+      // animations, full inline shorthand so state-sync's OBS-visibility
+      // replay path re-applies them, not just the class rule.
       var gridHtml;
       if (pool.length === 0) {
         gridHtml = '<div class="mpo-empty"><div class="mpo-empty-chip">No map pool set<br>' +
@@ -365,10 +371,10 @@
           var modeTaken = !!takenModes[mode];
           var cards = '';
           for (var c = 0; c < names.length; c++) {
-            cards += cardHtml(names[c], entries[c], modeTaken, t1, t2, Math.min(0.6, colIdx * 0.05 + c * 0.08));
+            cards += cardHtml(names[c], entries[c], modeTaken, t1, t2, Math.min(0.75, 0.15 + colIdx * 0.05 + c * 0.08));
           }
           cols += '<div class="mpo-col">' +
-            '<div class="mpo-mode" style="animation: fadeIn 0.4s ease-out ' + (0.12 + colIdx * 0.06).toFixed(2) + 's both;">' + escapeHtml(mode) + '</div>' +
+            '<div class="mpo-mode" style="animation: fadeIn 0.4s ease-out ' + (0.12 + colIdx * 0.05).toFixed(2) + 's both;">' + escapeHtml(mode) + '</div>' +
             cards + '</div>';
           colIdx++;
         }

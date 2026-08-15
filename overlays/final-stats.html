@@ -416,6 +416,14 @@
         '</div>';
     }
 
+    // Shared by the static totals render (rowHtml below) AND animateCountUp's
+    // paint() so the animation's final on-target frame can never diverge
+    // from a plain (non-animated) repaint of the same value — one formatter,
+    // two call sites.
+    function formatStatValue(v, isRatio) {
+      return isRatio ? Number(v || 0).toFixed(2) : Math.round(Number(v || 0)).toLocaleString();
+    }
+
     function totalsHtml(sides, t1, t2, t1Color, t2Color) {
       // Raw team-color TEXT (not fills) — legibility floor.
       var t1Legible = legibleColor(t1Color, 0.45);
@@ -437,23 +445,24 @@
 
       // data-cu-target/data-cu-ratio: the RAW numeric value + format hint,
       // read back by animateCountUp() below. The text content rendered here
-      // is still the real final value (not "0") — animateCountUp only
-      // overrides it when this is a genuinely new totals key; a forceRender
-      // repaint (font-ready / 1200ms refit) with unchanged totals must show
-      // the correct numbers immediately, never a stale zero.
+      // is still the real final value (not "0") — animateCountUp only zeroes
+      // and re-counts it on entrance (see animateCountUp's docblock); a
+      // forceRender repaint (font-ready / 1200ms refit) landing AFTER the
+      // entrance has already played must show the correct numbers
+      // immediately, never a stale zero.
       var rowHtml = function (row) {
         var label = row[0], v1 = row[1], v2 = row[2], lowerBetter = row[3], isRatio = row[4];
-        var d1 = isRatio ? v1.toFixed(2) : Number(v1 || 0).toLocaleString();
-        var d2 = isRatio ? v2.toFixed(2) : Number(v2 || 0).toLocaleString();
+        var d1 = formatStatValue(v1, isRatio);
+        var d2 = formatStatValue(v2, isRatio);
         var h1 = lowerBetter ? (v1 < v2) : (v1 > v2);
         var h2 = lowerBetter ? (v2 < v1) : (v2 > v1);
         var st1 = h1 ? '' : (' style="color:' + escapeHtml(t1Legible) + '"');
         var st2 = h2 ? '' : (' style="color:' + escapeHtml(t2Legible) + '"');
         var ratioFlag = isRatio ? '1' : '0';
         return '<div class="fs-totals-row">' +
-          '<div class="fs-totals-val-left ' + (h1 ? 'higher' : '') + '" data-cu-target="' + v1 + '" data-cu-ratio="' + ratioFlag + '"' + st1 + '>' + d1 + '</div>' +
+          '<div class="fs-totals-val-left ' + (h1 ? 'higher' : '') + '" data-cu-target="' + String(Number(v1)) + '" data-cu-ratio="' + ratioFlag + '"' + st1 + '>' + d1 + '</div>' +
           '<div class="fs-totals-label">' + escapeHtml(label) + '</div>' +
-          '<div class="fs-totals-val-right ' + (h2 ? 'higher' : '') + '" data-cu-target="' + v2 + '" data-cu-ratio="' + ratioFlag + '"' + st2 + '>' + d2 + '</div>' +
+          '<div class="fs-totals-val-right ' + (h2 ? 'higher' : '') + '" data-cu-target="' + String(Number(v2)) + '" data-cu-ratio="' + ratioFlag + '"' + st2 + '>' + d2 + '</div>' +
           '</div>';
       };
 
@@ -482,15 +491,30 @@
     }
 
     // One-shot count-up on the totals row (spec §16 "final-stats: ...a
-    // one-shot count-up on the totals row at entrance"). Fires only when the
-    // totals actually changed — never on a forceRender repaint (font-ready /
-    // 1200ms refit in this file) with identical numbers, and never again on
-    // an unrelated key change (e.g. a caster name edit) that leaves the
-    // totals untouched. ES2019-safe: no arrow functions, `var` throughout.
-    var lastCountUpKey = null;
+    // one-shot count-up on the totals row at entrance"). ENTRANCE-ONLY: fires
+    // on the first successful render after page load (the hasCountedUp latch
+    // below), and again when OBS shows this browser source (the
+    // visibilitychange listener below, mirroring state-sync.js's replay
+    // convention) — NEVER on a totals-changed poll tick. It used to be keyed
+    // on a JSON snapshot of the totals objects, which meant that with a map
+    // live on air, every 1.5-2.5s poll tick that moved one elim reset all 12
+    // totals to 0 and re-counted — near-continuous flicker. Keying off
+    // "has the entrance already happened" instead of "did the data change"
+    // fixes that outright. ES2019-safe: no arrow functions, `var` throughout.
+    var hasCountedUp = false;
+    var countUpInFlight = false;
+    var countUpRAF = null; // module-scoped so a second start (forceRender
+    // mid-flight restart, or a visibility replay) cancels any loop already
+    // running instead of leaving two rAFs racing over the same/stale nodes.
     function animateCountUp(root) {
+      if (countUpRAF !== null) {
+        cancelAnimationFrame(countUpRAF);
+        countUpRAF = null;
+      }
       var nodes = root.querySelectorAll('.fs-totals-val-left, .fs-totals-val-right');
-      var DURATION = 800;
+      var DURATION = 800; // ms; eased via ease-out cubic in paint() below —
+      // matches the package's other entrances (map-pool slideUp, lower-third
+      // slide-in) rather than a linear ramp.
       var i;
       // Zero synchronously so the FIRST paint after this call already shows
       // 0 — otherwise the real values (written by totalsHtml) would flash
@@ -498,14 +522,14 @@
       for (i = 0; i < nodes.length; i++) {
         nodes[i].textContent = nodes[i].getAttribute('data-cu-ratio') === '1' ? '0.00' : '0';
       }
+      countUpInFlight = true;
       var start = null;
       function paint(progress) {
+        var eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
         for (var j = 0; j < nodes.length; j++) {
           var node = nodes[j];
           var target = parseFloat(node.getAttribute('data-cu-target')) || 0;
-          var value = target * progress;
-          node.textContent = node.getAttribute('data-cu-ratio') === '1'
-            ? value.toFixed(2) : Math.round(value).toLocaleString();
+          node.textContent = formatStatValue(target * eased, node.getAttribute('data-cu-ratio') === '1');
         }
       }
       function tick(ts) {
@@ -513,13 +537,30 @@
         var progress = Math.min(1, (ts - start) / DURATION);
         if (progress < 1) {
           paint(progress);
-          requestAnimationFrame(tick);
+          countUpRAF = requestAnimationFrame(tick);
         } else {
           paint(1); // snap to exact targets — avoids float rounding drift
+          countUpRAF = null;
+          countUpInFlight = false;
         }
       }
-      requestAnimationFrame(tick);
+      countUpRAF = requestAnimationFrame(tick);
     }
+
+    // OBS-visibility replay for the count-up. state-sync.js's own
+    // replayAnimation() only restarts CSS `animation`s (it sets
+    // style.animation = 'none' then restores it) — this count-up is a JS rAF
+    // loop, invisible to that scan. `visibilitychange` is a standard DOM
+    // event though (not a private callback of that module), so a second
+    // listener here is a legitimate, reachable hook: it lets this scene
+    // replay the count-up like every other entrance when OBS switches back
+    // to it, without touching state-sync.js. Only fires post-entrance
+    // (hasCountedUp) and only once real totals exist in the DOM.
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden || !hasCountedUp) return;
+      var deckSlot = document.querySelector('#cd-deck .slot-content');
+      if (deckSlot && deckSlot.querySelector('.fs-totals')) animateCountUp(deckSlot);
+    });
 
     function render(state) {
       applyTheme(state);
@@ -590,12 +631,17 @@
           totalsHtml(sides, t1, t2, t1Color, t2Color) +
         '</div>';
 
-      // Count-up only on a genuine totals change (see animateCountUp doc) —
-      // keyed on the aggregated totals themselves, not the full render key,
-      // so an unrelated leaf (caster name, cam layout) never re-triggers it.
-      var countUpKey = JSON.stringify([sides.team1.totals, sides.team2.totals]);
-      if (countUpKey !== lastCountUpKey) {
-        lastCountUpKey = countUpKey;
+      // Entrance-only count-up (see animateCountUp doc): first successful
+      // render after page load, full stop — never again on a data change.
+      // The `else if` covers the forceRender race documented at refitDeck
+      // below — if that repaint's innerHTML rebuild lands WHILE the entrance
+      // count-up is still in flight, it just replaced the very nodes that
+      // in-flight rAF loop was writing to, so restart on the fresh ones
+      // rather than let the count-up die silently mid-animation.
+      if (!hasCountedUp) {
+        hasCountedUp = true;
+        animateCountUp(deck);
+      } else if (countUpInFlight) {
         animateCountUp(deck);
       }
 
@@ -616,6 +662,18 @@
     // deck's entrance animation — fitPanelToCanvas would then over-shrink, and
     // on a static scene with no later data tick that zoom sticks. Re-fit once
     // the real font is ready AND once more after the entrance settles.
+    //
+    // Both refits go through forceRender(), which reruns render() with the
+    // SAME state and rebuilds #cd-deck's innerHTML from scratch. Two things
+    // about the count-up follow from that: (1) render()'s `hasCountedUp`
+    // latch keeps this repaint from re-triggering the entrance count-up in
+    // the common case, where the count-up already finished before either
+    // refit lands; (2) on a cold OBS load, fonts.ready can resolve WITHIN
+    // the count-up's 800ms window, and this rebuild would otherwise silently
+    // discard the nodes the in-flight rAF loop is animating (the animation
+    // just vanishes, final numbers appear instantly) — render()'s
+    // `countUpInFlight` check is what catches that case and restarts the
+    // count-up on the fresh nodes instead.
     function refitDeck() { handle.forceRender(); }
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitDeck);
     setTimeout(refitDeck, 1200);
