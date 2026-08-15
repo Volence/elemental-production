@@ -14,7 +14,7 @@
 import { app, BrowserWindow, shell, globalShortcut, ipcMain } from 'electron';
 import { join } from 'path';
 import { fork } from 'child_process';
-import { existsSync, copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, copyFileSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
 
 const SERVER_PORT = 3001;
 const IS_DEV = process.env.ELECTRON_IS_DEV === '1';
@@ -74,6 +74,47 @@ async function fetchAndRegisterHotkeys() {
   }
 }
 
+/**
+ * Seed a bundled asset pack (hero renders / map images) into userData.
+ *
+ * The server resolves these packs out of ELEMENTAL_USER_DATA (see
+ * HERO_RENDERS_DIR / MAP_IMAGES_DIR in server/server.js), which a packaged
+ * install auto-creates EMPTY — so every packaged build fell back to face
+ * icons for bans and blank cards for maps while dev (repo data/) looked fine.
+ *
+ * Copies per-file and SKIPS anything already present, so a producer's own
+ * drop-in always wins over the shipped asset — same "merge, never clobber"
+ * shape as the .env handling below.
+ *
+ * Source: <resources>/seed/<name> when packaged (electron-builder
+ * extraResources), repo data/<name> in dev.
+ */
+function seedAssetDir(userDataPath, name) {
+  const packagedSrc = process.resourcesPath ? join(process.resourcesPath, 'seed', name) : null;
+  const src = (app.isPackaged && packagedSrc && existsSync(packagedSrc))
+    ? packagedSrc
+    : appPath(join('data', name));
+  if (!existsSync(src)) return;
+
+  const dest = join(userDataPath, name);
+  if (!existsSync(dest)) mkdirSync(dest, { recursive: true });
+
+  let copied = 0;
+  for (const file of readdirSync(src)) {
+    const from = join(src, file);
+    const to = join(dest, file);
+    try {
+      if (!statSync(from).isFile()) continue;  // packs are flat; ignore stray dirs
+      if (existsSync(to)) continue;            // producer drop-in wins
+      copyFileSync(from, to);
+      copied++;
+    } catch (e) {
+      console.warn(`[Electron] Failed to seed ${name}/${file}:`, e.message);
+    }
+  }
+  if (copied) console.log(`[Electron] Seeded ${copied} file(s) into ${dest}`);
+}
+
 function initUserData() {
   const userDataPath = app.getPath('userData');
 
@@ -113,6 +154,10 @@ function initUserData() {
       console.log('[Electron] Merged new config keys into .env');
     }
   }
+
+  // Shipped image packs -> userData (missing files only; see seedAssetDir)
+  seedAssetDir(userDataPath, 'hero-renders');
+  seedAssetDir(userDataPath, 'map-images');
 
   return userDataPath;
 }

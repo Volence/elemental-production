@@ -187,7 +187,14 @@
       var hero = findHeroEntry(heroData, heroKey);
       var heroName = hero ? hero.name : heroKey;
       var role = hero ? hero.role : '';
-      var renderUrl = hero ? hero.render : null;
+      // When the OverFast catalog has no entry for this ban (new hero the
+      // API hasn't caught up on, or /api/heroes failed), we still know the
+      // render's filename: the ban key IS the hero-render filename (see
+      // data/hero-renders/README.md), so point straight at the local pack.
+      // A genuine 404 there is harmless — safeImg's onerror hides the img
+      // and the tile falls back to the portrait/bust treatment.
+      var renderUrl = hero ? hero.render
+        : (API + '/hero-renders/' + encodeURIComponent(heroKey) + '.webp');
       var portrait = hero ? hero.portrait : '';
 
       var slamAnim = side === 'left' ? 'slideRight' : 'slideLeft';

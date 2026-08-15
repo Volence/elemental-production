@@ -56,11 +56,17 @@ render with an opaque background.
 tall**. These are composited over scene backgrounds on stream, so a short
 or low-res source will look cramped or soft next to the rest of the frame.
 
-## Do not commit images here
+## Shipped pack + drop-ins
 
-This folder is for local drop-ins only. Actual image files
-(`*.png`/`*.webp`/`*.jpg`) are gitignored — only this README is tracked.
-Sourcing the actual renders is tracked separately; this loader is just the
-mechanism. The exact resolver lives in `server/hero-render-resolver.js`
+As of v2.1.0 the renders in this folder are **committed** and bundled into
+packaged builds (electron-builder `extraResources` → seeded into the app's
+user-data folder on first launch). Packaged installs used to show face
+icons because that folder was created empty.
+
+Seeding copies **only files that aren't already there**, so a producer's own
+drop-in always wins over the shipped render — replace a file in the user-data
+`hero-renders/` folder and it stays replaced across updates. Adding a render
+for a hero that has none yet? Drop it in there, or commit it here to ship it
+to everyone. The exact resolver lives in `server/hero-render-resolver.js`
 (`findLocalHeroRender`) — when in doubt, that function is the source of
 truth, not this README.

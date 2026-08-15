@@ -43,6 +43,16 @@
       "package.json",
       ".env.example"
     ],
+    "extraResources": [
+      {
+        "from": "data/hero-renders",
+        "to": "seed/hero-renders"
+      },
+      {
+        "from": "data/map-images",
+        "to": "seed/map-images"
+      }
+    ],
     "win": {
       "target": [
         "nsis"

@@ -53,6 +53,11 @@ describe('findLocalMapImage', () => {
     expect(findLocalMapImage('Paraíso', dir)).toBe('paraiso.jpg');
   });
 
+  it('finds a local .webp (shipped image pack format, same as hero renders)', () => {
+    fs.writeFileSync(path.join(dir, 'neon-junction.webp'), 'fake');
+    expect(findLocalMapImage('Neon Junction', dir)).toBe('neon-junction.webp');
+  });
+
   it('returns null when no local file exists', () => {
     expect(findLocalMapImage('Oasis', dir)).toBeNull();
   });

@@ -16,7 +16,9 @@
 import fs from 'fs';
 import path from 'path';
 
-export const SUPPORTED_MAP_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
+// .webp last so a producer's jpg/png drop-in wins over a shipped .webp of
+// the same map (parity with the hero render pack, which is all WebP).
+export const SUPPORTED_MAP_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
 
 // Combining diacritical marks left behind by NFD decomposition, e.g.
 // "i" + COMBINING ACUTE ACCENT (U+0301) from "í".

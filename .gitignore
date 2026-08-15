@@ -27,13 +27,11 @@ release
 .env
 data/cache/
 data/state.json
-# Producer drop-in map screenshots (see data/map-images/README.md) — the
-# README is the only thing tracked in this folder.
-data/map-images/*
-!data/map-images/README.md
-# Producer drop-in hero renders (see data/hero-renders/README.md) — the
-# README is the only thing tracked in this folder.
-data/hero-renders/*
-!data/hero-renders/README.md
+# data/map-images/ and data/hero-renders/ are TRACKED as of v2.1.0 — the
+# shipped image packs are committed and bundled into packaged builds
+# (electron-builder extraResources -> seeded into userData on first launch),
+# because packaged installs had empty user-data dirs and fell back to face
+# icons / blank map cards. Producer drop-ins still win at runtime; drop-in
+# files that aren't committed simply show up as untracked.
 .superpowers/
 .worktrees/

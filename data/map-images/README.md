@@ -39,9 +39,10 @@ not this table.
 
 ## Supported extensions
 
-`.jpg`, `.jpeg` and `.png` (lowercase filenames — the check is
+`.jpg`, `.jpeg`, `.png` and `.webp` (lowercase filenames — the check is
 case-sensitive on Linux). If more than one exists for the same map, the
-first in that order wins. Recommended resolution: **1200px wide or
+first in that order wins — `.webp` is last so a producer's jpg/png drop-in
+overrides a shipped `.webp`. Recommended resolution: **1200px wide or
 larger** — these are used full-bleed on stream, so anything smaller will
 look soft.
 
@@ -131,8 +132,14 @@ workshop showcases, etc).
 | Workshop Green Screen | workshop | `workshop-green-screen.jpg` / `.png` |
 | Workshop Island | workshop | `workshop-island.jpg` / `.png` |
 
-## Do not commit images here
+## Shipped pack + drop-ins
 
-This folder is for local drop-ins only. Actual image files
-(`*.jpg`/`*.png`) are gitignored — only this README is tracked. Sourcing the
-actual images is tracked separately; this loader is just the mechanism.
+As of v2.1.0 images in this folder are **committed** and bundled into
+packaged builds (electron-builder `extraResources` → seeded into the app's
+user-data folder on first launch), so everyone gets the same art out of the
+box. Only maps OverFast serves badly (or not at all) are shipped; everything
+else still comes live from the OverFast CDN.
+
+Seeding copies **only files that aren't already there**, so a producer's own
+drop-in always wins over the shipped image — replace a file in the user-data
+`map-images/` folder and it stays replaced across updates.
