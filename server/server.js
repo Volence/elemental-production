@@ -903,70 +903,81 @@ app.post('/api/faceit/match', async (req, res) => {
   }
 });
 
+/**
+ * Re-fetch current FACEIT match data and apply it to state (respecting whatever
+ * overrides remain). Shared by POST /api/faceit/refresh and the Relinquish All
+ * path in DELETE /api/overrides. Throws on a missing match or API failure.
+ */
+async function refreshFromFaceit() {
+  const currentState = getState();
+  const matchId = currentState.faceitMatchId;
+  if (!matchId) throw new Error('No FACEIT match loaded');
+
+  const [details, stats] = await Promise.all([
+    faceit.getMatchDetails(matchId),
+    faceit.getMatchStats(matchId).catch(() => []),
+  ]);
+
+  const faction1 = details.teams.faction1;
+  const faction2 = details.teams.faction2;
+
+  const maps = details.pickedMaps.map((m, i) => {
+    const roundStats = stats[i];
+    let winner = null;
+    if (roundStats?.winner) {
+      winner = roundStats.winner === faction1.id ? 'team1' : 'team2';
+    }
+    return {
+      name: m.name, mode: m.mode,
+      image: m.imageSm || m.imageLg,
+      status: roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming',
+      winner,
+      roundScore: roundStats?.scoreSummary || null,
+    };
+  });
+
+  const perMapBans = buildPerMapBans(details.perMapBans, maps,
+    currentState.banSwaps || [], currentState.mapPickers || []);
+
+  const update = {};
+  update.perMapBans = perMapBans;
+  if (!isOverridden('heroBans')) {
+    const activeBan = computeActiveBan(perMapBans, maps, currentState.selectedMapIdx);
+    update.heroBans = activeBan.heroBans;
+    update.activeBanMapIdx = activeBan.idx;
+  }
+  if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
+  if (!isOverridden('maps')) {
+    update.maps = maps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null }));
+  }
+  if (!isOverridden('players')) {
+    update.players = { team1: faction1.roster, team2: faction2.roster };
+  }
+
+  const computedScore1 = maps.filter(m => m.winner === 'team1').length;
+  const computedScore2 = maps.filter(m => m.winner === 'team2').length;
+
+  const t1 = { color: '#3b82f6', faceitId: faction1.id };
+  if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
+  if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
+  if (!isOverridden('teams.team1.score')) t1.score = computedScore1;
+  const t2 = { color: '#ef4444', faceitId: faction2.id };
+  if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
+  if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
+  if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
+  update.teams = { team1: t1, team2: t2 };
+
+  const updated = setState(update);
+  broadcast('state', updated);
+  syncToOBS(updated);
+  return updated;
+}
+
 /** Re-fetch current FACEIT match data (used when clearing overrides) */
 app.post('/api/faceit/refresh', async (req, res) => {
+  if (!getState().faceitMatchId) return res.status(400).json({ error: 'No FACEIT match loaded' });
   try {
-    const currentState = getState();
-    const matchId = currentState.faceitMatchId;
-    if (!matchId) return res.status(400).json({ error: 'No FACEIT match loaded' });
-
-    const [details, stats] = await Promise.all([
-      faceit.getMatchDetails(matchId),
-      faceit.getMatchStats(matchId).catch(() => []),
-    ]);
-
-    const faction1 = details.teams.faction1;
-    const faction2 = details.teams.faction2;
-
-    const maps = details.pickedMaps.map((m, i) => {
-      const roundStats = stats[i];
-      let winner = null;
-      if (roundStats?.winner) {
-        winner = roundStats.winner === faction1.id ? 'team1' : 'team2';
-      }
-      return {
-        name: m.name, mode: m.mode,
-        image: m.imageSm || m.imageLg,
-        status: roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming',
-        winner,
-        roundScore: roundStats?.scoreSummary || null,
-      };
-    });
-
-    const perMapBans = buildPerMapBans(details.perMapBans, maps,
-      currentState.banSwaps || [], currentState.mapPickers || []);
-
-    const update = {};
-    update.perMapBans = perMapBans;
-    if (!isOverridden('heroBans')) {
-      const activeBan = computeActiveBan(perMapBans, maps, currentState.selectedMapIdx);
-      update.heroBans = activeBan.heroBans;
-      update.activeBanMapIdx = activeBan.idx;
-    }
-    if (!isOverridden('bestOf')) update.bestOf = details.bestOf;
-    if (!isOverridden('maps')) {
-      update.maps = maps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null }));
-    }
-    if (!isOverridden('players')) {
-      update.players = { team1: faction1.roster, team2: faction2.roster };
-    }
-
-    const computedScore1 = maps.filter(m => m.winner === 'team1').length;
-    const computedScore2 = maps.filter(m => m.winner === 'team2').length;
-
-    const t1 = { color: '#3b82f6', faceitId: faction1.id };
-    if (!isOverridden('teams.team1.name')) t1.name = faction1.name;
-    if (!isOverridden('teams.team1.logo')) t1.logo = faction1.avatar;
-    if (!isOverridden('teams.team1.score')) t1.score = computedScore1;
-    const t2 = { color: '#ef4444', faceitId: faction2.id };
-    if (!isOverridden('teams.team2.name')) t2.name = faction2.name;
-    if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
-    if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
-    update.teams = { team1: t1, team2: t2 };
-
-    const updated = setState(update);
-    broadcast('state', updated);
-    syncToOBS(updated);
+    await refreshFromFaceit();
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1060,9 +1071,11 @@ async function faceitPollTick() {
       update.activeBanMapIdx = activeBan.idx;
     }
 
-    // Compute score from merged maps (includes manual wins via forward-only logic)
-    const computedScore1 = maps.filter(m => m.winner === 'team1').length;
-    const computedScore2 = maps.filter(m => m.winner === 'team2').length;
+    // Compute score from the MERGED maps (update.maps), not the FACEIT-index
+    // list: manually appended maps live past details.pickedMaps.length and
+    // their winners would never count.
+    const computedScore1 = update.maps.filter(m => m.winner === 'team1').length;
+    const computedScore2 = update.maps.filter(m => m.winner === 'team2').length;
 
     update.teams = buildTeamsUpdate({
       currentTeams: currentState.teams,
@@ -1139,10 +1152,30 @@ app.post('/api/overrides/clear', (req, res) => {
   res.json({ success: true, overrides: updated.overrides });
 });
 
-/** Clear ALL overrides (relinquish all manual control) */
-app.delete('/api/overrides', (req, res) => {
-  const updated = clearAllOverrides();
+/**
+ * Clear ALL overrides (relinquish all manual control). Scores are stored, not
+ * derived, so clearing the flags is not enough: re-fetch FACEIT (or re-derive
+ * from map winners in manual mode) and re-run the ban reconcile, otherwise the
+ * dashboard keeps showing the manual values it just gave up. Done server-side
+ * so the Stream Deck endpoint behaves identically to the dashboard button.
+ */
+app.delete('/api/overrides', async (req, res) => {
+  clearAllOverrides();
+  reconcileHeroBans();
+  const s = getState();
+  if (s.mode === 'faceit' && s.faceitMatchId) {
+    try { await refreshFromFaceit(); } catch (e) { console.error('[overrides] refresh failed:', e.message); }
+  } else {
+    const maps = s.maps || [];
+    setState({ teams: {
+      ...s.teams,
+      team1: { ...s.teams.team1, score: maps.filter(m => m.winner === 'team1').length },
+      team2: { ...s.teams.team2, score: maps.filter(m => m.winner === 'team2').length },
+    } });
+  }
+  const updated = getState();
   broadcast('state', updated);
+  syncToOBS(updated);
   res.json({ success: true, overrides: updated.overrides });
 });
 
