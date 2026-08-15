@@ -125,16 +125,8 @@
     var mapData = [];      // /api/maps: [{ name, gamemodes, screenshot }]
     var mapDataByName = {};
 
-    // Name normalization for cross-source matching: the OverFast catalog uses
-    // typographic apostrophes ("King’s Row") while FACEIT/state and manual
-    // entry use ASCII ("King's Row"); accents get the same NFD-strip treatment
-    // as normHeroName/_mapAbbrev.
-    function normMapName(name) {
-      return String(name || '')
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .replace(/[‘’]/g, "'")
-        .toLowerCase().trim();
-    }
+    // normMapName is shared from theme-helpers.js (promoted from this file's
+    // former local copy — see overlays/theme-helpers.js for the doc comment).
 
     // Dep: the full map catalog (art + modes) for pool cards. Per-dep catch in
     // overlay-core means a fetch failure leaves an empty catalog (cards render

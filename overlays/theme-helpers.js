@@ -145,6 +145,19 @@ function findCurrentMap(maps) {
   return (idx >= 0 && maps[idx]) || {};
 }
 
+// Name normalization for cross-source matching: the OverFast catalog uses
+// typographic apostrophes ("King’s Row") while FACEIT/state and manual
+// entry use ASCII ("King's Row"); accents get the same NFD-strip treatment
+// as normHeroName/_mapAbbrev. Kept verbatim in sync with map-pool.html's
+// former local copy — do not change semantics, existing render keys depend
+// on this exact output.
+function normMapName(name) {
+  return String(name || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[‘’]/g, "'")
+    .toLowerCase().trim();
+}
+
 // Ticker underline class for a series map slot. Colors follow the WINNING
 // team's color var — never flipped by swapSides (CSS vars don't flip either;
 // that mismatch was the "underscore colors aren't correct" bug).
@@ -163,6 +176,7 @@ if (typeof module !== 'undefined' && module.exports) {
     mapStripClass: mapStripClass,
     hexToAlpha: hexToAlpha,
     legibleColor: legibleColor,
-    proxyImg: proxyImg
+    proxyImg: proxyImg,
+    normMapName: normMapName
   };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findCurrentMapIndex, findCurrentMap, mapStripClass, hexToAlpha, legibleColor, proxyImg } from './theme-helpers.js';
+import { findCurrentMapIndex, findCurrentMap, mapStripClass, hexToAlpha, legibleColor, proxyImg, normMapName } from './theme-helpers.js';
 
 describe('findCurrentMapIndex', () => {
   it('prefers the live map', () => {
@@ -69,6 +69,15 @@ describe('proxyImg', () => {
   });
   it('passes a localhost URL through unchanged', () => {
     expect(proxyImg('http://localhost:3001/cache/x.png')).toBe('http://localhost:3001/cache/x.png');
+  });
+});
+
+describe('normMapName', () => {
+  it('folds curly and straight apostrophes to the same key', () => {
+    expect(normMapName("King's Row")).toBe(normMapName('King’s Row'));
+  });
+  it('strips diacritics', () => {
+    expect(normMapName('Paraíso')).toBe('paraiso');
   });
 });
 

@@ -169,17 +169,16 @@
         .catch(function () { mapData = []; });
     }
 
-    // Local API (cached server-side) match against a map name — scene-local
-    // matching kept verbatim from v1.
+    // Local API (cached server-side) match against a map name — normMapName
+    // (theme-helpers.js) handles the OverFast curly-apostrophe / diacritic
+    // mismatches a raw lowercase compare falls through on.
     function getMapScreenshot(mapName, faceitImage) {
       if (!mapName) return proxyImg(faceitImage);
-      var normalized = mapName.toLowerCase().trim();
-      var slug = normalized.replace(/[^a-z0-9]+/g, '-');
+      var n = normMapName(mapName);
       var match = null;
       for (var i = 0; i < mapData.length; i++) {
         var m = mapData[i];
-        if (!m || !m.name) continue;
-        if (m.name.toLowerCase() === normalized || m.key === slug) { match = m; break; }
+        if (m && m.name && normMapName(m.name) === n) { match = m; break; }
       }
       return proxyImg(match ? match.screenshot : faceitImage);
     }

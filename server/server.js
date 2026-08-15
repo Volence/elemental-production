@@ -819,7 +819,7 @@ app.post('/api/faceit/match', async (req, res) => {
       return {
         name: m.name,
         mode: m.mode,
-        image: m.imageSm || m.imageLg,
+        image: m.imageLg || m.imageSm,
         status: roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming',
         winner,
         roundScore: roundStats?.scoreSummary || null,
@@ -933,7 +933,7 @@ async function refreshFromFaceit() {
     }
     return {
       name: m.name, mode: m.mode,
-      image: m.imageSm || m.imageLg,
+      image: m.imageLg || m.imageSm,
       status: roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming',
       winner,
       roundScore: roundStats?.scoreSummary || null,
@@ -1049,7 +1049,7 @@ async function faceitPollTick() {
 
       return {
         name: m.name, mode: m.mode,
-        image: m.imageSm || m.imageLg,
+        image: m.imageLg || m.imageSm,
         status, winner,
         roundScore: roundStats?.scoreSummary || current.roundScore || null,
       };
