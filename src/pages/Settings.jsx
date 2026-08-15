@@ -345,7 +345,7 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             <div>🎬 <strong>Map Flythrough</strong> — Shared across Map Intro + Casters Flythrough. Server auto-sets the video file. Check ✅ Loop, uncheck ☐ Restart on activate.</div>
             <div>🎵 <strong>Map Music</strong> — Shared across Map Intro + Casters Flythrough. Server auto-sets audio by map. Same settings as above.</div>
             <div>🎧 <strong>Background Music</strong> — Add to production scenes (Starting, Between Matches, BRB, Ending). Selected in Background Music settings below.</div>
-            <div>🎧 <strong>Casters Background Music</strong> — Add to caster scenes (Casters, Lobby, Scoreboard, Map Score, Interview, Series Winner). Selected below.</div>
+            <div>🎧 <strong>Casters Background Music</strong> — Add to caster scenes (Casters, Lobby, Scoreboard, Map Score, Final Stats, Interview, Series Winner). Selected below.</div>
             <div>🎬 <strong>Replay</strong> — Add to <strong>Between Matches</strong> scene only. ❌ No Loop, ✅ Restart on activate, ✅ Show nothing when playback ends. Server auto-loads clips and auto-cycles.</div>
           </div>
 

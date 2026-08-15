@@ -47,7 +47,7 @@ const SCENE_ICONS = {
   'Starting': '🟢', 'Map Pool': '🗺️', 'Map Pick': '📌', 'Ban Reveal': '🚫',
   'Map Intro': '📍', 'Casters Flythrough': '🎥', 'Gameplay': '🎮',
   'Casters': '🎙️', 'Casters Lobby': '📋', 'Casters Scoreboard': '📊',
-  'Map Score': '🏆', 'Between Matches': '⏳', 'BRB': '☕',
+  'Map Score': '🏆', 'Final Stats': '🧮', 'Between Matches': '⏳', 'BRB': '☕',
   'Interview': '🎤', 'Series Winner': '🥇', 'Ending': '🔴',
 };
 

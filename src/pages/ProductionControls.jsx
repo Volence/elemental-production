@@ -534,10 +534,12 @@ export default function ProductionControls({ state, updateState, api, obsConnect
               'Casters Lobby': [0.47, 0.55, 1.3],    // data panel with teams in lower portion
               'Casters Scoreboard': [0.47, 0.55, 1.3],// stats table below caster area
               'Map Score': [0.52, 0.35, 1.3],        // score table center-right area
-              // No captured/static thumb ships for Final Stats (same as Map
-              // Pool / Ban Reveal — scene-thumbs/ only holds the pre-v2 set);
-              // the entry is here so the LIVE-capture thumb and the hover
-              // iframe preview frame the deck the way Casters Scoreboard does.
+              // Final Stats ships no static thumb (scene-thumbs/ only holds the
+              // pre-v2 set, same as Map Pool / Ban Reveal), and fx/fy/zoom feed
+              // ONLY that static-img branch — captured thumbs use object-fit
+              // and the hover preview is a full-frame iframe. So this entry is
+              // inert today; it is kept so the framing is already right if a
+              // final-stats.png thumb is ever added.
               'Final Stats': [0.47, 0.55, 1.3],      // series totals deck below the caster area
               'Between Matches': [0.47, 0.5, 1.1],   // mostly dark, show full layout
               'BRB': [0.47, 0.48, 1.1],              // centered "WE'LL BE RIGHT BACK"

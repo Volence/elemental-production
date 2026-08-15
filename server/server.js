@@ -1472,10 +1472,15 @@ app.get('/api/preflight', async (req, res) => {
   // "SERIES STATS UNAVAILABLE" placeholder, so it's warn-level like the map
   // pool: the show runs fine, it just can't SHOW that scene. Expected to be
   // empty before map 1 finishes and in manual/scrim mode.
+  // ok is NOT simply "has stats": pre-show there are no stats yet and never
+  // should be, and a red row there would just teach the producer to ignore the
+  // checklist header (allOk is an AND over every check). Red is reserved for
+  // the genuine anomaly — maps have COMPLETED but no stats came back.
   const statRounds = (state.playerStats || []).length;
+  const completedMaps = (state.maps || []).filter(m => m && m.status === 'completed').length;
   checks.push({
     id: 'final_stats', label: 'Series Stats',
-    ok: statRounds > 0,
+    ok: statRounds > 0 || completedMaps === 0,
     detail: statRounds > 0
       ? `${statRounds} played map${statRounds === 1 ? '' : 's'} of stats`
       : 'Final Stats unavailable — no FACEIT stats loaded (manual/scrim, or no map finished yet)',
@@ -1999,6 +2004,17 @@ app.post('/api/lower-third/toggle', (req, res) => {
   res.json({ success: true, visible });
 });
 
+// Desk scenes whose overlay paints CAM_LAYOUTS.desk cutouts and whose Caster
+// 1/2 scene-items are baked onto those rects by the scene-collection generator
+// (SCENE_MAP in scripts/build-scene-collection-v2.mjs). casterLayout drives
+// their OBS visibility, so a desk scene missing from this list keeps showing
+// Caster 2 beside a window the overlay no longer punches. Ban Reveal / Map
+// Pool are deliberately absent — their caster items are audio-only (rendered
+// offscreen), so visibility must stay on.
+const CASTER_CAM_SCENES = [
+  'Casters', 'Casters Lobby', 'Casters Scoreboard', 'Map Score', 'Final Stats',
+];
+
 /** Toggle caster camera visibility in scenes */
 app.post('/api/casters/toggle', async (req, res) => {
   const s = getState();
@@ -2009,8 +2025,7 @@ app.post('/api/casters/toggle', async (req, res) => {
   broadcast('state', getState());
 
   // Toggle OBS source visibility for caster cameras
-  const scenes = ['Casters', 'Casters Lobby', 'Casters Scoreboard', 'Map Score'];
-  for (const scene of scenes) {
+  for (const scene of CASTER_CAM_SCENES) {
     await obs.setSourceVisibility(scene, 'Caster 1', next >= 1);
     await obs.setSourceVisibility(scene, 'Caster 2', next >= 2);
   }
@@ -2027,8 +2042,7 @@ app.post('/api/casters/layout', async (req, res) => {
   setState({ casterLayout: count });
   broadcast('state', getState());
 
-  const scenes = ['Casters', 'Casters Lobby', 'Casters Scoreboard', 'Map Score'];
-  for (const scene of scenes) {
+  for (const scene of CASTER_CAM_SCENES) {
     await obs.setSourceVisibility(scene, 'Caster 1', count >= 1);
     await obs.setSourceVisibility(scene, 'Caster 2', count >= 2);
   }

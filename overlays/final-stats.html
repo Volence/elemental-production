@@ -55,13 +55,17 @@
 
     /* ── Series deck panel ─────────────────────────────────────────────────
        .v2-panel supplies the surface; these own the scene-local layout.
-       Densities match the scoreboard's (same 10-player table budget) so the
-       panel clears the single-cam vertical budget at the fitPanel 0.6 floor. */
-    .fs-panel { width: 1560px; padding: 14px 24px; }
+       Densities are NOT the scoreboard's: this scene runs the mobile
+       legibility floor (28px values / 22px labels), which only fits because
+       the totals footer is two columns instead of one 6-row stack. Measured
+       fitPanelToCanvas zoom: 0.98 dual-cam, 0.86 single-cam, 0.80 worst case
+       (a 6-player side after a sub) — i.e. the type is essentially unshrunk
+       on air, which is the whole point of the lift. */
+    .fs-panel { width: 1560px; padding: 10px 24px; }
 
     .fs-header {
       display: flex; justify-content: space-between; align-items: flex-end;
-      margin-bottom: 10px; padding-bottom: 8px;
+      margin-bottom: 8px; padding-bottom: 6px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     .fs-title-area { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -70,8 +74,13 @@
       font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
       white-space: nowrap;
     }
+    /* Type scale note (locked mobile-legibility floor: key text >= 28px,
+       labels >= 22px). This scene can afford the floor everywhere the
+       scoreboard couldn't: it has no bans row and no Obj Time totals row, so
+       ~90px of the same vertical budget is free. The only sub-floor element
+       left is the role tag — see .fs-role-tag. */
     .fs-subtitle {
-      font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.4);
+      font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.4);
       text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;
     }
     .fs-title-underline { width: 220px; }
@@ -85,17 +94,24 @@
     .fs-map-chips { display: flex; gap: 6px; }
     .fs-map-chip {
       background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
-      border-radius: var(--panel-radius); padding: 7px 12px; font-size: 15px; font-weight: 800;
-      color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.5px;
-      white-space: nowrap; display: flex; align-items: center; gap: 7px; pointer-events: none;
+      border-radius: var(--panel-radius); padding: 7px 12px; font-size: 22px; font-weight: 800;
+      color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap; display: flex; align-items: center; gap: 8px; pointer-events: none;
     }
-    .fs-map-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .fs-map-dot { width: 13px; height: 13px; border-radius: 50%; flex: none; }
 
     /* Two-team grid */
     .fs-teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .fs-team-block { border-radius: var(--panel-radius); overflow: hidden; }
+    /* Shared stat-table columns (header + rows must never drift apart). Not
+       repeat(6, 1fr): at 28px the 6-digit Dmg/Heal figures need ~1.6x the
+       width of the 2-3 char K/D..FB columns, and equal columns made them
+       collide. */
+    .fs-team-block {
+      --fs-cols: 190px 0.95fr 1fr 1.15fr 0.7fr 1.55fr 1.55fr;
+      border-radius: var(--panel-radius); overflow: hidden;
+    }
     .fs-team-heading {
-      padding: 4px 10px; font-size: 28px; font-weight: 800;
+      padding: 3px 10px; font-size: 28px; font-weight: 800; line-height: 1.15;
       display: flex; justify-content: space-between; align-items: center;
       text-transform: uppercase; letter-spacing: 0.5px;
     }
@@ -104,23 +120,31 @@
     .fs-team-heading .fs-team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* Maps-won pill: a team-color FILL, so its text comes from textOnColor. */
     .fs-maps-won {
-      font-size: 13px; font-weight: 800; padding: 3px 9px; border-radius: var(--panel-radius);
+      font-size: 22px; font-weight: 800; padding: 3px 10px; border-radius: var(--panel-radius);
       text-transform: uppercase; letter-spacing: 1px; flex: none;
     }
     .fs-stat-header {
-      display: grid; grid-template-columns: 150px repeat(6, 1fr);
-      gap: 2px; padding: 3px 10px; font-size: 14px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35);
+      display: grid; grid-template-columns: var(--fs-cols);
+      gap: 4px; padding: 2px 10px; font-size: 22px; font-weight: 700; line-height: 1.1;
+      text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.42);
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     .fs-player-row {
-      display: grid; grid-template-columns: 150px repeat(6, 1fr);
-      gap: 2px; padding: 3px 10px; font-size: 22px;
+      display: grid; grid-template-columns: var(--fs-cols);
+      gap: 4px; padding: 2px 10px; font-size: 28px; line-height: 1.12;
       border-bottom: 1px solid rgba(255,255,255,0.04);
     }
     .fs-player-name { font-weight: 700; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Maps-played marker for a sub / partial-series player (see teamBlockHtml). */
+    .fs-maps-mark { font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.45); flex: none; }
+    /* Deliberate sub-floor exception: the role tag is a COLOR-CODED chip (gold
+       tank / red damage / green support) whose meaning is carried by the fill
+       and by the fixed Tank->Damage->Support row order — the letter is only a
+       colorblind-safe redundancy, never the primary read, so the >=22px key/
+       label floor doesn't apply. Lifted 12 -> 18px anyway so the letter is
+       resolvable rather than a smudge. */
     .fs-role-tag {
-      font-size: 12px; font-weight: 800; padding: 2px 6px; border-radius: 2px;
+      font-size: 18px; font-weight: 800; padding: 1px 7px; border-radius: 2px;
       text-transform: uppercase; flex: none; letter-spacing: 0.5px;
     }
     .fs-role-tank { background: rgba(245,158,11,0.22); color: var(--elmt-gold); }
@@ -130,30 +154,37 @@
     .fs-stat-val { text-align: center; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.8); font-weight: 600; }
 
     /* Series totals footer */
-    .fs-totals { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .fs-totals { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); }
     .fs-totals-section-label {
-      font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
-      color: rgba(255,255,255,0.35); text-align: center; margin-bottom: 6px;
+      font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+      color: rgba(255,255,255,0.42); text-align: center; margin-bottom: 6px;
     }
+    /* Two side-by-side comparison columns rather than one 6-row stack: at the
+       28px value / 22px label floor a single stack costs ~110px more height
+       than the single-cam budget allows (fitPanelToCanvas would zoom back to
+       ~0.71, cancelling the legibility lift). The 1560px panel has the width
+       to spare. Each column repeats the team-name header so a value's side is
+       never inferred from a header in the other column. */
+    .fs-totals-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; }
     .fs-totals-names { display: grid; grid-template-columns: 1fr auto 1fr; margin-bottom: 4px; }
-    .fs-totals-name-left { text-align: right; padding-right: 22px; font-size: 20px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .fs-totals-name-right { text-align: left; padding-left: 22px; font-size: 20px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fs-totals-name-left { text-align: right; padding-right: 10px; font-size: 28px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fs-totals-name-right { text-align: left; padding-left: 10px; font-size: 28px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .fs-totals-name-spacer { min-width: 120px; }
     .fs-totals-row {
       display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
-      padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+      padding: 2px 0; line-height: 1.12; border-bottom: 1px solid rgba(255,255,255,0.04);
     }
     .fs-totals-row:last-child { border-bottom: none; }
-    .fs-totals-val-left { text-align: right; padding-right: 22px; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .fs-totals-val-right { text-align: left; padding-left: 22px; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .fs-totals-val-left { text-align: right; padding-right: 14px; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .fs-totals-val-right { text-align: left; padding-left: 14px; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
     .fs-totals-label {
-      text-align: center; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
-      color: rgba(255,255,255,0.4); min-width: 120px;
+      text-align: center; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      color: rgba(255,255,255,0.45); min-width: 120px;
     }
     .fs-totals-val-left.higher, .fs-totals-val-right.higher { color: var(--elmt-green); }
 
     /* Empty state (manual/scrim, or FACEIT stats not fetched yet) */
-    .fs-empty { padding: 40px; text-align: center; color: rgba(255,255,255,0.4); font-size: 20px; font-weight: 600; letter-spacing: 1px; }
+    .fs-empty { padding: 40px; text-align: center; color: rgba(255,255,255,0.45); font-size: 28px; font-weight: 600; letter-spacing: 1px; }
 
     /* Hide overlay-core's trailing volatile container (this scene renders into
        each shell wrapper's .slot-content instead). Every shell child is id'd,
@@ -185,25 +216,56 @@
     // player. Join players on playerId (fallback nickname); match round-teams
     // to team1/team2 by teamId vs state.teams.*.faceitId (never by array
     // index); K/D recomputed from summed totals (never average per-map ratios).
+    //
+    // The team totals are the SUM OF THE PLAYER ROWS, deliberately — unlike
+    // casters-scoreboard's footer, which reads FACEIT's per-round team_stats
+    // (totalEliminations etc.). Those team_stats exist per ROUND only, so a
+    // series figure would have to be summed anyway, and summing the rows keeps
+    // the footer arithmetically consistent with the table right above it.
     function aggregateSeries(playerStats, teams) {
       var sides = { team1: { players: {}, totals: { kills: 0, deaths: 0, finalBlows: 0, damageDealt: 0, healingDone: 0 }, mapsWon: 0 },
                     team2: { players: {}, totals: { kills: 0, deaths: 0, finalBlows: 0, damageDealt: 0, healingDone: 0 }, mapsWon: 0 } };
       for (var r = 0; r < (playerStats || []).length; r++) {
-        var round = playerStats[r];
-        for (var t = 0; t < (round.teams || []).length; t++) {
-          var rt = round.teams[t];
-          var sideKey = null;
-          if (teams.team1 && teams.team1.faceitId && rt.teamId === teams.team1.faceitId) sideKey = 'team1';
-          else if (teams.team2 && teams.team2.faceitId && rt.teamId === teams.team2.faceitId) sideKey = 'team2';
-          else sideKey = t === 0 ? 'team1' : 'team2';   // manual fallback (no faceitIds)
-          var side = sides[sideKey];
+        var round = playerStats[r] || {};
+        var roundTeams = round.teams || [];
+        // Side assignment is resolved PER ROUND in two passes so the fallback
+        // can claim the side the id-match didn't take. A single pass with a
+        // `t === 0 ? team1 : team2` fallback collapsed both round-teams onto
+        // one side whenever exactly one faceitId was known (half-populated
+        // state after a manual team edit) — one column doubled, one empty.
+        var claimed = { team1: false, team2: false };
+        var assigned = [];
+        var t;
+        for (t = 0; t < roundTeams.length; t++) {
+          var idTeam = roundTeams[t] || {};
+          var byId = null;
+          if (teams.team1 && teams.team1.faceitId && idTeam.teamId === teams.team1.faceitId) byId = 'team1';
+          else if (teams.team2 && teams.team2.faceitId && idTeam.teamId === teams.team2.faceitId) byId = 'team2';
+          if (byId && !claimed[byId]) { claimed[byId] = true; assigned[t] = byId; }
+          else assigned[t] = null;
+        }
+        for (t = 0; t < roundTeams.length; t++) {
+          if (assigned[t]) continue;
+          // Remaining unclaimed side wins; only if BOTH are still free (no
+          // faceitIds at all — manual/scrim) does array order decide.
+          if (!claimed.team1) { claimed.team1 = true; assigned[t] = 'team1'; }
+          else if (!claimed.team2) { claimed.team2 = true; assigned[t] = 'team2'; }
+          else assigned[t] = t === 0 ? 'team1' : 'team2';
+        }
+        for (t = 0; t < roundTeams.length; t++) {
+          var rt = roundTeams[t] || {};
+          var side = sides[assigned[t]];
           if (rt.stats && rt.stats.teamWin) side.mapsWon += 1;
           for (var p = 0; p < (rt.players || []).length; p++) {
-            var pl = rt.players[p];
+            var pl = rt.players[p] || {};
             var key = pl.playerId || pl.nickname;
             var agg = side.players[key] || (side.players[key] = { nickname: pl.nickname, role: pl.role,
               kills: 0, deaths: 0, finalBlows: 0, damageDealt: 0, healingDone: 0, maps: 0 });
-            agg.nickname = pl.nickname; agg.role = agg.role || pl.role;
+            agg.nickname = pl.nickname;
+            // A later map's real role upgrades a first-map 'Unknown' (FACEIT
+            // omits Role on some rounds) — plain `agg.role || pl.role` would
+            // pin 'Unknown' forever and mis-sort the row.
+            if (!agg.role || agg.role === 'Unknown') agg.role = pl.role;
             agg.kills += pl.kills || 0; agg.deaths += pl.deaths || 0; agg.finalBlows += pl.finalBlows || 0;
             agg.damageDealt += pl.damageDealt || 0; agg.healingDone += pl.healingDone || 0; agg.maps += 1;
             side.totals.kills += pl.kills || 0; side.totals.deaths += pl.deaths || 0;
@@ -220,7 +282,16 @@
           if (ra !== rb) return (ra === undefined ? 9 : ra) - (rb === undefined ? 9 : rb);
           return b.kills - a.kills;
         });
-        list.forEach(function (pl) { pl.kdRatio = pl.deaths > 0 ? (pl.kills / pl.deaths).toFixed(2) : String(pl.kills); });
+        // 2dp everywhere in this scene, including the zero-death case, so the
+        // K/D column and the totals footer line up. (casters-scoreboard prints
+        // 1dp — older precedent for the per-map view; not changed here.)
+        list.forEach(function (pl) {
+          pl.kdRatio = (pl.deaths > 0 ? (pl.kills / pl.deaths) : pl.kills).toFixed(2);
+        });
+        // Team's max maps played — the subs marker compares against this.
+        var maxMaps = 0;
+        for (var i = 0; i < list.length; i++) if (list[i].maps > maxMaps) maxMaps = list[i].maps;
+        sides[k].maxMaps = maxMaps;
         sides[k].list = list;
       });
       return sides;
@@ -241,10 +312,9 @@
     }
 
     // ── key: the state leaves render reads ──────────────────────────────────
-    // playerStats is included WHOLE (not just its length): the last map's
+    // playerStats is included WHOLE rather than by length: the live map's
     // numbers keep moving while the array length stays put, and this scene
-    // shows those numbers summed. `.length` is listed too because it is the
-    // "another map finished" signal the header chips + maps-won pills read.
+    // shows those numbers summed, so length alone would freeze the board.
     function key(state) {
       var teams = state.teams || {};
       var t1 = teams.team1 || {};
@@ -253,12 +323,11 @@
       var casters = (state.casters || []).map(function (c) { return c && c.name; });
       // Map winners + names + status: the completed-map chips in the header.
       var maps = (state.maps || []).map(function (m) { return [m.status, m.name, m.winner]; });
-      var stats = state.playerStats || [];
       return [
         t1.name, t1.logo, t1.color, t1.faceitId, scoreOf(t1),
         t2.name, t2.logo, t2.color, t2.faceitId, scoreOf(t2),
         casters, state.casterLayout,
-        stats.length, stats, state.bestOf, state.eventName,
+        state.playerStats, state.eventName,
         maps, theme.team1Color, theme.team2Color
       ];
     }
@@ -302,11 +371,16 @@
         var role = p.role || 'Unknown';
         var roleTag = '<span class="fs-role-tag fs-role-' + escapeHtml(role.toLowerCase()) + '">' +
           escapeHtml(role.charAt(0)) + '</span>';
-        // maps played is a tooltip only — the table columns are the series
-        // totals, and an extra column would cost the row budget.
+        // A player who didn't play every map (sub, or joined late) gets a
+        // visible ·N marker — otherwise their smaller totals read as a bad
+        // performance on air. Only shown when it differs from the team's max,
+        // so the common all-five-played case stays clean. The title tooltip
+        // stays for the dashboard preview; it is unreachable in OBS.
         var mapsTitle = ' title="' + escapeHtml(String(p.maps)) + ' map' + (p.maps === 1 ? '' : 's') + ' played"';
+        var subMark = (p.maps !== side.maxMaps)
+          ? '<span class="fs-maps-mark">&middot;' + p.maps + '</span>' : '';
         return '<div class="fs-player-row"' + mapsTitle + '>' +
-          '<div class="fs-player-name">' + roleTag + '<span>' + escapeHtml(p.nickname || '') + '</span></div>' +
+          '<div class="fs-player-name">' + roleTag + '<span>' + escapeHtml(p.nickname || '') + '</span>' + subMark + '</div>' +
           '<div class="fs-stat-val">' + escapeHtml(String(p.kdRatio)) + '</div>' +
           '<div class="fs-stat-val">' + p.kills + '</div>' +
           '<div class="fs-stat-val">' + p.deaths + '</div>' +
@@ -361,7 +435,7 @@
         ['Healing', a.healingDone, b.healingDone, false, false]
       ];
 
-      var rowsHtml = rows.map(function (row) {
+      var rowHtml = function (row) {
         var label = row[0], v1 = row[1], v2 = row[2], lowerBetter = row[3], isRatio = row[4];
         var d1 = isRatio ? v1.toFixed(2) : Number(v1 || 0).toLocaleString();
         var d2 = isRatio ? v2.toFixed(2) : Number(v2 || 0).toLocaleString();
@@ -374,15 +448,29 @@
           '<div class="fs-totals-label">' + escapeHtml(label) + '</div>' +
           '<div class="fs-totals-val-right ' + (h2 ? 'higher' : '') + '"' + st2 + '>' + d2 + '</div>' +
           '</div>';
-      }).join('');
+      };
 
-      return '<div class="fs-totals">' +
-        '<div class="fs-totals-section-label">Series Totals</div>' +
+      // Team-name header, repeated once per comparison column.
+      var namesHtml =
         '<div class="fs-totals-names">' +
           '<div class="fs-totals-name-left" style="color:' + escapeHtml(t1Legible) + '">' + escapeHtml(t1.name || '') + '</div>' +
           '<div class="fs-totals-name-spacer"></div>' +
           '<div class="fs-totals-name-right" style="color:' + escapeHtml(t2Legible) + '">' + escapeHtml(t2.name || '') + '</div>' +
-        '</div>' + rowsHtml +
+        '</div>';
+
+      // Split down the middle, reading order left column top-to-bottom then
+      // right column (rows is authored in that order).
+      var half = Math.ceil(rows.length / 2);
+      var colHtml = function (slice) {
+        return '<div class="fs-totals-col">' + namesHtml + slice.map(rowHtml).join('') + '</div>';
+      };
+
+      return '<div class="fs-totals">' +
+        '<div class="fs-totals-section-label">Series Totals</div>' +
+        '<div class="fs-totals-grid">' +
+          colHtml(rows.slice(0, half)) +
+          colHtml(rows.slice(half)) +
+        '</div>' +
         '</div>';
     }
 

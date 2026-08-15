@@ -725,4 +725,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   main();
 }
 
-export { CANONICAL_SCENE_ORDER, OVERLAY_SOURCES, FEED_SOURCES, parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, assertReviverSourceSupport, normalizeAssign, makeSceneItem, makeOverlayItem, ensureOverlayScene, ensureSceneAudio, applyCarryover, isNonEmptyCarry, loadCarrySources, SCENE_MAP, CARRY_SOURCES, BAN_REVEAL, MAP_POOL, FINAL_STATS, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_OUTER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };
+export { CANONICAL_SCENE_ORDER, OVERLAY_SOURCES, parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, assertReviverSourceSupport, normalizeAssign, makeSceneItem, makeOverlayItem, ensureOverlayScene, ensureSceneAudio, applyCarryover, isNonEmptyCarry, loadCarrySources, SCENE_MAP, CARRY_SOURCES, BAN_REVEAL, MAP_POOL, FINAL_STATS, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_OUTER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };
