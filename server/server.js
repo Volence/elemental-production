@@ -1467,7 +1467,22 @@ app.get('/api/preflight', async (req, res) => {
     warn: poolCount === 0,
   });
 
-  // 8. Cam URLs (optional — warn if casters named but no cam)
+  // 8. Series stats — the Final Stats scene aggregates state.playerStats
+  // (one entry per played map, FACEIT-only). Empty means the scene shows its
+  // "SERIES STATS UNAVAILABLE" placeholder, so it's warn-level like the map
+  // pool: the show runs fine, it just can't SHOW that scene. Expected to be
+  // empty before map 1 finishes and in manual/scrim mode.
+  const statRounds = (state.playerStats || []).length;
+  checks.push({
+    id: 'final_stats', label: 'Series Stats',
+    ok: statRounds > 0,
+    detail: statRounds > 0
+      ? `${statRounds} played map${statRounds === 1 ? '' : 's'} of stats`
+      : 'Final Stats unavailable — no FACEIT stats loaded (manual/scrim, or no map finished yet)',
+    warn: statRounds === 0,
+  });
+
+  // 9. Cam URLs (optional — warn if casters named but no cam)
   const cam1 = state.casters?.[0]?.camUrl;
   const cam2 = state.casters?.[1]?.camUrl;
   const castersNamed = !!(caster1 || caster2);

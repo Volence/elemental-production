@@ -7,7 +7,8 @@
 export const DEFAULT_SCENES = [
   'Starting', 'Casters', 'Map Pool', 'Map Pick', 'Ban Reveal', 'Map Intro',
   'Casters Flythrough', 'Gameplay', 'Casters Lobby', 'Casters Scoreboard',
-  'Map Score', 'Between Matches', 'BRB', 'Interview', 'Series Winner', 'Ending',
+  'Map Score', 'Final Stats', 'Between Matches', 'BRB', 'Interview',
+  'Series Winner', 'Ending',
 ];
 
 export default DEFAULT_SCENES;

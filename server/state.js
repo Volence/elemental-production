@@ -104,6 +104,7 @@ const defaultState = {
       'Casters Lobby': 'Ctrl+Shift+6',
       'Casters Scoreboard': 'Ctrl+Shift+7',
       'Map Score': 'Ctrl+Shift+8',
+      'Final Stats': 'Ctrl+Shift+T',
       'Between Matches': 'Ctrl+Shift+9',
       'BRB': 'Ctrl+Shift+0',
       'Interview': 'Ctrl+Shift+-',

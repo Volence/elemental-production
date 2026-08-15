@@ -517,6 +517,7 @@ export default function ProductionControls({ state, updateState, api, obsConnect
               'Map Pool': 'map-pool', 'Ban Reveal': 'hero-bans',
               'Gameplay': 'gameplay-hud', 'Casters': 'casters', 'Casters Lobby': 'casters-lobby',
               'Casters Scoreboard': 'casters-scoreboard', 'Map Score': 'casters-map-score',
+              'Final Stats': 'final-stats',
               'Casters Flythrough': 'casters-flythrough-hud',
               'Between Matches': 'between-matches', 'BRB': 'brb', 'Interview': 'interview',
               'Series Winner': 'series-winner', 'Ending': 'end-of-stream',
@@ -533,6 +534,11 @@ export default function ProductionControls({ state, updateState, api, obsConnect
               'Casters Lobby': [0.47, 0.55, 1.3],    // data panel with teams in lower portion
               'Casters Scoreboard': [0.47, 0.55, 1.3],// stats table below caster area
               'Map Score': [0.52, 0.35, 1.3],        // score table center-right area
+              // No captured/static thumb ships for Final Stats (same as Map
+              // Pool / Ban Reveal — scene-thumbs/ only holds the pre-v2 set);
+              // the entry is here so the LIVE-capture thumb and the hover
+              // iframe preview frame the deck the way Casters Scoreboard does.
+              'Final Stats': [0.47, 0.55, 1.3],      // series totals deck below the caster area
               'Between Matches': [0.47, 0.5, 1.1],   // mostly dark, show full layout
               'BRB': [0.47, 0.48, 1.1],              // centered "WE'LL BE RIGHT BACK"
               'Interview': [0.47, 0.6, 1.2],         // camera box + name below

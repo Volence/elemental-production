@@ -100,6 +100,29 @@ created idempotently by the generator; re-running never duplicates it.
   Pool" into its slot** in the scene list (the scene list order can't be set
   remotely). A fresh import has the canonical order right already.
 
+## Final Stats scene (v2.1.0)
+
+- v2.1.0 adds a **Final Stats** scene, sitting **immediately after Map Score**
+  in the scene list (…, Casters Scoreboard, Map Score, **Final Stats**,
+  Between Matches, …). It holds a **Final Stats BS** browser source pointed at
+  `overlays/final-stats.html` — the series totals board: every played map's
+  FACEIT stats summed into one line per player (K/D recomputed from the summed
+  kills/deaths), plus a team totals footer and a chip per completed map.
+- It is a caster **desk** scene, exactly like Casters Scoreboard: **Caster 1**
+  and **Caster 2** are baked onto the desk cutout rects (visible AND audible,
+  unlike Ban Reveal / Map Pool where the copied cams stay offscreen), and
+  **Casters Background Music** rides along.
+- Requires the FACEIT match to be loaded — in manual/scrim mode, or before the
+  first map finishes, the scene shows a "SERIES STATS UNAVAILABLE" placeholder.
+  The pre-flight checklist warns about this (**Series Stats**).
+- Default hotkey: **Ctrl+Shift+T** (rebindable in Settings → Hotkeys).
+- **You must re-import the scene collection** (or add the scene by hand: new
+  scene "Final Stats", one browser source "Final Stats BS" at
+  `http://localhost:3001/overlays/final-stats.html`, 1920×1080, plus the two
+  caster cams and Casters Background Music copied from Casters Scoreboard).
+  The scene-list position can't be set remotely, so on an in-place update drag
+  **Final Stats** into its slot after Map Score.
+
 ---
 
 ## What changed vs v1
@@ -113,6 +136,7 @@ created idempotently by the generator; re-running never duplicates it.
   | Casters Lobby | desk (dual) | Caster 1 (left), Caster 2 (right) |
   | Casters Scoreboard | desk (dual) | Caster 1 (left), Caster 2 (right) |
   | Map Score | desk (dual) | Caster 1 (left), Caster 2 (right) |
+  | Final Stats | desk (dual) | Caster 1 (left), Caster 2 (right) |
   | Casters Flythrough | flythrough (dual) | Caster 1 (left), Caster 2 (right) |
   | Interview | interview (single + corners) | Interviewee (center), Caster 1 (bottom-left), Caster 2 (bottom-right) |
 

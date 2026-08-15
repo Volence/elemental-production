@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Final Stats</title>
+  <!-- v2.1.0 item 15: SERIES totals scene. Casters-scoreboard is the template
+       (same desk cam layout, same panel/deck shell, same fitPanelToCanvas
+       budget) — the difference is the DATA: the scoreboard shows ONE selected
+       map's round, this shows every played map SUMMED into one series line per
+       player.
+
+       Why aggregation lives here and not on the server: state.playerStats is a
+       whole-array replace on every FACEIT sync (one entry per played map), so
+       the series total is a pure function of state and needs no new state
+       field, no migration and no extra sync path.
+
+       Three rules the aggregation must not break (see aggregateSeries):
+         1. players join on playerId (nickname is only a fallback) — nicknames
+            change mid-series and would split one player into two rows;
+         2. round-teams map to team1/team2 by teamId vs teams.*.faceitId, NEVER
+            by array index — FACEIT does not guarantee faction order per round;
+         3. K/D is recomputed from the SUMMED kills/deaths. Averaging the
+            per-map kdRatio values is wrong (it weights a 3-death map the same
+            as a 14-death one) and was the trap this scene exists to avoid.
+
+       Unlike the scoreboard there is NO map selector: the map chips in the
+       header are a read-only series summary (name + winner-colored dot), so
+       this page has no local interaction state and no forceRender escape
+       hatch beyond the font/entrance refit. -->
+  <link rel="stylesheet" href="./theme-v2.css">
+  <link rel="stylesheet" href="./fonts-v2.css">
+  <link rel="stylesheet" href="./animations.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: transparent; overflow: hidden; width: 1920px; height: 1080px;
+      font-family: var(--font-v2); color: #fff;
+    }
+    #root { position: relative; width: 1920px; height: 1080px; }
+
+    /* Petal-texture cutout layer (mask set in render from the live layout) —
+       identical contract to casters.html / casters-scoreboard.html: the caster
+       browser sources sit BEHIND this overlay and show through the punched
+       windows at exactly CAM_LAYOUTS.desk's coordinates. */
+    #cd-bg { position: absolute; inset: 0; }
+
+    /* Positioned wrapper slots (built ONCE by shell). Centered wrappers use
+       width:fit-content + margin:auto rather than left:50%+translateX so the
+       slideDown/slideUp entrance transforms don't clobber the centering. */
+    #cd-header { position: absolute; top: 40px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
+    #cd-cams { position: absolute; inset: 0; }
+    /* render() sets the exact `top` per cam layout (same three values as the
+       scoreboard); the CSS default is the single-cam value. */
+    #cd-deck { position: absolute; top: 610px; left: 0; right: 0; margin: 0 auto; width: fit-content; }
+
+    /* ── Series deck panel ─────────────────────────────────────────────────
+       .v2-panel supplies the surface; these own the scene-local layout.
+       Densities match the scoreboard's (same 10-player table budget) so the
+       panel clears the single-cam vertical budget at the fitPanel 0.6 floor. */
+    .fs-panel { width: 1560px; padding: 14px 24px; }
+
+    .fs-header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin-bottom: 10px; padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .fs-title-area { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .fs-title-row { display: flex; align-items: baseline; gap: 12px; }
+    .fs-title {
+      font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .fs-subtitle {
+      font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.4);
+      text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;
+    }
+    .fs-title-underline { width: 220px; }
+    .fs-header-right { display: flex; align-items: center; gap: 18px; }
+    .fs-score { font-size: 34px; font-weight: 800; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+    .fs-score .fs-dash { color: rgba(255,255,255,0.25); }
+
+    /* Completed-map chips — the scoreboard's map buttons WITHOUT interactivity
+       (this scene has no per-map view to switch to). Static chip look, no
+       hover/active state, no pointer-events. */
+    .fs-map-chips { display: flex; gap: 6px; }
+    .fs-map-chip {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
+      border-radius: var(--panel-radius); padding: 7px 12px; font-size: 15px; font-weight: 800;
+      color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap; display: flex; align-items: center; gap: 7px; pointer-events: none;
+    }
+    .fs-map-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+
+    /* Two-team grid */
+    .fs-teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .fs-team-block { border-radius: var(--panel-radius); overflow: hidden; }
+    .fs-team-heading {
+      padding: 4px 10px; font-size: 28px; font-weight: 800;
+      display: flex; justify-content: space-between; align-items: center;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .fs-team-heading .fs-team-logo { width: 30px; height: 30px; border-radius: var(--panel-radius); object-fit: cover; margin-right: 10px; }
+    .fs-team-heading .fs-team-info { display: flex; align-items: center; min-width: 0; }
+    .fs-team-heading .fs-team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Maps-won pill: a team-color FILL, so its text comes from textOnColor. */
+    .fs-maps-won {
+      font-size: 13px; font-weight: 800; padding: 3px 9px; border-radius: var(--panel-radius);
+      text-transform: uppercase; letter-spacing: 1px; flex: none;
+    }
+    .fs-stat-header {
+      display: grid; grid-template-columns: 150px repeat(6, 1fr);
+      gap: 2px; padding: 3px 10px; font-size: 14px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .fs-player-row {
+      display: grid; grid-template-columns: 150px repeat(6, 1fr);
+      gap: 2px; padding: 3px 10px; font-size: 22px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .fs-player-name { font-weight: 700; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fs-role-tag {
+      font-size: 12px; font-weight: 800; padding: 2px 6px; border-radius: 2px;
+      text-transform: uppercase; flex: none; letter-spacing: 0.5px;
+    }
+    .fs-role-tank { background: rgba(245,158,11,0.22); color: var(--elmt-gold); }
+    .fs-role-damage { background: rgba(239,68,68,0.22); color: var(--elmt-red); }
+    .fs-role-support { background: rgba(34,197,94,0.22); color: var(--elmt-green); }
+    .fs-role-unknown { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.55); }
+    .fs-stat-val { text-align: center; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.8); font-weight: 600; }
+
+    /* Series totals footer */
+    .fs-totals { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .fs-totals-section-label {
+      font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+      color: rgba(255,255,255,0.35); text-align: center; margin-bottom: 6px;
+    }
+    .fs-totals-names { display: grid; grid-template-columns: 1fr auto 1fr; margin-bottom: 4px; }
+    .fs-totals-name-left { text-align: right; padding-right: 22px; font-size: 20px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fs-totals-name-right { text-align: left; padding-left: 22px; font-size: 20px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fs-totals-name-spacer { min-width: 120px; }
+    .fs-totals-row {
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+      padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .fs-totals-row:last-child { border-bottom: none; }
+    .fs-totals-val-left { text-align: right; padding-right: 22px; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .fs-totals-val-right { text-align: left; padding-left: 22px; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .fs-totals-label {
+      text-align: center; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      color: rgba(255,255,255,0.4); min-width: 120px;
+    }
+    .fs-totals-val-left.higher, .fs-totals-val-right.higher { color: var(--elmt-green); }
+
+    /* Empty state (manual/scrim, or FACEIT stats not fetched yet) */
+    .fs-empty { padding: 40px; text-align: center; color: rgba(255,255,255,0.4); font-size: 20px; font-weight: 600; letter-spacing: 1px; }
+
+    /* Hide overlay-core's trailing volatile container (this scene renders into
+       each shell wrapper's .slot-content instead). Every shell child is id'd,
+       so this only matches that container. */
+    #root > div:not([id]) { display: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="./theme-helpers.js"></script>
+  <script src="./pinwheel.js"></script>
+  <script src="./components-v2.js"></script>
+  <script src="./cam-layout.js"></script>
+  <script src="./bg-helper.js"></script>
+  <script src="./overlay-core.js"></script>
+  <script src="./state-sync.js"></script>
+  <script>
+    var API = 'http://localhost:3001';
+
+    function scoreOf(team) {
+      return (team.score === undefined || team.score === null) ? 0 : team.score;
+    }
+    function normalizeLayout(v) {
+      return (v === undefined || v === null) ? 2 : v;
+    }
+
+    // Aggregate all played maps' FACEIT round stats into one series total per
+    // player. Join players on playerId (fallback nickname); match round-teams
+    // to team1/team2 by teamId vs state.teams.*.faceitId (never by array
+    // index); K/D recomputed from summed totals (never average per-map ratios).
+    function aggregateSeries(playerStats, teams) {
+      var sides = { team1: { players: {}, totals: { kills: 0, deaths: 0, finalBlows: 0, damageDealt: 0, healingDone: 0 }, mapsWon: 0 },
+                    team2: { players: {}, totals: { kills: 0, deaths: 0, finalBlows: 0, damageDealt: 0, healingDone: 0 }, mapsWon: 0 } };
+      for (var r = 0; r < (playerStats || []).length; r++) {
+        var round = playerStats[r];
+        for (var t = 0; t < (round.teams || []).length; t++) {
+          var rt = round.teams[t];
+          var sideKey = null;
+          if (teams.team1 && teams.team1.faceitId && rt.teamId === teams.team1.faceitId) sideKey = 'team1';
+          else if (teams.team2 && teams.team2.faceitId && rt.teamId === teams.team2.faceitId) sideKey = 'team2';
+          else sideKey = t === 0 ? 'team1' : 'team2';   // manual fallback (no faceitIds)
+          var side = sides[sideKey];
+          if (rt.stats && rt.stats.teamWin) side.mapsWon += 1;
+          for (var p = 0; p < (rt.players || []).length; p++) {
+            var pl = rt.players[p];
+            var key = pl.playerId || pl.nickname;
+            var agg = side.players[key] || (side.players[key] = { nickname: pl.nickname, role: pl.role,
+              kills: 0, deaths: 0, finalBlows: 0, damageDealt: 0, healingDone: 0, maps: 0 });
+            agg.nickname = pl.nickname; agg.role = agg.role || pl.role;
+            agg.kills += pl.kills || 0; agg.deaths += pl.deaths || 0; agg.finalBlows += pl.finalBlows || 0;
+            agg.damageDealt += pl.damageDealt || 0; agg.healingDone += pl.healingDone || 0; agg.maps += 1;
+            side.totals.kills += pl.kills || 0; side.totals.deaths += pl.deaths || 0;
+            side.totals.finalBlows += pl.finalBlows || 0; side.totals.damageDealt += pl.damageDealt || 0;
+            side.totals.healingDone += pl.healingDone || 0;
+          }
+        }
+      }
+      ['team1', 'team2'].forEach(function (k) {
+        var list = Object.keys(sides[k].players).map(function (id) { return sides[k].players[id]; });
+        var order = { tank: 0, damage: 1, support: 2 };
+        list.sort(function (a, b) {
+          var ra = order[(a.role || '').toLowerCase()], rb = order[(b.role || '').toLowerCase()];
+          if (ra !== rb) return (ra === undefined ? 9 : ra) - (rb === undefined ? 9 : rb);
+          return b.kills - a.kills;
+        });
+        list.forEach(function (pl) { pl.kdRatio = pl.deaths > 0 ? (pl.kills / pl.deaths).toFixed(2) : String(pl.kills); });
+        sides[k].list = list;
+      });
+      return sides;
+    }
+
+    // ── shell: builds the persistent chrome exactly ONCE ────────────────────
+    function shell(root) {
+      root.setAttribute('data-shell-marker', 'final-stats-v2');
+      root.innerHTML =
+        '<div id="cd-bg"></div>' +
+        '<div id="cd-header" style="animation: slideDown 0.5s ease-out 0.10s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-cams" style="animation: fadeIn 0.5s ease-out 0.15s both;">' +
+          '<div class="slot-content"></div></div>' +
+        '<div id="cd-deck" style="animation: slideUp 0.5s ease-out 0.25s both;">' +
+          '<div class="slot-content"></div></div>';
+      applyTextureBg(document.getElementById('cd-bg'));
+    }
+
+    // ── key: the state leaves render reads ──────────────────────────────────
+    // playerStats is included WHOLE (not just its length): the last map's
+    // numbers keep moving while the array length stays put, and this scene
+    // shows those numbers summed. `.length` is listed too because it is the
+    // "another map finished" signal the header chips + maps-won pills read.
+    function key(state) {
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var casters = (state.casters || []).map(function (c) { return c && c.name; });
+      // Map winners + names + status: the completed-map chips in the header.
+      var maps = (state.maps || []).map(function (m) { return [m.status, m.name, m.winner]; });
+      var stats = state.playerStats || [];
+      return [
+        t1.name, t1.logo, t1.color, t1.faceitId, scoreOf(t1),
+        t2.name, t2.logo, t2.color, t2.faceitId, scoreOf(t2),
+        casters, state.casterLayout,
+        stats.length, stats, state.bestOf, state.eventName,
+        maps, theme.team1Color, theme.team2Color
+      ];
+    }
+
+    function renderChrome(state, camRects) {
+      document.querySelector('#cd-header .slot-content').innerHTML =
+        eventHeader({ eventName: state.eventName || 'FACEIT Season 8', subtitle: 'FINAL STATS' });
+
+      var casters = state.casters || [];
+      var camsHtml = '';
+      for (var i = 0; i < camRects.length; i++) {
+        var caster = casters[i] || {};
+        camsHtml += camFrame({ rect: camRects[i], name: caster.name || '' });
+      }
+      document.querySelector('#cd-cams .slot-content').innerHTML = camsHtml;
+    }
+
+    // Read-only chips for the maps that have been played, in series order.
+    // The dot carries the WINNER's color; it is a 10px leaf on the near-black
+    // panel, so it takes the same legibility floor as team-colored text (a
+    // dark auto-extracted navy would otherwise be an invisible dot, which is
+    // exactly the signal the chip exists to carry).
+    function mapChipsHtml(state, t1Legible, t2Legible) {
+      var maps = state.maps || [];
+      var chips = '';
+      for (var i = 0; i < maps.length; i++) {
+        var m = maps[i] || {};
+        if (m.status !== 'completed') continue;
+        var dotColor = m.winner === 'team1' ? t1Legible
+          : (m.winner === 'team2' ? t2Legible : 'rgba(255,255,255,0.35)');
+        chips += '<div class="fs-map-chip">' +
+          '<span class="fs-map-dot" style="background:' + escapeHtml(dotColor) + '"></span>' +
+          escapeHtml(m.name || ('Map ' + (i + 1))) +
+          '</div>';
+      }
+      return chips ? '<div class="fs-map-chips">' + chips + '</div>' : '';
+    }
+
+    function teamBlockHtml(side, teamData, color) {
+      var rows = side.list.map(function (p) {
+        var role = p.role || 'Unknown';
+        var roleTag = '<span class="fs-role-tag fs-role-' + escapeHtml(role.toLowerCase()) + '">' +
+          escapeHtml(role.charAt(0)) + '</span>';
+        // maps played is a tooltip only — the table columns are the series
+        // totals, and an extra column would cost the row budget.
+        var mapsTitle = ' title="' + escapeHtml(String(p.maps)) + ' map' + (p.maps === 1 ? '' : 's') + ' played"';
+        return '<div class="fs-player-row"' + mapsTitle + '>' +
+          '<div class="fs-player-name">' + roleTag + '<span>' + escapeHtml(p.nickname || '') + '</span></div>' +
+          '<div class="fs-stat-val">' + escapeHtml(String(p.kdRatio)) + '</div>' +
+          '<div class="fs-stat-val">' + p.kills + '</div>' +
+          '<div class="fs-stat-val">' + p.deaths + '</div>' +
+          '<div class="fs-stat-val">' + p.finalBlows + '</div>' +
+          '<div class="fs-stat-val">' + Number(p.damageDealt).toLocaleString() + '</div>' +
+          '<div class="fs-stat-val">' + Number(p.healingDone).toLocaleString() + '</div>' +
+          '</div>';
+      }).join('');
+
+      // v2-idle-breathe: leaf under #cd-deck's entrance `both` fill — safe per
+      // theme-v2.css's idle-motion rules (never on an animated wrapper).
+      var logoHtml = (teamData && teamData.logo)
+        ? safeImg(teamData.logo, { 'class': 'fs-team-logo v2-idle-breathe', alt: (teamData.name || '') }) : '';
+      // Maps-won pill is a team-color FILL -> textOnColor picks its foreground.
+      var wonPill = '<span class="fs-maps-won" style="background:' + escapeHtml(color) +
+        ';color:' + escapeHtml(textOnColor(color)) + '">' +
+        side.mapsWon + (side.mapsWon === 1 ? ' Map' : ' Maps') + '</span>';
+
+      // Team-color TEXT and the 3px border-top both take the legibility floor
+      // (see theme-helpers' legibleColor doc — text AND thin strokes).
+      var legible = legibleColor(color, 0.45);
+      return '<div class="fs-team-block" style="border-top:3px solid ' + escapeHtml(legible) + '">' +
+        '<div class="fs-team-heading" style="color:' + escapeHtml(legible) + '">' +
+          '<div class="fs-team-info">' + logoHtml +
+            '<span class="fs-team-name">' + escapeHtml((teamData && teamData.name) || '') + '</span></div>' +
+          wonPill +
+        '</div>' +
+        '<div class="fs-stat-header">' +
+          '<div>Player</div><div class="fs-stat-val">K/D</div><div class="fs-stat-val">Elims</div>' +
+          '<div class="fs-stat-val">Deaths</div><div class="fs-stat-val">FB</div>' +
+          '<div class="fs-stat-val">Dmg</div><div class="fs-stat-val">Heal</div>' +
+        '</div>' + rows +
+        '</div>';
+    }
+
+    function totalsHtml(sides, t1, t2, t1Color, t2Color) {
+      // Raw team-color TEXT (not fills) — legibility floor.
+      var t1Legible = legibleColor(t1Color, 0.45);
+      var t2Legible = legibleColor(t2Color, 0.45);
+      var a = sides.team1.totals, b = sides.team2.totals;
+      // Team K/D from the SUMMED series totals — the same rule as the player
+      // rows: never an average of per-map ratios.
+      var aKd = a.deaths > 0 ? (a.kills / a.deaths).toFixed(2) : String(a.kills);
+      var bKd = b.deaths > 0 ? (b.kills / b.deaths).toFixed(2) : String(b.kills);
+
+      var rows = [
+        ['Eliminations', a.kills, b.kills, false, false],
+        ['Deaths', a.deaths, b.deaths, true, false],
+        ['K/D', Number(aKd), Number(bKd), false, true],
+        ['Final Blows', a.finalBlows, b.finalBlows, false, false],
+        ['Damage', a.damageDealt, b.damageDealt, false, false],
+        ['Healing', a.healingDone, b.healingDone, false, false]
+      ];
+
+      var rowsHtml = rows.map(function (row) {
+        var label = row[0], v1 = row[1], v2 = row[2], lowerBetter = row[3], isRatio = row[4];
+        var d1 = isRatio ? v1.toFixed(2) : Number(v1 || 0).toLocaleString();
+        var d2 = isRatio ? v2.toFixed(2) : Number(v2 || 0).toLocaleString();
+        var h1 = lowerBetter ? (v1 < v2) : (v1 > v2);
+        var h2 = lowerBetter ? (v2 < v1) : (v2 > v1);
+        var st1 = h1 ? '' : (' style="color:' + escapeHtml(t1Legible) + '"');
+        var st2 = h2 ? '' : (' style="color:' + escapeHtml(t2Legible) + '"');
+        return '<div class="fs-totals-row">' +
+          '<div class="fs-totals-val-left ' + (h1 ? 'higher' : '') + '"' + st1 + '>' + d1 + '</div>' +
+          '<div class="fs-totals-label">' + escapeHtml(label) + '</div>' +
+          '<div class="fs-totals-val-right ' + (h2 ? 'higher' : '') + '"' + st2 + '>' + d2 + '</div>' +
+          '</div>';
+      }).join('');
+
+      return '<div class="fs-totals">' +
+        '<div class="fs-totals-section-label">Series Totals</div>' +
+        '<div class="fs-totals-names">' +
+          '<div class="fs-totals-name-left" style="color:' + escapeHtml(t1Legible) + '">' + escapeHtml(t1.name || '') + '</div>' +
+          '<div class="fs-totals-name-spacer"></div>' +
+          '<div class="fs-totals-name-right" style="color:' + escapeHtml(t2Legible) + '">' + escapeHtml(t2.name || '') + '</div>' +
+        '</div>' + rowsHtml +
+        '</div>';
+    }
+
+    function render(state) {
+      applyTheme(state);
+
+      var teams = state.teams || {};
+      var t1 = teams.team1 || {};
+      var t2 = teams.team2 || {};
+      var theme = state.theme || {};
+      var t1Color = theme.team1Color || t1.color || '#3b82f6';
+      var t2Color = theme.team2Color || t2.color || '#ef4444';
+      var t1Legible = legibleColor(t1Color, 0.45);
+      var t2Legible = legibleColor(t2Color, 0.45);
+
+      var layout = normalizeLayout(state.casterLayout);
+      var camRects = layout === 0 ? [] : (layout === 1 ? CAM_LAYOUTS.desk.single : CAM_LAYOUTS.desk.dual);
+      applyCutoutMask(document.getElementById('cd-bg'), camRects);
+      renderChrome(state, camRects);
+
+      // Deck top per layout — same budget math as casters-scoreboard (cam
+      // frames never move; only the deck panel is repositioned/scaled).
+      document.getElementById('cd-deck').style.top =
+        layout === 0 ? '170px' : (layout === 1 ? '610px' : '545px');
+
+      var deck = document.querySelector('#cd-deck .slot-content');
+      var stats = state.playerStats || [];
+
+      // Empty state: manual/scrim series (FACEIT never fetched stats) or a
+      // FACEIT match whose first map hasn't produced a round yet.
+      if (!stats.length || !t1.name) {
+        deck.innerHTML = '<div class="fs-panel v2-panel"><div class="fs-empty">' +
+          'SERIES STATS UNAVAILABLE — NO FACEIT STATS LOADED</div></div>';
+        fitPanelToCanvas(deck.querySelector('.fs-panel'));
+        return;
+      }
+
+      var sides = aggregateSeries(stats, teams);
+      var playedCount = stats.length;
+
+      var headerHtml =
+        '<div class="fs-header">' +
+          '<div class="fs-title-area">' +
+            '<div class="fs-title-row">' +
+              '<span class="fs-title">Series Final</span>' +
+              '<span class="fs-subtitle">' + playedCount + (playedCount === 1 ? ' Map' : ' Maps') + ' Played</span>' +
+            '</div>' +
+            '<span class="v2-underline fs-title-underline"></span>' +
+          '</div>' +
+          '<div class="fs-header-right">' +
+            '<div class="fs-score">' +
+              '<span style="color:' + escapeHtml(t1Legible) + '">' + scoreOf(t1) + '</span>' +
+              '<span class="fs-dash"> - </span>' +
+              '<span style="color:' + escapeHtml(t2Legible) + '">' + scoreOf(t2) + '</span>' +
+            '</div>' +
+            mapChipsHtml(state, t1Legible, t2Legible) +
+          '</div>' +
+        '</div>';
+
+      var teamHtml =
+        '<div class="fs-teams-grid">' +
+          teamBlockHtml(sides.team1, t1, t1Color) +
+          teamBlockHtml(sides.team2, t2, t2Color) +
+        '</div>';
+
+      deck.innerHTML =
+        '<div class="fs-panel v2-panel">' +
+          headerHtml +
+          teamHtml +
+          totalsHtml(sides, t1, t2, t1Color, t2Color) +
+        '</div>';
+
+      // Zoom-shrink the DECK PANEL only (never the cam frames, whose OBS
+      // caster sources are aligned to the canonical rects).
+      fitPanelToCanvas(deck.querySelector('.fs-panel'));
+    }
+
+    var handle = defineOverlay({
+      el: document.getElementById('root'),
+      shell: shell,
+      key: key,
+      render: render
+    });
+
+    // The first render can land while Geist is still loading (fallback-font
+    // metrics are TALLER, so the deck measures too tall) and/or during the
+    // deck's entrance animation — fitPanelToCanvas would then over-shrink, and
+    // on a static scene with no later data tick that zoom sticks. Re-fit once
+    // the real font is ready AND once more after the entrance settles.
+    function refitDeck() { handle.forceRender(); }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitDeck);
+    setTimeout(refitDeck, 1200);
+  </script>
+</body>
+</html>

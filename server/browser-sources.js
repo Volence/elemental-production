@@ -12,6 +12,7 @@ export const BROWSER_SOURCES = [
   ['Casters Lobby BS', 'casters-lobby.html'],
   ['Casters Scoreboard BS', 'casters-scoreboard.html'],
   ['Casters Map Score BS', 'casters-map-score.html'],
+  ['Final Stats BS', 'final-stats.html'],
   ['Series Winner BS', 'series-winner.html'],
   ['Between Matches BS', 'between-matches.html'],
   ['Starting Soon BS', 'starting-soon.html'],

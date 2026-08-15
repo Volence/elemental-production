@@ -15,6 +15,9 @@ import {
   SCENE_MAP,
   CARRY_SOURCES,
   BAN_REVEAL,
+  FINAL_STATS,
+  CANONICAL_SCENE_ORDER,
+  OVERLAY_SOURCES,
   CAM_LAYOUTS,
   RawNum,
   COLLECTION_NAME_V2,
@@ -83,10 +86,17 @@ describe('guardrails', () => {
   it('reports scene-missing when a mapped scene is absent (renamed scene guard)', () => {
     const obj = { name: 'x', sources: [] }; // no scenes at all
     const changes = processCollection(obj);
-    const missing = changes.filter((c) => c.status === 'scene-missing');
-    // Every SCENE_MAP entry should be flagged missing, none baked.
-    expect(missing.length).toBe(Object.keys(SCENE_MAP).length);
+    const missing = changes.filter((c) => c.status === 'scene-missing').map((c) => c.scene);
+    // Every SCENE_MAP entry should be flagged missing EXCEPT 'Final Stats',
+    // which the ensure step creates before the bake pass runs (it is both an
+    // ensured overlay scene and a desk scene) — so it exists by then, just
+    // without cam items ('source-absent', never 'baked').
+    expect(missing.sort()).toEqual(
+      Object.keys(SCENE_MAP).filter((n) => n !== FINAL_STATS.sceneName).sort()
+    );
     expect(changes.some((c) => c.status === 'baked')).toBe(false);
+    expect(changes.filter((c) => c.scene === FINAL_STATS.sceneName && c.status === 'source-absent'))
+      .toHaveLength(2);
   });
 });
 
@@ -185,6 +195,63 @@ describe('regenerated collections', () => {
         'Starting', 'Casters', 'Map Pool', 'Map Pick', 'Ban Reveal', 'Map Intro',
       ]);
     }
+  });
+
+  it('has a Final Stats scene + browser-source right after Map Score (v2.1.0 item 15)', () => {
+    for (const { obj } of files) {
+      const scene = findScene(obj, 'Final Stats');
+      expect(scene, 'Final Stats scene exists').toBeTruthy();
+      expect(scene.uuid).toBe(FINAL_STATS.sceneUuid);
+      const bs = obj.sources.find((s) => s.name === 'Final Stats BS' && s.id === 'browser_source');
+      expect(bs).toBeTruthy();
+      expect(bs.uuid).toBe(FINAL_STATS.bsUuid);
+      expect(bs.settings.url).toBe('http://localhost:3001/overlays/final-stats.html');
+      expect(bs.settings.width).toBe(1920);
+      expect(bs.settings.height).toBe(1080);
+      // Full-frame BS item wired to the global source.
+      const item = scene.settings.items.find((it) => it.name === 'Final Stats BS');
+      expect(item.source_uuid).toBe(bs.uuid);
+      expect(item.bounds).toEqual({ x: 1920, y: 1080 });
+      // Ordered immediately after Map Score, before Between Matches.
+      const order = obj.scene_order.map((o) => o.name);
+      expect(order[order.indexOf('Map Score') + 1]).toBe('Final Stats');
+      expect(order[order.indexOf('Final Stats') + 1]).toBe('Between Matches');
+    }
+  });
+
+  it('Final Stats carries caster audio + desk-baked cams below the overlay BS', () => {
+    for (const { obj } of files) {
+      const scene = findScene(obj, 'Final Stats');
+      const items = scene.settings.items;
+      const names = items.map((it) => it.name);
+      // ensureSceneAudio copied the pick/ban audio trio (casters talk over it).
+      expect(names).toContain('Caster 1');
+      expect(names).toContain('Caster 2');
+      expect(names).toContain('Casters Background Music');
+      // ...and the SCENE_MAP pass re-baked the cams onto the desk cutouts
+      // (this is a desk scene, unlike Ban Reveal / Map Pool).
+      const [r0, r1] = CAM_LAYOUTS.desk.dual;
+      expect(findItem(scene, 'Caster 1').bounds).toEqual({ x: r0.w, y: r0.h });
+      expect(findItem(scene, 'Caster 1').pos).toEqual({ x: r0.x, y: r0.y });
+      expect(findItem(scene, 'Caster 2').pos).toEqual({ x: r1.x, y: r1.y });
+      // Feeds below the overlay BS, audio-only source on top.
+      const idxOf = (n) => names.indexOf(n);
+      expect(idxOf('Caster 1')).toBeLessThan(idxOf('Final Stats BS'));
+      expect(idxOf('Caster 2')).toBeLessThan(idxOf('Final Stats BS'));
+      expect(idxOf('Final Stats BS')).toBeLessThan(idxOf('Casters Background Music'));
+      // Unique scene-item ids.
+      const ids = items.map((it) => num(it.id));
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it('OVERLAY_SOURCES knows Final Stats BS (z-order rank 1, not "audio rides on top")', () => {
+    expect(OVERLAY_SOURCES.has('Final Stats BS')).toBe(true);
+    // Canonical order places it between Map Score and Between Matches.
+    expect(CANONICAL_SCENE_ORDER.indexOf('Final Stats'))
+      .toBe(CANONICAL_SCENE_ORDER.indexOf('Map Score') + 1);
+    expect(CANONICAL_SCENE_ORDER.indexOf('Between Matches'))
+      .toBe(CANONICAL_SCENE_ORDER.indexOf('Final Stats') + 1);
   });
 
   it('leaves non-caster cam scenes untouched (no full-frame bake on Map Pick/Intro/Gameplay/Series Winner)', () => {

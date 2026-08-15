@@ -82,6 +82,11 @@ const SCENE_MAP = {
   'Casters Lobby':      { group: 'desk',       variant: 'dual',   assign: { 'Caster 1': 0, 'Caster 2': 1 } },
   'Casters Scoreboard': { group: 'desk',       variant: 'dual',   assign: { 'Caster 1': 0, 'Caster 2': 1 } },
   'Map Score':          { group: 'desk',       variant: 'dual',   assign: { 'Caster 1': 0, 'Caster 2': 1 } },
+  // Final Stats is a caster DESK scene (final-stats.html paints the same
+  // CAM_LAYOUTS.desk cutouts as the scoreboard), so its cams are baked onto
+  // the desk rects — unlike Ban Reveal / Map Pool, whose copied cam items stay
+  // offscreen-audio-only.
+  'Final Stats':        { group: 'desk',       variant: 'dual',   assign: { 'Caster 1': 0, 'Caster 2': 1 } },
   'Casters Flythrough': { group: 'flythrough', variant: 'dual',   assign: { 'Caster 1': 0, 'Caster 2': 1 } },
   'Between Matches':    { group: 'wide',       variant: 'single', assign: { 'Caster 1': 0 } },
   'Interview':          { group: 'interview',  variant: 'single', assign: {
@@ -143,6 +148,22 @@ const MAP_POOL = {
   url: 'http://localhost:3001/overlays/map-pool.html',
   afterScene: 'Map Pick',
   afterBs: 'Map Pick BS',
+};
+
+// ---- Final Stats scene (v2.1.0 item 15) ---------------------------------
+// Series totals across every played map (final-stats.html). A caster DESK
+// scene like Map Score — the casters talk the numbers through — so it sits
+// immediately after 'Map Score' in the show flow and carries the same
+// pick/ban audio items via ensureSceneAudio. Same fixed-UUID idempotent
+// ensure as Ban Reveal / Map Pool (next literals in each family: 0x11).
+const FINAL_STATS = {
+  sceneName: 'Final Stats',
+  sceneUuid: 'e0000005-0011-4000-8000-000000000011',
+  bsName: 'Final Stats BS',
+  bsUuid: 'a0000001-0011-4000-8000-000000000011',
+  url: 'http://localhost:3001/overlays/final-stats.html',
+  afterScene: 'Map Score',
+  afterBs: 'Casters Map Score BS',
 };
 
 // ---- Settings carryover (owner QA batch 1) ------------------------------
@@ -416,8 +437,8 @@ const OVERLAY_SOURCES = new Set([
   'Starting Soon BS', 'Map Pick BS', 'Map Pool BS', 'Ban Reveal BS',
   'Map Intro BS', 'Casters Flythrough Hud', 'Gameplay HUD', 'Casters BS',
   'Casters Lobby BS', 'Casters Scoreboard BS', 'Casters Map Score BS',
-  'Between Matches BS', 'BRB BS', 'Interview BS', 'Series Winner BS',
-  'End Stream BS',
+  'Final Stats BS', 'Between Matches BS', 'BRB BS', 'Interview BS',
+  'Series Winner BS', 'End Stream BS',
 ]);
 
 function itemRank(name) {
@@ -433,7 +454,8 @@ function itemRank(name) {
 const CANONICAL_SCENE_ORDER = [
   'Starting', 'Casters', 'Map Pool', 'Map Pick', 'Ban Reveal', 'Map Intro',
   'Casters Flythrough', 'Gameplay', 'Casters Lobby', 'Casters Scoreboard',
-  'Map Score', 'Between Matches', 'BRB', 'Interview', 'Series Winner', 'Ending',
+  'Map Score', 'Final Stats', 'Between Matches', 'BRB', 'Interview',
+  'Series Winner', 'Ending',
 ];
 
 function enforceSceneOrder(obj) {
@@ -508,7 +530,13 @@ function processCollection(obj) {
   // final scene order reads Map Pick -> Map Pool -> Ban Reveal.
   const mapPool = ensureOverlayScene(obj, MAP_POOL);
   changes.push({ scene: MAP_POOL.sceneName, cam: null, status: mapPool.status });
-  for (const audioScene of [BAN_REVEAL.sceneName, MAP_POOL.sceneName]) {
+  // Final Stats (v2.1.0 item 15) inserts after Map Score. Its caster items are
+  // copied by ensureSceneAudio below and then re-baked onto the desk cutout
+  // rects by the SCENE_MAP pass (it IS a desk scene), so the casters are both
+  // audible and visible.
+  const finalStats = ensureOverlayScene(obj, FINAL_STATS);
+  changes.push({ scene: FINAL_STATS.sceneName, cam: null, status: finalStats.status });
+  for (const audioScene of [BAN_REVEAL.sceneName, MAP_POOL.sceneName, FINAL_STATS.sceneName]) {
     const audio = ensureSceneAudio(obj, audioScene);
     changes.push({ scene: audioScene, cam: null, status: audio.status });
   }
@@ -697,4 +725,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   main();
 }
 
-export { CANONICAL_SCENE_ORDER, parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, assertReviverSourceSupport, normalizeAssign, makeSceneItem, makeOverlayItem, ensureOverlayScene, ensureSceneAudio, applyCarryover, isNonEmptyCarry, loadCarrySources, SCENE_MAP, CARRY_SOURCES, BAN_REVEAL, MAP_POOL, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_OUTER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };
+export { CANONICAL_SCENE_ORDER, OVERLAY_SOURCES, FEED_SOURCES, parseLossless, stringifyLossless, applyTransform, processCollection, loadCamLayouts, assertReviverSourceSupport, normalizeAssign, makeSceneItem, makeOverlayItem, ensureOverlayScene, ensureSceneAudio, applyCarryover, isNonEmptyCarry, loadCarrySources, SCENE_MAP, CARRY_SOURCES, BAN_REVEAL, MAP_POOL, FINAL_STATS, CAM_LAYOUTS, RawNum, COLLECTION_NAME_V2, OBS_BOUNDS_SCALE_OUTER, OBS_ALIGN_TOP_LEFT, OBS_ALIGN_CENTER, FILES };
