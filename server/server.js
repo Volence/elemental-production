@@ -177,7 +177,18 @@ window.__HERO_DATA__ = ${heroJson};
 });
 // Serve non-HTML overlay assets (images, etc.) as static
 app.use('/overlays', express.static(overlaysDir, { setHeaders: noCacheForHtmlOnly }));
-app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { setHeaders: noCacheHeaders }));
+// public/ — app graphics, scene thumbs, and the pre-rendered stinger WebM.
+// The WebM is a DOWNLOAD, not something to play in a tab: OBS's Stinger
+// transition takes a file on disk, so Settings links producers straight at
+// /assets/stinger-transition.webm and Content-Disposition makes the browser
+// save it. (express.static, not sendFile — the dotfile guard 404s everything
+// when an AppImage mounts the app under /tmp/.mount_*.)
+app.use('/assets', express.static(path.join(__dirname, '..', 'public'), {
+  setHeaders: (res, filePath) => {
+    noCacheHeaders(res);
+    if (filePath.endsWith('.webm')) res.setHeader('Content-Disposition', 'attachment');
+  },
+}));
 app.use('/fonts', express.static(FONTS_DIR));
 app.use('/cache', express.static(CACHE_DIR));
 app.use('/map-images', express.static(MAP_IMAGES_DIR));

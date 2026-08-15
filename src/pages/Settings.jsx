@@ -720,6 +720,30 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard.writeText(overlay.url)}>Copy</button>
           </div>
         ))}
+
+        {/* Stinger transition — the WebM render of stinger-transition.html.
+            OBS's native Stinger transition needs a media FILE, so this is a
+            download link (the server sends it as an attachment), not a browser
+            source URL. Regenerate with `node scripts/render-stinger.mjs`; the
+            550ms transition point below is that script's measured peak-coverage
+            frame — update both together if the art changes. */}
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>🎬 Stinger transition (WebM)</span>
+            <code style={{ flex: 1, padding: '6px 10px', background: 'var(--bg-input)', borderRadius: 6, fontSize: '0.75rem', color: 'var(--accent)', wordBreak: 'break-all' }}>
+              http://localhost:3001/assets/stinger-transition.webm
+            </code>
+            <a className="btn btn-primary btn-sm" href="http://localhost:3001/assets/stinger-transition.webm"
+              target="_blank" rel="noreferrer" style={{ whiteSpace: 'nowrap', textDecoration: 'none' }}>⬇ Download</a>
+            <button className="btn btn-ghost btn-sm"
+              onClick={() => navigator.clipboard.writeText('http://localhost:3001/assets/stinger-transition.webm')}>Copy</button>
+          </div>
+          <ol style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '10px 0 0', paddingLeft: 20, lineHeight: 1.7 }}>
+            <li>OBS → <strong>Scene Transitions</strong> dock → <strong>+</strong> → <strong>Stinger</strong>.</li>
+            <li><strong>Video File</strong> → browse to the downloaded <code>stinger-transition.webm</code>.</li>
+            <li><strong>Transition Point: 550 ms</strong> → OK, then pick it as the active transition (or assign it to specific scene switches).</li>
+          </ol>
+        </div>
       </div>
 
       {/* Hotkeys */}

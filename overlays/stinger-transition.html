@@ -51,15 +51,17 @@
        escapeHtml/hexToAlpha/applyTheme), no state-sync.js, no
        overlay-core.js, no components-v2.js.
 
-       WEBM DEFERRED (spec §123): OBS's native stinger transition slot
-       requires a media file (WebM/MP4), not an HTML scene. That render is
-       EXPLICITLY DEFERRED — out of scope for this plan. This HTML/CSS
-       scene is usable TODAY as a manually-switched transition scene (drop
-       it in as its own scene, cut to it between two other scenes, cut
-       away once it's finished playing) and stands as the master reference
-       for a future WebM capture pass. Scene collection v2 (Task 9) keeps
-       the plain Fade transition wired as OBS's active scene-to-scene
-       transition — this file is not wired into the transition slot. -->
+       WEBM RENDER (v2.1.0): OBS's native stinger transition slot requires
+       a media file (WebM/MP4), not an HTML scene. THIS FILE IS THE MASTER
+       — `node scripts/render-stinger.mjs` scrubs it frame-by-frame in
+       headless Chrome and encodes public/stinger-transition.webm (VP9 +
+       alpha, 60fps, 1.3s), which Settings offers as a download and
+       producers load into OBS's Stinger transition. Peak screen coverage
+       (= the OBS "Transition Point") is 550ms; the render script measures
+       and prints it, so if you change the timings below, RE-RUN THE
+       SCRIPT and update the 550ms figure in Settings.jsx + README.md.
+       Scene collection v2 still ships plain Fade as the wired transition
+       — the stinger is opt-in per producer. -->
   <link rel="stylesheet" href="./theme-v2.css">
   <link rel="stylesheet" href="./fonts-v2.css">
   <style>

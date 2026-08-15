@@ -34,9 +34,39 @@ Grab the latest release from the [Releases](https://github.com/Volence/elemental
    Migrating from an existing setup? See
    `docs/scene-collection-v2-migration.md` for the `--carry-from` flow that
    preserves your cam URLs and media file paths.
-6. Check the **pre-flight checklist** at the top of Production Controls
+6. Set up the branded **stinger transition** — see below.
+7. Check the **pre-flight checklist** at the top of Production Controls
    before going live — it verifies OBS, scene sources, casters, music,
    flythroughs, and the map pool in one glance.
+
+## Stinger Transition
+
+The ELMT stinger is a 1.3s branded wipe (two counter-spinning pinwheels, a
+four-colour trail band, and an `ELMT` wordmark) that plays *over* the cut
+between two scenes. It ships pre-rendered as a transparent VP9 WebM so OBS can
+drive it natively — you no longer need the old workaround of parking
+`stinger-transition.html` as a browser source at the top of every scene and
+cutting through it by hand.
+
+1. **Settings → OBS Browser Source URLs → 🎬 Stinger transition (WebM)** →
+   **⬇ Download** (saves `stinger-transition.webm`).
+2. OBS → **Scene Transitions** dock → **+** → **Stinger** → **Video File** →
+   the file you just downloaded.
+3. **Transition Point: 550 ms** → **OK**, then select the stinger as the active
+   transition (or assign it per scene switch from the same dock).
+
+The transition point is the moment OBS swaps scenes underneath the stinger:
+550 ms is where the animation covers the most screen, measured at render time.
+
+The WebM is generated from `overlays/stinger-transition.html`, which stays the
+master reference. If the art changes, re-render and commit the result:
+
+```bash
+node scripts/render-stinger.mjs        # headless Chrome + ffmpeg (libvpx-vp9, alpha)
+```
+
+The script prints the measured transition point — keep it in sync with the
+number shown in Settings and above.
 
 ## Development
 
