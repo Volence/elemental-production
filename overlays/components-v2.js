@@ -117,7 +117,13 @@ function banTile(opts) {
     // from team/brand color.
     tileInner =
       '<img class="v2-ban-tile-img" src="' + escapeHtml(portrait) + '" alt="' + escapeHtml(heroName) + '">' +
-      '<div class="v2-ban-slash" style="position:absolute;inset:0;background-image:linear-gradient(45deg, transparent 46%, rgba(255,0,0,0.85) 49%, rgba(255,0,0,0.85) 51%, transparent 54%);"></div>';
+      // Hard px stops (not % gradient stops — those blur badly at small tile
+      // sizes too, just less dramatically than at reveal scale) — same
+      // 2px-core deck treatment as banArtTile's --slash-core:2px.
+      '<div class="v2-ban-slash" style="position:absolute;inset:0;background-image:linear-gradient(45deg,' +
+      'transparent calc(50% - 4px), rgba(0,0,0,0.9) calc(50% - 4px), rgba(0,0,0,0.9) calc(50% - 2px),' +
+      '#ff2323 calc(50% - 2px), #ff2323 calc(50% + 2px), rgba(0,0,0,0.9) calc(50% + 2px),' +
+      'rgba(0,0,0,0.9) calc(50% + 4px), transparent calc(50% + 4px));"></div>';
   } else {
     tileInner = '<div class="v2-ban-tile-empty"></div>';
   }
@@ -304,10 +310,14 @@ function banArtTile(opts) {
       '</div>';
   }
 
+  // Slash core thickness (theme-v2.css --slash-core): reveal-scale (no
+  // `size`) gets the full 5px core; deck-scale tiles get a thinner 2px core
+  // so the line doesn't overwhelm the small bust.
+  var slashCoreStyle = '--slash-core:' + (size ? 2 : 5) + 'px;';
   var slashStyle = animated
-    ? ' style="animation:hbSlashSweep 0.5s ease-out ' + (delay + 0.35).toFixed(2) + 's both"'
-    : '';
-  var slashHtml = '<div class="v2-ban-art-slash"' + slashStyle + '></div>';
+    ? (slashCoreStyle + 'animation:hbSlashSweep 0.5s ease-out ' + (delay + 0.35).toFixed(2) + 's both')
+    : slashCoreStyle;
+  var slashHtml = '<div class="v2-ban-art-slash" style="' + slashStyle + '"></div>';
 
   var nameHtml = nameOverlay
     ? '<div class="v2-ban-art-name">' + escapeHtml(heroName) + '</div>'
