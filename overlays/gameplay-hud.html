@@ -318,7 +318,9 @@
       var line2 = 'FIRST TO ' + threshold + (currentMap.mode ? ' · ' + currentMap.mode : '');
 
       function scoreBox(score, color, pop) {
-        var style = 'background:' + escapeHtml(color) + ';';
+        // Inline color beats .hbar-score's white default — bright team fills
+        // (yellow/green) need dark text to stay readable (WCAG contrast).
+        var style = 'background:' + escapeHtml(color) + ';color:' + escapeHtml(textOnColor(color)) + ';';
         if (pop) style += 'animation: hudScorePop 0.45s ease-out both;';
         return '<div class="hbar-score" style="' + style + '">' + score + '</div>';
       }

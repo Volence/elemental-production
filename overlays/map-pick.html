@@ -298,7 +298,7 @@
       return '<div class="mp-chip' + sideClass + '">' +
         logoHtml +
         '<div class="mp-chip-name">' + escapeHtml(team.name || '') + '</div>' +
-        '<div class="mp-chip-score" style="background:' + escapeHtml(color) + '">' + escapeHtml(String(scoreOf(team))) + '</div>' +
+        '<div class="mp-chip-score" style="background:' + escapeHtml(color) + ';color:' + escapeHtml(textOnColor(color)) + '">' + escapeHtml(String(scoreOf(team))) + '</div>' +
         '</div>';
     }
 
@@ -398,7 +398,7 @@
           var pillText = escapeHtml(pickerTeam.name || 'TEAM') + ' PICK';
           pickPillHtml = '<div class="mp-pick-pill" style="background:' + escapeHtml(hexToAlpha(pickerColor, 0.22)) +
             ';border:1px solid ' + escapeHtml(hexToAlpha(pickerColor, 0.55)) +
-            ';color:' + escapeHtml(pickerColor) + '">' + pillText + '</div>';
+            ';color:' + escapeHtml(legibleColor(pickerColor, 0.45)) + '">' + pillText + '</div>';
         } else if (isDecider) {
           pickPillHtml = '<div class="mp-pick-pill mp-pick-pill-neutral">DECIDER</div>';
         } else {

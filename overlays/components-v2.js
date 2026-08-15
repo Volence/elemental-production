@@ -28,6 +28,19 @@ function _hexToAlpha(hex, alpha) {
   return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
 }
 
+// Private copy of theme-helpers.js's textOnColor — same "can't require()
+// theme-helpers.js from this classic script" reason as _hexToAlpha above.
+// Foreground (near-black vs white) readable ON a team-color FILL, via WCAG
+// relative luminance (not YIQ). Keep in sync with theme-helpers.js's version.
+function _textOnColor(hex) {
+  var m = /^#([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+  if (!m) return '#ffffff';
+  var n = parseInt(m[1], 16);
+  var lin = function (c) { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  var L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return (1.05 / (L + 0.05)) >= ((L + 0.05) / 0.055) ? '#ffffff' : '#0a0c11';
+}
+
 function _proxyImg(u) {
   if (!u || typeof u !== 'string') return '';
   if (/^https?:\/\//i.test(u) && u.indexOf('localhost') === -1 && u.indexOf('127.0.0.1') === -1) {
@@ -395,7 +408,7 @@ function mapPips(opts) {
     if (map.status === 'completed') {
       var winnerColor = map.winner === 'team1' ? team1Color : (map.winner === 'team2' ? team2Color : '');
       if (winnerColor) {
-        style = ' style="background:' + escapeHtml(winnerColor) + '"';
+        style = ' style="background:' + escapeHtml(winnerColor) + ';color:' + escapeHtml(_textOnColor(winnerColor)) + '"';
       }
     } else if (map.status === 'current') {
       // v2-idle-glow (Owner QA batch 2 Task 3b): the live pip already had a

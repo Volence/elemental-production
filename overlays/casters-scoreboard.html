@@ -378,7 +378,7 @@
       var winBadge = (team.stats && team.stats.teamWin) ? '<span class="sb-win-badge">Win</span>' : '';
 
       return '<div class="sb-team-block" style="border-top:3px solid ' + escapeHtml(color) + '">' +
-        '<div class="sb-team-heading" style="color:' + escapeHtml(color) + '">' +
+        '<div class="sb-team-heading" style="color:' + escapeHtml(legibleColor(color, 0.45)) + '">' +
           '<div class="sb-team-info">' + logoHtml +
             '<span class="sb-team-name">' + escapeHtml(team.name || '') + '</span></div>' +
           winBadge +
@@ -392,6 +392,10 @@
     }
 
     function totalsHtml(round, t1, t2, t1Color, t2Color) {
+      // Raw team-color TEXT (not fills) — legibility floor per theme-helpers'
+      // legibleColor, same treatment as sb-team-heading above.
+      var t1Legible = legibleColor(t1Color, 0.45);
+      var t2Legible = legibleColor(t2Color, 0.45);
       var r1 = round.teams[0], r2 = round.teams[1];
       var t1Dmg = r1.players.reduce(function (s, p) { return s + (p.damageDealt || 0); }, 0);
       var t2Dmg = r2.players.reduce(function (s, p) { return s + (p.damageDealt || 0); }, 0);
@@ -418,8 +422,8 @@
         var lowerBetter = label === 'Deaths';
         var h1 = lowerBetter ? (v1 < v2) : (v1 > v2);
         var h2 = lowerBetter ? (v2 < v1) : (v2 > v1);
-        var st1 = h1 ? '' : (' style="color:' + escapeHtml(t1Color) + '"');
-        var st2 = h2 ? '' : (' style="color:' + escapeHtml(t2Color) + '"');
+        var st1 = h1 ? '' : (' style="color:' + escapeHtml(t1Legible) + '"');
+        var st2 = h2 ? '' : (' style="color:' + escapeHtml(t2Legible) + '"');
         return '<div class="sb-totals-row">' +
           '<div class="sb-totals-val-left ' + (h1 ? 'higher' : '') + '"' + st1 + '>' + d1 + '</div>' +
           '<div class="sb-totals-label">' + escapeHtml(label) + '</div>' +
@@ -430,9 +434,9 @@
       return '<div class="sb-totals">' +
         '<div class="sb-totals-section-label">Team Totals</div>' +
         '<div class="sb-totals-names">' +
-          '<div class="sb-totals-name-left" style="color:' + escapeHtml(t1Color) + '">' + escapeHtml(t1.name || '') + '</div>' +
+          '<div class="sb-totals-name-left" style="color:' + escapeHtml(t1Legible) + '">' + escapeHtml(t1.name || '') + '</div>' +
           '<div class="sb-totals-name-spacer"></div>' +
-          '<div class="sb-totals-name-right" style="color:' + escapeHtml(t2Color) + '">' + escapeHtml(t2.name || '') + '</div>' +
+          '<div class="sb-totals-name-right" style="color:' + escapeHtml(t2Legible) + '">' + escapeHtml(t2.name || '') + '</div>' +
         '</div>' + rowsHtml +
         '</div>';
     }
@@ -495,9 +499,9 @@
           '</div>' +
           '<div class="sb-header-right">' +
             '<div class="sb-score">' +
-              '<span style="color:' + escapeHtml(t1Color) + '">' + scoreOf(t1) + '</span>' +
+              '<span style="color:' + escapeHtml(legibleColor(t1Color, 0.45)) + '">' + scoreOf(t1) + '</span>' +
               '<span class="sb-dash"> - </span>' +
-              '<span style="color:' + escapeHtml(t2Color) + '">' + scoreOf(t2) + '</span>' +
+              '<span style="color:' + escapeHtml(legibleColor(t2Color, 0.45)) + '">' + scoreOf(t2) + '</span>' +
             '</div>' +
             '<div class="sb-map-selector">' + mapBtns + '</div>' +
           '</div>' +

@@ -199,7 +199,7 @@
       var washHtml = '<div class="hb-panel-wash" style="background-image:linear-gradient(180deg, transparent 50%, ' +
         hexToAlpha(teamColor, 0.5) + ')"></div>';
 
-      var chipHtml = '<div class="hb-panel-banned-chip" style="background:' + escapeHtml(teamColor) + '">BANNED</div>';
+      var chipHtml = '<div class="hb-panel-banned-chip" style="background:' + escapeHtml(teamColor) + ';color:' + escapeHtml(textOnColor(teamColor)) + '">BANNED</div>';
 
       var roleInfo = roleMeta(role);
       var roleHtml = roleInfo.label

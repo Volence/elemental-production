@@ -236,9 +236,10 @@
       // v2-idle-breathe (Owner QA batch 2 Task 3b): leaf under the deck's
       // entrance `both` fill — safe, see theme-v2.css's idle-motion rules.
       var logoHtml = team.logo ? safeImg(team.logo, { 'class': 'ms-team-logo v2-idle-breathe', alt: team.name || '' }) : '';
+      var legible = legibleColor(color, 0.45);
       return '<div class="ms-team' + sideClass + '">' + logoHtml +
-        '<div class="ms-team-name" style="color:' + escapeHtml(color) + '">' + escapeHtml(team.name || '') + '</div>' +
-        '<div class="ms-team-score" style="color:' + escapeHtml(color) + '">' + scoreOf(team) + '</div>' +
+        '<div class="ms-team-name" style="color:' + escapeHtml(legible) + '">' + escapeHtml(team.name || '') + '</div>' +
+        '<div class="ms-team-score" style="color:' + escapeHtml(legible) + '">' + scoreOf(team) + '</div>' +
         '</div>';
     }
 

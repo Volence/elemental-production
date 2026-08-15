@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findCurrentMapIndex, findCurrentMap, mapStripClass, hexToAlpha, legibleColor, proxyImg, normMapName } from './theme-helpers.js';
+import { findCurrentMapIndex, findCurrentMap, mapStripClass, hexToAlpha, legibleColor, proxyImg, normMapName, textOnColor } from './theme-helpers.js';
 
 describe('findCurrentMapIndex', () => {
   it('prefers the live map', () => {
@@ -122,5 +122,29 @@ describe('legibleColor', () => {
     expect(r).toBe(g);
     expect(g).toBe(b);
     expect(r).toBeGreaterThan(100);
+  });
+});
+
+describe('textOnColor', () => {
+  it('picks near-black text on bright yellow', () => {
+    expect(textOnColor('#FFD700')).toBe('#0a0c11');
+  });
+
+  it('picks the higher-contrast option on a mid-bright blue (black wins: 5.3:1 vs white 3.7:1)', () => {
+    // Deviation note: the plan's Step 1 example literal for this color
+    // ('#ffffff') doesn't match its own Step 2 WCAG-relative-luminance
+    // formula applied verbatim — #0a0c11 against #3b82f6 measures ~5.32:1
+    // contrast vs. white's ~3.68:1, so the algorithm (correctly) picks the
+    // dark option. Implementation follows the plan's formula verbatim;
+    // this expectation follows the math, not the plan's example value.
+    expect(textOnColor('#3b82f6')).toBe('#0a0c11');
+  });
+
+  it('picks near-black text on bright green', () => {
+    expect(textOnColor('#22c55e')).toBe('#0a0c11');
+  });
+
+  it('defaults to white for non-hex passthrough input', () => {
+    expect(textOnColor('hsl(0 85% 60%)')).toBe('#ffffff');
   });
 });

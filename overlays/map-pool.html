@@ -310,14 +310,14 @@
           '<div class="mpo-chip">' +
             (t1.logo ? safeImg(t1.logo, { 'class': 'mpo-chip-logo v2-idle-breathe', alt: t1.name || '' }) : '') +
             '<span class="mpo-chip-name">' + escapeHtml(t1.name || 'Team 1') + '</span>' +
-            '<span class="mpo-chip-score" style="background:' + escapeHtml(t1color) + '">' + scoreOf(t1) + '</span>' +
+            '<span class="mpo-chip-score" style="background:' + escapeHtml(t1color) + ';color:' + escapeHtml(textOnColor(t1color)) + '">' + scoreOf(t1) + '</span>' +
           '</div>' +
           '<div class="mpo-crest">' +
             '<span class="v2-medallion v2-idle-glow">' + pinwheelSVG({ color1: t1color, color2: t2color, size: 56 }) + '</span>' +
             '<span class="mpo-crest-event">' + escapeHtml((state.eventName || 'MATCH') + ' · BO' + bestOf) + '</span>' +
           '</div>' +
           '<div class="mpo-chip">' +
-            '<span class="mpo-chip-score" style="background:' + escapeHtml(t2color) + '">' + scoreOf(t2) + '</span>' +
+            '<span class="mpo-chip-score" style="background:' + escapeHtml(t2color) + ';color:' + escapeHtml(textOnColor(t2color)) + '">' + scoreOf(t2) + '</span>' +
             '<span class="mpo-chip-name">' + escapeHtml(t2.name || 'Team 2') + '</span>' +
             (t2.logo ? safeImg(t2.logo, { 'class': 'mpo-chip-logo v2-idle-breathe', alt: t2.name || '' }) : '') +
           '</div>' +
