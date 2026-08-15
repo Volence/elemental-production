@@ -208,6 +208,14 @@ describe('banArtTile', () => {
     expect(html).toContain('genji.png');
     expect(html).not.toContain('v2-ban-art-fallback-bg');
   });
+  it('bgFallback paints the dark plate BEHIND a possibly-404 render img', () => {
+    const html = banArtTile({ renderUrl: 'http://localhost:3001/hero-renders/newhero.webp', portrait: '', heroName: 'Newhero', teamColor: '#f00', bgFallback: true });
+    expect(html).toContain('v2-ban-art-fallback-bg');
+    expect(html).toContain('v2-ban-art-render-img');
+    // plate must come FIRST so the img (hidden by safeImg's onerror on 404)
+    // reveals it rather than covering a hole
+    expect(html.indexOf('v2-ban-art-fallback-bg')).toBeLessThan(html.indexOf('v2-ban-art-render-img'));
+  });
   it('falls back to the portrait bust when no renderUrl', () => {
     const html = banArtTile({ renderUrl: null, portrait: 'http://localhost:3001/cache/genji-p.png', heroName: 'Genji', teamColor: '#f00' });
     expect(html).toContain('v2-ban-art-fallback-bg');

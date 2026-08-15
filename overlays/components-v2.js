@@ -246,7 +246,8 @@ function camFrame(opts) {
 // `extraStyle` spliced onto the same element.
 //
 // opts: { renderUrl, portrait, heroName, teamColor, size, animated, delay,
-//   nameOverlay, wrapperClass, extraStyle, beforeSlashHtml, afterNameHtml }
+//   nameOverlay, wrapperClass, extraStyle, beforeSlashHtml, afterNameHtml,
+//   bgFallback }
 //
 // `beforeSlashHtml`/`afterNameHtml` (raw HTML, optional): extra layers the
 // caller wants inside the SAME tile, spliced in around the shared art/slash/
@@ -316,7 +317,15 @@ function banArtTile(opts) {
 
   var artHtml;
   if (renderUrl) {
+    // `bgFallback`: the caller GUESSED this render URL rather than reading it
+    // from the hero catalog (hero-bans.html does this when OverFast has no
+    // entry for a ban), so it may 404. safeImg's onerror only HIDES the img —
+    // with nothing behind it the tile would be an empty hole — so paint the
+    // styled dark plate underneath first and let the hidden img reveal it.
+    // Callers with a catalog-provided URL pass nothing and get byte-identical
+    // markup to before this flag existed.
     artHtml = '<div class="v2-ban-art">' +
+      (opts.bgFallback ? '<div class="v2-ban-art-fallback-bg"></div>' : '') +
       safeImg(renderUrl, { 'class': 'v2-ban-art-render-img' + idleClass, alt: heroName }) +
       '</div>';
   } else {

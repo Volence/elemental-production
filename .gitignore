@@ -31,7 +31,9 @@ data/state.json
 # shipped image packs are committed and bundled into packaged builds
 # (electron-builder extraResources -> seeded into userData on first launch),
 # because packaged installs had empty user-data dirs and fell back to face
-# icons / blank map cards. Producer drop-ins still win at runtime; drop-in
-# files that aren't committed simply show up as untracked.
+# icons / blank map cards. Producer drop-ins still win at runtime — the
+# shipped packs are WebP and both resolvers rank .webp LAST, so a dropped-in
+# .png/.jpg outranks it; drop-ins that aren't committed here simply show up
+# as untracked files.
 .superpowers/
 .worktrees/

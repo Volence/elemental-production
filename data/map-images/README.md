@@ -153,3 +153,11 @@ else still comes live from the OverFast CDN.
 Seeding copies **only files that aren't already there**, so a producer's own
 drop-in always wins over the shipped image — replace a file in the user-data
 `map-images/` folder and it stays replaced across updates.
+
+**Upgrading:** skip-existing cuts both ways, and that's intended. If a later
+release ships a *better* image for a map, an install that already seeded that
+map keeps the old copy forever — the updater will not overwrite a file it
+can't tell apart from a deliberate drop-in. To take the new one, delete that
+file from the user-data `map-images/` folder; the next launch re-seeds it
+from the bundled pack. (Maps with no shipped image yet are unaffected: a file
+that isn't there yet always gets seeded.)

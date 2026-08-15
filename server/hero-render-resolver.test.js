@@ -31,10 +31,13 @@ describe('findLocalHeroRender', () => {
     expect(findLocalHeroRender('lucio', dir)).toBe('lucio.png');
   });
 
-  it('prefers .webp over .jpg when both exist', () => {
+  // .webp is LAST on purpose: the shipped render pack is all WebP, so a
+  // producer dropping in their own jpg has to beat it — the READMEs and
+  // .gitignore both promise drop-ins win.
+  it('prefers a .jpg drop-in over a shipped .webp when both exist', () => {
     fs.writeFileSync(path.join(dir, 'lucio.webp'), 'fake-webp');
     fs.writeFileSync(path.join(dir, 'lucio.jpg'), 'fake-jpg');
-    expect(findLocalHeroRender('lucio', dir)).toBe('lucio.webp');
+    expect(findLocalHeroRender('lucio', dir)).toBe('lucio.jpg');
   });
 
   it('prefers .png over .webp when both exist', () => {

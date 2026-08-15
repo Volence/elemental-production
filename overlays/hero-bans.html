@@ -191,8 +191,13 @@
       // API hasn't caught up on, or /api/heroes failed), we still know the
       // render's filename: the ban key IS the hero-render filename (see
       // data/hero-renders/README.md), so point straight at the local pack.
-      // A genuine 404 there is harmless — safeImg's onerror hides the img
-      // and the tile falls back to the portrait/bust treatment.
+      // That's a GUESS, so it can 404 — and there's no portrait to fall back
+      // to in this branch (the portrait comes from the same missing catalog
+      // entry). bgFallback:true makes banArtTile paint its dark plate behind
+      // the img so a 404 leaves the styled empty tile the old code showed,
+      // not a transparent hole. Catalog hits pass neither flag and render
+      // exactly as before.
+      var isGuessedRender = !hero;
       var renderUrl = hero ? hero.render
         : (API + '/hero-renders/' + encodeURIComponent(heroKey) + '.webp');
       var portrait = hero ? hero.portrait : '';
@@ -225,6 +230,7 @@
       // not overlaid on the art like map-intro's deck tiles.
       return banArtTile({
         renderUrl: renderUrl, portrait: portrait, heroName: heroName, teamColor: teamColor,
+        bgFallback: isGuessedRender,
         animated: true, delay: delay,
         wrapperClass: 'hb-panel', extraStyle: slamStyle,
         beforeSlashHtml: washHtml, afterNameHtml: chipHtml + footHtml

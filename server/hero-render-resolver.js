@@ -7,7 +7,12 @@
 import fs from 'fs';
 import path from 'path';
 
-export const SUPPORTED_HERO_RENDER_EXTENSIONS = ['.png', '.webp', '.jpg'];
+// .png first (transparent cutouts, the ideal source), then .jpg, then .webp.
+// .webp is LAST deliberately: the render pack shipped with the app is all
+// WebP, and the pack's contract is that a producer's own drop-in overrides
+// the shipped art — which only holds if their file's extension outranks
+// .webp. Same rationale as SUPPORTED_MAP_IMAGE_EXTENSIONS.
+export const SUPPORTED_HERO_RENDER_EXTENSIONS = ['.png', '.jpg', '.webp'];
 
 /**
  * Look for a local full-body render for a given hero key inside `dir`.

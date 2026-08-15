@@ -46,11 +46,13 @@ OverFast itself, not by any resolver code here, so when in doubt trust
 
 ## Supported extensions and priority
 
-`.png`, `.webp`, and `.jpg` (lowercase filenames — the check is
+`.png`, `.jpg`, and `.webp` (lowercase filenames — the check is
 case-sensitive on Linux). If more than one exists for the same hero, `.png`
-wins over `.webp`, which wins over `.jpg` — full-body renders are usually
-sourced as transparent cutouts, and PNG/WebP preserve that; a `.jpg` will
-render with an opaque background.
+wins over `.jpg`, which wins over `.webp`. `.png` is first because full-body
+renders are usually transparent cutouts and PNG preserves that (a `.jpg`
+renders with an opaque background); `.webp` is **last** because the renders
+shipped with the app are all WebP — putting them at the bottom is what makes
+"your drop-in wins" true for any extension you choose.
 
 **Recommended:** transparent full-body PNG or WebP, at least **900px
 tall**. These are composited over scene backgrounds on stream, so a short
@@ -67,6 +69,16 @@ Seeding copies **only files that aren't already there**, so a producer's own
 drop-in always wins over the shipped render — replace a file in the user-data
 `hero-renders/` folder and it stays replaced across updates. Adding a render
 for a hero that has none yet? Drop it in there, or commit it here to ship it
-to everyone. The exact resolver lives in `server/hero-render-resolver.js`
+to everyone.
+
+**Upgrading:** skip-existing cuts both ways, and that's intended. If a later
+release ships a *corrected* render for a hero, an install that already seeded
+that hero keeps the old copy forever — the updater will not overwrite a file
+it can't tell apart from a deliberate drop-in. To take the new one, delete
+that file from the user-data `hero-renders/` folder; the next launch re-seeds
+it from the bundled pack. (New heroes are unaffected: a file that isn't there
+yet always gets seeded.)
+
+The exact resolver lives in `server/hero-render-resolver.js`
 (`findLocalHeroRender`) — when in doubt, that function is the source of
 truth, not this README.

@@ -84,35 +84,52 @@ async function fetchAndRegisterHotkeys() {
  *
  * Copies per-file and SKIPS anything already present, so a producer's own
  * drop-in always wins over the shipped asset — same "merge, never clobber"
- * shape as the .env handling below.
+ * shape as the .env handling above. Corollary, and intended: once an install
+ * has seeded, a corrected shipped asset will NOT overwrite the copy already
+ * sitting in userData. Delete the file there and it re-seeds on next launch.
  *
  * Source: <resources>/seed/<name> when packaged (electron-builder
- * extraResources), repo data/<name> in dev.
+ * extraResources). Dev never seeds at all — the dev server reads the repo's
+ * data/ directly, so seeding would only pin a stale copy into userData.
+ *
+ * ENTIRELY best-effort: this is cosmetic art. Any failure is warned about and
+ * swallowed — initUserData() runs inside app.whenReady(), so a throw here
+ * would mean the window never opens over a missing picture.
  */
 function seedAssetDir(userDataPath, name) {
-  const packagedSrc = process.resourcesPath ? join(process.resourcesPath, 'seed', name) : null;
-  const src = (app.isPackaged && packagedSrc && existsSync(packagedSrc))
-    ? packagedSrc
-    : appPath(join('data', name));
-  if (!existsSync(src)) return;
+  try {
+    if (!app.isPackaged) return;  // dev reads repo data/ live; nothing to seed
 
-  const dest = join(userDataPath, name);
-  if (!existsSync(dest)) mkdirSync(dest, { recursive: true });
-
-  let copied = 0;
-  for (const file of readdirSync(src)) {
-    const from = join(src, file);
-    const to = join(dest, file);
-    try {
-      if (!statSync(from).isFile()) continue;  // packs are flat; ignore stray dirs
-      if (existsSync(to)) continue;            // producer drop-in wins
-      copyFileSync(from, to);
-      copied++;
-    } catch (e) {
-      console.warn(`[Electron] Failed to seed ${name}/${file}:`, e.message);
+    const src = process.resourcesPath ? join(process.resourcesPath, 'seed', name) : null;
+    if (!src || !existsSync(src)) {
+      // A packaged build with no seed/ folder is a BROKEN build — it silently
+      // reproduces the exact empty-user-data bug this seeding exists to fix,
+      // so say so loudly rather than falling back to a path that isn't there.
+      console.warn(`[Electron] Packaged build is missing bundled assets: ${src || '<no resourcesPath>'} ` +
+        `— check build.extraResources in package.json (bans/maps will fall back to low-res art)`);
+      return;
     }
+
+    const dest = join(userDataPath, name);
+    if (!existsSync(dest)) mkdirSync(dest, { recursive: true });
+
+    let copied = 0;
+    for (const file of readdirSync(src)) {
+      const from = join(src, file);
+      const to = join(dest, file);
+      try {
+        if (existsSync(to)) continue;            // producer drop-in wins (see above)
+        if (!statSync(from).isFile()) continue;  // packs are flat; ignore stray dirs
+        copyFileSync(from, to);
+        copied++;
+      } catch (e) {
+        console.warn(`[Electron] Failed to seed ${name}/${file}:`, e.message);
+      }
+    }
+    if (copied) console.log(`[Electron] Seeded ${copied} file(s) into ${dest}`);
+  } catch (e) {
+    console.warn(`[Electron] Asset seeding for ${name} failed (continuing):`, e.message);
   }
-  if (copied) console.log(`[Electron] Seeded ${copied} file(s) into ${dest}`);
 }
 
 function initUserData() {
@@ -155,7 +172,8 @@ function initUserData() {
     }
   }
 
-  // Shipped image packs -> userData (missing files only; see seedAssetDir)
+  // Shipped image packs -> userData (packaged only, missing files only, and
+  // never fatal — see seedAssetDir)
   seedAssetDir(userDataPath, 'hero-renders');
   seedAssetDir(userDataPath, 'map-images');
 

@@ -58,6 +58,14 @@ describe('findLocalMapImage', () => {
     expect(findLocalMapImage('Neon Junction', dir)).toBe('neon-junction.webp');
   });
 
+  // Load-bearing ordering (mirrors SUPPORTED_HERO_RENDER_EXTENSIONS): shipped
+  // pack images are WebP, so a producer's jpg drop-in must outrank them.
+  it('prefers a .jpg drop-in over a shipped .webp when both exist', () => {
+    fs.writeFileSync(path.join(dir, 'kings-row.webp'), 'fake-webp');
+    fs.writeFileSync(path.join(dir, 'kings-row.jpg'), 'fake-jpg');
+    expect(findLocalMapImage('King’s Row', dir)).toBe('kings-row.jpg');
+  });
+
   it('returns null when no local file exists', () => {
     expect(findLocalMapImage('Oasis', dir)).toBeNull();
   });
