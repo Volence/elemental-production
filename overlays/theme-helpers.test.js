@@ -21,6 +21,17 @@ describe('findCurrentMapIndex', () => {
   });
 });
 
+describe('findCurrentMapIndex with duplicate current', () => {
+  it('prefers the LAST current map when multiple are current', () => {
+    const maps = [
+      { name: 'Ilios', status: 'current' },
+      { name: 'Runasapi', status: 'current' },
+      { name: 'Dorado', status: 'upcoming' },
+    ];
+    expect(findCurrentMapIndex(maps)).toBe(1);
+  });
+});
+
 describe('mapStripClass', () => {
   it('colors by winning team regardless of side swap', () => {
     expect(mapStripClass({ status: 'completed', winner: 'team1' }, 0, 2)).toBe('won-t1');

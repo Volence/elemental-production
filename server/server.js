@@ -18,7 +18,7 @@ import fs from 'fs';
 import os from 'os';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { getState, setState, resetState, loadState, setOverrides, clearOverride, clearAllOverrides, isOverridden } from './state.js';
+import { getState, setState, resetState, loadState, setOverrides, clearOverride, clearAllOverrides, isOverridden, normalizeSingleCurrent } from './state.js';
 import * as obs from './obs.js';
 import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
@@ -408,7 +408,7 @@ app.get('/api/state', (req, res) => {
 
 app.patch('/api/state', (req, res) => {
   const body = Array.isArray(req.body.maps)
-    ? { ...req.body, maps: withLocalMapImagesForState(req.body.maps) }
+    ? { ...req.body, maps: normalizeSingleCurrent(withLocalMapImagesForState(req.body.maps)) }
     : req.body;
   setState(body);
   // heroBans is derived from (perMapBans, maps, selectedMapIdx). If this PATCH

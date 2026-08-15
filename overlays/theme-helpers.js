@@ -129,9 +129,13 @@ function legibleColor(hex, minL) {
 // Which map should overlays treat as "the map right now"?
 // live map -> next upcoming map -> last played map. Never blindly maps[0]:
 // that's the bug where the map intro showed map 1's name all series.
+// When bad state carries two `current` maps, the LAST one wins so overlays
+// self-heal onto the map the producer just pressed Play on.
 function findCurrentMapIndex(maps) {
   maps = maps || [];
-  for (var i = 0; i < maps.length; i++) if (maps[i].status === 'current') return i;
+  var lastCurrent = -1;
+  for (var i = 0; i < maps.length; i++) if (maps[i].status === 'current') lastCurrent = i;
+  if (lastCurrent !== -1) return lastCurrent;
   for (var j = 0; j < maps.length; j++) if (maps[j].status === 'upcoming') return j;
   return maps.length - 1;
 }

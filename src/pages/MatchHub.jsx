@@ -232,7 +232,14 @@ export default function MatchHub({ state, updateState, api }) {
   };
 
   const setMapStatus = (idx, status, winner = null) => {
-    const maps = state.maps.map((m, i) => i === idx ? { ...m, status, winner } : m);
+    const maps = state.maps.map((m, i) => {
+      if (i === idx) return { ...m, status, winner };
+      // single-current invariant: promoting a map demotes any other live map
+      if (status === 'current' && m.status === 'current') {
+        return { ...m, status: m.winner ? 'completed' : 'upcoming' };
+      }
+      return m;
+    });
     updateState({ maps });
   };
 

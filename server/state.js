@@ -163,6 +163,22 @@ export function resetState() {
   return state;
 }
 
+/**
+ * Single-`current` invariant: only one map is live at a time. Two `current`
+ * maps make every "the map right now" consumer (map intro, flythrough, music)
+ * stick on the earlier one, and the FACEIT poll's forward-only status merge
+ * makes the stray sticky. The LAST `current` wins — it's the one just promoted.
+ */
+export function normalizeSingleCurrent(maps) {
+  if (!Array.isArray(maps)) return maps;
+  const lastCurrent = maps.reduce((acc, m, i) => (m && m.status === 'current' ? i : acc), -1);
+  if (lastCurrent === -1) return maps;
+  return maps.map((m, i) =>
+    m && m.status === 'current' && i !== lastCurrent
+      ? { ...m, status: m.winner ? 'completed' : 'upcoming' }
+      : m);
+}
+
 export function loadState() {
   try {
     const dir = path.dirname(STATE_FILE);
