@@ -845,9 +845,7 @@ input[type="checkbox"]:checked::after {
 .scene-toolbar-inner {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  row-gap: 4px;
-  overflow-x: visible;
+  gap: 4px 2px;
   align-items: center;
 }
 

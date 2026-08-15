@@ -18,18 +18,31 @@ let lastConn = { host: 'localhost', port: 4455, password: '' };
 // "start the app, then start OBS" work without a restart.
 const connectHandlers = [];
 
+// Monotonic connection counter, bumped on every successful identification.
+// Long-running work (browser-source heal) captures it at the start and compares
+// at the end: a different epoch means "this pass belongs to a dead connection"
+// — its results must not be cached or latched over the live one.
+let epoch = 0;
+
 /** Register a callback to run each time OBS connects (or reconnects). */
 export function onConnected(fn) {
-  if (typeof fn === 'function') connectHandlers.push(fn);
+  if (typeof fn !== 'function') throw new TypeError('onConnected(fn): fn must be a function');
+  connectHandlers.push(fn);
+}
+
+/** Monotonic id of the current connection (0 = never connected). */
+export function connectionEpoch() {
+  return epoch;
 }
 
 function fireConnected() {
   for (const fn of connectHandlers) {
+    const fail = (e) => console.error('[OBS] onConnected handler failed:', (e && e.message) || e);
     try {
       const r = fn();
-      if (r && typeof r.catch === 'function') r.catch(e => console.error('[OBS] onConnected handler failed:', e.message));
+      if (r && typeof r.catch === 'function') r.catch(fail);
     } catch (e) {
-      console.error('[OBS] onConnected handler failed:', e.message);
+      fail(e);
     }
   }
 }
@@ -81,6 +94,7 @@ export async function connect(host = 'localhost', port = 4455, password = '') {
     const url = `ws://${host}:${port}`;
     await obs.connect(url, password || undefined);
     connected = true;
+    epoch++;
     console.log('[OBS] Connected to', url);
     registerListeners();
     fireConnected();

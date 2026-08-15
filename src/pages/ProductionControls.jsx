@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { DEFAULT_SCENES } from '../lib/scenes.js'
 
 // Audio mixer groups — only actual audio sources (no browser sources)
@@ -20,7 +20,7 @@ const SCENE_TO_GROUP = {
   'Interview': '🔊 App Audio', 'Series Winner': '🎙️ Casters',
 };
 
-export default function ProductionControls({ state, updateState, api }) {
+export default function ProductionControls({ state, updateState, api, obsConnected }) {
   const [timerMinutes, setTimerMinutes] = useState(5);
   const [targetTime, setTargetTime] = useState('');
   const [audioSources, setAudioSources] = useState([]);
@@ -41,13 +41,26 @@ export default function ProductionControls({ state, updateState, api }) {
   const [scheduleTime, setScheduleTime] = useState('');
   const [scheduleLabel, setScheduleLabel] = useState('');
 
-  useEffect(() => {
+  const loadScenes = useCallback(() => {
     fetch(`${api}/api/obs/scenes`).then(r => r.json()).then(d => {
       setScenes(d.scenes || []);
       setCurrentScene(d.currentScene || '');
     }).catch(() => {});
-    loadAudio();
   }, [api]);
+
+  useEffect(() => {
+    loadScenes();
+    loadAudio();
+  }, [api, loadScenes]);
+
+  // The tab is usually opened before OBS is up: that mount fetch comes back
+  // empty and nothing asked again, leaving the page on the fallback list.
+  // Re-fetch on the disconnected→connected edge of App's status poll.
+  const wasObsConnected = useRef(false);
+  useEffect(() => {
+    if (obsConnected && !wasObsConnected.current) loadScenes();
+    wasObsConnected.current = obsConnected;
+  }, [obsConnected, loadScenes]);
 
   const captureCurrentScene = (sceneName) => {
     setTimeout(async () => {

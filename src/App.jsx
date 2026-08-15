@@ -238,7 +238,7 @@ export default function App() {
 
         <div className="content-body">
           {page === 'match' && <MatchHub state={state} updateState={updateState} api={API} />}
-          {page === 'production' && <ProductionControls state={state} updateState={updateState} api={API} />}
+          {page === 'production' && <ProductionControls state={state} updateState={updateState} api={API} obsConnected={obsConnected} />}
           {page === 'theming' && <Theming state={state} updateState={updateState} api={API} customFonts={customFonts} />}
           {page === 'settings' && <Settings state={state} updateState={updateState} api={API} obsConnected={obsConnected} setObsConnected={setObsConnected} customFonts={customFonts} setCustomFonts={setCustomFonts} onDirtyChange={setSettingsDirty} />}
         </div>

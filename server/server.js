@@ -549,13 +549,9 @@ app.post('/api/obs/connect', async (req, res) => {
   const result = await obs.connect(h, p, pw);
   if (result.connected) {
     setState({ obsConnection: { host: h, port: p, password: pw } });
-    // obs.onConnected already re-armed the browser-source latch, so this pass
-    // is the one that heals — its later twin from the hook no-ops.
-    setTimeout(async () => {
-      await syncToOBS(getState()).catch(() => {});
-      await setupBrowserSources().catch(() => {});
-      await hideAudioSourceVideo().catch(() => {});
-    }, 2000);
+    // No heal pass here: obs.connect() fired the onConnected hook, which owns
+    // the re-sync + browser-source setup for every connection (boot, retry,
+    // manual). A second pass from this route would only duplicate it.
   }
   res.json(result);
 });
@@ -2278,8 +2274,20 @@ if (getState().faceitAutoSync && getState().faceitMatchId) {
 // {connected:false} instead of rejecting, so latching optimistically used to
 // mean "app started before OBS" => sources were never set up at all.
 let browserSourcesConfigured = false;
+// Single-flight: the boot hook, a manual /api/obs/connect and a collection
+// import can all ask within the same couple of seconds. The latch is only set
+// at the END of a pass, so it can't dedupe overlapping callers on its own —
+// concurrent callers share this one promise instead.
+let browserSourcesSetupInFlight = null;
 
-async function setupBrowserSources() {
+function setupBrowserSources() {
+  if (browserSourcesSetupInFlight) return browserSourcesSetupInFlight;
+  browserSourcesSetupInFlight = runBrowserSourceSetup()
+    .finally(() => { browserSourcesSetupInFlight = null; });
+  return browserSourcesSetupInFlight;
+}
+
+async function runBrowserSourceSetup() {
   if (!obs.isConnected()) {
     console.log('[OBS] Not connected, skipping browser source setup');
     return;
@@ -2288,11 +2296,13 @@ async function setupBrowserSources() {
     console.log('[OBS] Browser sources already configured, skipping');
     return;
   }
+  const startEpoch = obs.connectionEpoch();
 
   const base = `http://localhost:${PORT}/overlays`;
 
   // Step 1: Seed stable URLs on the known sources (no cache buster —
-  // idempotent, won't trigger a reload if the URL is already set)
+  // idempotent: SetInputSettings with an unchanged url does not reload the
+  // page, so this is safe even for the source that is live on air)
   for (const [source, file] of BROWSER_SOURCES) {
     await obs.setBrowserSource(source, `${base}/${file}`).catch(() => {});
   }
@@ -2302,19 +2312,41 @@ async function setupBrowserSources() {
   // BROWSER_SOURCES, so renamed or producer-added overlay sources heal too —
   // and vdo.ninja caster cams are skipped for free (refreshing one drops a
   // live camera feed mid-show).
+  //
+  // Sources in the CURRENT PROGRAM SCENE are skipped: this pass also runs on a
+  // transient websocket flap, where the overlays never stopped rendering, and a
+  // refreshnocache on air blanks the overlay for a beat — unmasking the raw
+  // caster cams underneath (the July on-air incident). After a real OBS restart
+  // the producer is sitting on a pre-show scene whose sources reload with
+  // everything else before going live, so the skipped one costs nothing;
+  // /api/overlays/refresh stays available as the manual override.
   await new Promise(r => setTimeout(r, 1000));
+  const programScene = await obs.getCurrentProgramScene();
+  const onAir = new Set(
+    programScene
+      ? (await obs.getSceneItemList(programScene)).map(item => item.sourceName)
+      : []
+  );
   let refreshed = 0;
+  const skipped = [];
   for (const input of await obs.getInputList()) {
     if (input.inputKind !== 'browser_source') continue;
     const settings = await obs.rawCall('GetInputSettings', { inputName: input.inputName });
     const url = settings?.inputSettings?.url || '';
     if (!url.includes('/overlays/')) continue;
-    if (await obs.refreshBrowserSource(input.inputName).catch(() => false)) refreshed++;
+    if (onAir.has(input.inputName)) { skipped.push(input.inputName); continue; }
+    if (await obs.refreshBrowserSource(input.inputName)) refreshed++;
   }
 
-  if (!obs.isConnected()) return; // connection dropped mid-pass — don't latch
+  // A pass that started on a connection that has since dropped (and possibly
+  // reconnected) must not latch — the live connection still needs its own heal.
+  if (obs.connectionEpoch() !== startEpoch || !obs.isConnected()) {
+    console.warn('[OBS] Browser source setup finished on a stale connection — not latching');
+    return;
+  }
   browserSourcesConfigured = true;
-  console.log(`[OBS] Browser sources configured (${refreshed} overlay sources refreshed)`);
+  console.log(`[OBS] Browser sources configured (${refreshed} refreshed`
+    + `${skipped.length ? `, ${skipped.length} skipped on air: ${skipped.join(', ')}` : ''})`);
 }
 
 // Try to connect to OBS on startup (saved settings or env vars)
@@ -2334,11 +2366,7 @@ obs.onEvent('onCollectionChanged', async (data) => {
   lastSyncedState = {};
   browserSourcesConfigured = false; // the new collection's sources need seeding too
   // Give OBS a beat to finish loading the new collection's sources.
-  setTimeout(async () => {
-    await syncToOBS(getState()).catch(() => {});
-    await setupBrowserSources().catch(() => {});
-    await hideAudioSourceVideo().catch(() => {});
-  }, 2000);
+  setTimeout(() => healOBS('collection import'), 2000);
 });
 
 // Auto-cycle replay clips when one finishes playing
@@ -2358,16 +2386,35 @@ obs.onEvent('onMediaEnd', async (data) => {
   }
 });
 
+// Re-push everything OBS can't know about after a (re)connect or a collection
+// import. Each step is logged on failure — this is the diagnostic path for
+// "the overlays are black".
+async function healOBS(reason) {
+  try {
+    await syncToOBS(getState());
+  } catch (e) {
+    console.error(`[OBS] Heal (${reason}): state sync failed:`, (e && e.message) || e);
+  }
+  try {
+    await setupBrowserSources();
+  } catch (e) {
+    console.error(`[OBS] Heal (${reason}): browser source setup failed:`, (e && e.message) || e);
+  }
+  try {
+    await hideAudioSourceVideo();
+  } catch (e) {
+    console.error(`[OBS] Heal (${reason}): hiding audio source video failed:`, (e && e.message) || e);
+  }
+}
+
 // Heal on EVERY successful connect — the boot attempt, the 5s auto-retry chain
-// (producer starts OBS after the app), and a manual reconnect from Settings.
+// (producer starts OBS after the app), and a manual reconnect from Settings
+// (obs.connect() drops any existing socket first, so /api/obs/connect on a live
+// connection comes back through here too).
 obs.onConnected(() => {
   lastSyncedState = {};              // a fresh OBS knows nothing of our last push
   browserSourcesConfigured = false;  // re-arm: the latch is per-connection
-  setTimeout(async () => {
-    await syncToOBS(getState()).catch(() => {});
-    await setupBrowserSources().catch(() => {});   // no-op if /api/obs/connect already healed
-    await hideAudioSourceVideo().catch(() => {});
-  }, 3000);
+  setTimeout(() => healOBS('connect'), 3000);
 });
 
 if (_obsHost) obs.connect(_obsHost, _obsPort, _obsPw).catch(() => {});
