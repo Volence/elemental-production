@@ -3,7 +3,7 @@
   "description": "Elemental Overwatch broadcast production companion — OBS overlay controller, FACEIT integration, and scene management.",
   "author": "Elemental Gaming <contact@elemental.gg>",
   "private": true,
-  "version": "2.0.2",
+  "version": "2.1.0",
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
@@ -33,6 +33,7 @@
     },
     "files": [
       "out/**/*",
+      "!out/renderer/stinger-transition.webm",
       "server/**/*",
       "overlays/**/*",
       "data/Elemental_Production.json",

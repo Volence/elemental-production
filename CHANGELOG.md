@@ -1,5 +1,100 @@
 # Changelog
 
+## v2.1.0 — Producer feedback batch
+
+Sixteen items straight from producer bug reports and requests after the v2
+package went live: thirteen fixes, a real OBS stinger transition, a new Final
+Stats scene, and an animation pass.
+
+### Do this once after updating
+
+1. **Re-import the OBS scene collection** — Settings → OBS Scene Setup →
+   download (Linux or Windows) → OBS → Scene Collection → Import. This is what
+   brings in the new **Final Stats** scene. Migrating an existing collection?
+   Use the `--carry-from` flow in `docs/scene-collection-v2-migration.md` so
+   your cam URLs and media paths survive. Don't want to re-import? The same doc
+   has the manual recipe: add a scene named **Final Stats** with a browser
+   source **Final Stats BS** at `http://localhost:3001/overlays/final-stats.html`
+   (1920×1080) and drop it in after Map Score.
+2. **Set up the stinger transition** — Settings → OBS Browser Source URLs →
+   🎬 Stinger (WebM) → ⬇ Download, then OBS → Scene Transitions → **+** →
+   **Stinger** → pick the file → **Transition Point: 550 ms**. Full walkthrough
+   in the README.
+3. **Nothing to do for artwork.** Hero renders and map images now ship inside
+   the app and are copied into your user-data folder on first launch. Anything
+   you have already dropped in yourself still wins — the shipped pack never
+   overwrites your files.
+
+### Fixed
+
+- **Map Intro / Casters Flythrough now follow the map that's actually live.**
+  Clicking ▶ Play on a new map demotes the previous one, so only one map is
+  ever "current" — the state that made the intro keep naming the old map. The
+  app, the server, and the overlays all enforce (and self-heal) this now, so
+  old saved states clean themselves up too.
+- **"Relinquish All" actually puts you back on FACEIT data.** It now
+  re-derives the series scores, un-freezes the hero bans, and re-syncs OBS —
+  previously it only deleted the override flags, leaving frozen bans and stale
+  scores on air. Manually-added maps are preserved.
+- **"Start OBS first" is no longer a rule.** Map Pool, Ban Reveal and Casters
+  Flythrough browser sources were missing from the auto-heal list (and one
+  name was misspelled), and the heal only ran once at app boot. All overlay
+  browser sources are now refreshed on *every* OBS connect and reconnect, so
+  opening OBS after the app — or restarting OBS mid-show — heals every source
+  within a few seconds without touching anything.
+- **The top scene toolbar shows every scene.** It wraps onto a second row
+  instead of hiding buttons off the right edge, knows all sixteen v2 scene
+  names when OBS is closed, and re-fetches the real scene list the moment OBS
+  connects. Every scene has its own icon.
+- **Crisp ban strike-through.** The red slash across banned heroes was a
+  percentage-based gradient, which blurred into a ~78px smear at Ban Reveal
+  size. It's now a hard-edged line that stays sharp on both the big reveal and
+  the small deck tiles.
+- **Hero renders ship with the app.** Packaged installs had an empty image
+  folder and fell back to tiny face icons — all 52 full-body hero renders are
+  now bundled and seeded on first launch. Your own drop-ins take precedence.
+- **Neon Junction and King's Row map art ship too.** OverFast has no Neon
+  Junction screenshot at all, and King's Row was falling back to a 110×55
+  FACEIT thumbnail. Both now ship as high-resolution local art.
+- **Map Pool scene reflects reality.** Maps played from outside the season
+  pool now correctly gray out their mode column, completed pool maps get a
+  **PLAYED** marker (keeping their color and score tag), Clash is a supported
+  mode, maps with no art get a readable name placeholder, and the pool editor
+  in Settings no longer double-adds or phantom-unchecks maps with apostrophes
+  (King's Row).
+- **King's Row art resolves everywhere.** Map Pick, Map Score and Casters
+  Lobby matched map names literally, so the curly apostrophe in "King's Row"
+  (and accents like Paraíso) never matched the catalog. All three now
+  normalize names the same way; the FACEIT fallback also prefers the large
+  image over the thumbnail.
+- **Readable text on bright team colors.** Any text sitting on a team-color
+  fill (score boxes, winner pips, the BANNED chip, map score chips) now picks
+  black or white by measured contrast, so gold/lime/cyan team colors are no
+  longer white-on-white. Raw team-colored *text* on dark backgrounds gets the
+  matching legibility floor.
+- **Per-map score entry for manual and scrim matches.** Each map card in Match
+  Hub has a score field (e.g. `2-1`) that renders on all four score-showing
+  overlays — previously only FACEIT matches could show map scores.
+- **"IF NEEDED" watermark removed** from decider map cards; the decider can be
+  played regardless of series state. The DECIDER pill and dimming stay.
+
+### Added
+
+- **Real OBS stinger transition.** The branded pinwheel wipe now ships as a
+  pre-rendered transparent WebM (VP9 with alpha, 1.3s) that OBS drives
+  natively — download it from Settings, add it as a Stinger transition with a
+  Transition Point of **550 ms**. This replaces the old workaround of cutting
+  to a stinger *scene* by hand. `overlays/stinger-transition.html` remains the
+  master; `node scripts/render-stinger.mjs` re-renders the WebM.
+- **Final Stats scene.** A post-series board on the caster desk layout: every
+  played map's stats aggregated into one series total per player (elims,
+  deaths, K/D recomputed from totals, final blows, damage, healing), team
+  totals, the series score, and a chip per played map. Requires the scene
+  collection re-import (or the manual scene add) described above.
+- **Animation pass.** Map Pool cards cascade in, the lower third pill has a
+  live idle glow, Final Stats totals count up on entrance, and the BANNED chip
+  pulses.
+
 ## v2.0.2 — Map Intro tracks the live map
 
 - **Map Intro / Casters Flythrough showed the previous map's name all series**
@@ -72,9 +167,10 @@ runtime changes underneath them.
 ### Known follow-ups
 - Producer asset sourcing: map-images and hero-renders still need real source
   art in production (placeholders/fallbacks work correctly in the meantime).
-- WebM stinger capture from the new pinwheel stinger-transition scene (spec
+- ~~WebM stinger capture from the new pinwheel stinger-transition scene (spec
   explicitly deferred this; the scene is usable today as a manually-switched
-  transition).
+  transition).~~ **Done in v2.1.0** — shipped as a pre-rendered transparent
+  VP9 WebM plus a render script.
 - Manual OBS QA gate (cutout alignment, un-inlined backgrounds on cold switch,
   entrance replays, countdown modes) must pass before this goes live — see the
   release checklist.
