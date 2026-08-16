@@ -62,6 +62,15 @@ Stats scene, and an animation pass.
   mode, maps with no art get a readable name placeholder, and the pool editor
   in Settings no longer double-adds or phantom-unchecks maps with apostrophes
   (King's Row).
+- **Bo7 late picks show up again.** A Bo7 has seven maps but only five modes,
+  so a late pick repeats a mode that's already been played (Antarctic
+  Peninsula after Ilios, both Control). Two problems: a map FACEIT revealed
+  *after* you had edited the map list (the 🔒 Maps lock) was silently dropped
+  on every sync tick and never reached the boards at all, and a pick that had
+  landed but not started yet drew like an untouched pool map. The late map is
+  now merged in, the Map Pool card marks its slot (**MAP 6**) alongside the
+  picker badge, and the Map Pick board's column chips no longer collide at
+  seven columns.
 - **King's Row art resolves everywhere.** Map Pick, Map Score and Casters
   Lobby matched map names literally, so the curly apostrophe in "King's Row"
   (and accents like Paraíso) never matched the catalog. All three now

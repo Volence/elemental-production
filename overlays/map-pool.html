@@ -80,6 +80,10 @@
        played) — just a brighter border + a PLAYED marker when there's no
        score tag to already say so. */
     .mpo-card-played { border-color: rgba(255,255,255,0.45); }
+    /* Picked but not started yet (a late pick sitting in state.maps as
+       'upcoming'). Same "in the series, keep full color" treatment as a played
+       card — the MAP n tag says which slot it took. */
+    .mpo-card-picked { border-color: rgba(255,255,255,0.45); }
     .mpo-played-tag {
       position: absolute; top: 8px; right: 8px; font-size: 12px; font-weight: 800;
       letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.55);
@@ -187,12 +191,16 @@
     }
 
     // Series lookup: pool cards match state.maps entries BY NAME (the series'
-    // maps are the source of truth for played/live/picker/score).
-    function seriesEntry(maps, name) {
+    // maps are the source of truth for played/live/picker/score). Per-NAME, so
+    // a Bo7 that spends two of its slots on the same MODE (only 5 modes exist —
+    // e.g. Ilios then Antarctic Peninsula, both Control) still resolves each
+    // card to its OWN entry; nothing here is keyed per-mode.
+    // Returns the INDEX (-1 = not in the series) so the card can label its slot.
+    function seriesIndex(maps, name) {
       for (var i = 0; i < maps.length; i++) {
-        if (maps[i] && normMapName(maps[i].name) === normMapName(name)) return maps[i];
+        if (maps[i] && normMapName(maps[i].name) === normMapName(name)) return i;
       }
-      return null;
+      return -1;
     }
 
     function teamShort(team, fallback) {
@@ -213,10 +221,21 @@
     // release sweep, matching the OWCS reference): once a mode column has a
     // picked/played map, the PICKED map stays lit (it's the story of that
     // column — badge + score/LIVE tag on top), and its unpicked SIBLINGS gray
-    // out (no longer selectable this series, barring a 6-map tie — and in
-    // that edge both picked maps light up, which this per-map logic handles
-    // naturally). `modeTaken` = some map in this column matched the series.
-    function cardHtml(name, series, modeTaken, t1, t2, delay) {
+    // out (no longer selectable this series). `modeTaken` = some map in this
+    // column matched the series.
+    //
+    // REGRESSION (v2.1.0, producer report): a Bo7 has 7 slots but only 5 modes,
+    // so a LATE pick necessarily repeats a mode that already has a played map
+    // (Antarctic Peninsula after Ilios, both Control). Every state below is
+    // per-CARD off its own series entry, so two lit cards in one column is the
+    // normal case, not an edge — the only per-mode input, modeTaken, can just
+    // gray SIBLINGS THAT AREN'T IN THE SERIES. The remaining silence was a
+    // series map still 'upcoming' with no picker yet (FACEIT sets picker from
+    // the ban voting, which lands after the pick): it drew identically to an
+    // untouched pool card. It now gets the MAP n slot tag + the played border,
+    // so a late pick ALWAYS visibly changes the board even with zero picker/
+    // score data behind it. `sIdx` = its index in state.maps (-1 = not in it).
+    function cardHtml(name, series, sIdx, modeTaken, t1, t2, delay) {
       var cat = mapDataByName[normMapName(name)] || {};
       var img = proxied(cat.screenshot);
       var cls = 'mpo-card';
@@ -234,7 +253,12 @@
       } else if (played) {
         cls += ' mpo-card-played';
         if (!series.roundScore) overlays += '<div class="mpo-played-tag">PLAYED</div>';
-      } else if (!series && modeTaken) {
+      } else if (series) {
+        // In the series, not started: MAP n (its slot) — the tag that makes a
+        // late pick readable before any picker/score data exists.
+        cls += ' mpo-card-picked';
+        overlays += '<div class="mpo-played-tag">MAP ' + (sIdx + 1) + '</div>';
+      } else if (modeTaken) {
         cls += ' mpo-card-out';
       }
 
@@ -364,14 +388,18 @@
             if (modes.indexOf(mode) !== -1) names.push(pool[p]);
           }
           if (names.length === 0) continue;
-          var entries = [];
+          // Per-NAME lookup: a mode column can hold TWO series maps in a Bo7
+          // (5 modes, 7 slots) — each card resolves its own entry/slot, no
+          // first-match-wins per column.
+          var idxs = [];
           for (var e = 0; e < names.length; e++) {
-            entries.push(seriesEntry(maps, names[e]));
+            idxs.push(seriesIndex(maps, names[e]));
           }
           var modeTaken = !!takenModes[mode];
           var cards = '';
           for (var c = 0; c < names.length; c++) {
-            cards += cardHtml(names[c], entries[c], modeTaken, t1, t2, Math.min(0.75, 0.15 + colIdx * 0.05 + c * 0.08));
+            cards += cardHtml(names[c], idxs[c] >= 0 ? maps[idxs[c]] : null, idxs[c], modeTaken, t1, t2,
+              Math.min(0.75, 0.15 + colIdx * 0.05 + c * 0.08));
           }
           cols += '<div class="mpo-col">' +
             '<div class="mpo-mode" style="animation: fadeIn 0.4s ease-out ' + (0.12 + colIdx * 0.05).toFixed(2) + 's both;">' + escapeHtml(mode) + '</div>' +

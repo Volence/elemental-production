@@ -87,6 +87,49 @@ describe('buildMapsUpdate', () => {
     expect(u[0].roundScore).toBe('2-1');
     expect(u[1].roundScore).toBe('4-3');
   });
+
+  // REGRESSION (producer report): Bo7 late pick vanished under the maps 🔒.
+  // FACEIT reveals map 6 long after the producer touched the map list; the
+  // overridden branch used to map over currentMaps only, so the new map was
+  // dropped on every poll tick and never reached state.maps — the map-pool
+  // board then grayed it (its Control column was already taken by Ilios) with
+  // no pick badge, and map-pick showed an empty column.
+  it('appends maps FACEIT reveals AFTER the producer took the maps override (Bo7 late pick)', () => {
+    const currentMaps = [
+      { name: 'Ilios', mode: 'Control', image: 'local-ilios.png', status: 'completed', winner: 'team1', roundScore: '2-1', picker: 'team1' },
+      { name: 'Dorado', mode: 'Escort', image: 'local-dorado.png', status: 'completed', winner: 'team2', roundScore: '3-2', picker: 'team2' },
+    ];
+    const late = [
+      { name: 'Ilios', mode: 'Control', image: 'ilios-sm.jpg', status: 'completed', winner: 'team1', roundScore: '2-1' },
+      { name: 'Dorado', mode: 'Escort', image: 'dorado-sm.jpg', status: 'completed', winner: 'team2', roundScore: '3-2' },
+      // Same MODE as map 1 — a Bo7 has 7 slots but only 5 modes.
+      { name: 'Antarctic Peninsula', mode: 'Control', image: 'antarctic-sm.jpg', status: 'current', winner: null, roundScore: null },
+    ];
+    const u = buildMapsUpdate({
+      currentMaps, faceitMaps: late,
+      perMapBans: [{ picker: 'team1' }, { picker: 'team2' }, { picker: 'team2' }],
+      mapsOverridden: true,
+    });
+    expect(u).toHaveLength(3);
+    expect(u[0].image).toBe('local-ilios.png'); // producer's list still wins for maps it covers
+    expect(u[2].name).toBe('Antarctic Peninsula');
+    expect(u[2].status).toBe('current');
+    expect(u[2].picker).toBe('team2');
+  });
+
+  it('does not resurrect a map the producer REMOVED (tail append is name-guarded)', () => {
+    const currentMaps = [{ name: 'Ilios' }, { name: 'Dorado' }]; // producer deleted King's Row (idx 1)
+    const faceit = [{ name: 'Ilios' }, { name: 'King’s Row' }, { name: 'Dorado' }];
+    const u = buildMapsUpdate({ currentMaps, faceitMaps: faceit, perMapBans: [], mapsOverridden: true });
+    expect(u.map(m => m.name)).toEqual(['Ilios', 'Dorado']);
+  });
+
+  it('name-guards across curly/straight apostrophes when appending', () => {
+    const currentMaps = [{ name: 'Ilios' }, { name: "King's Row" }];
+    const faceit = [{ name: 'Ilios' }, { name: 'Nepal' }, { name: 'King’s Row' }];
+    const u = buildMapsUpdate({ currentMaps, faceitMaps: faceit, perMapBans: [], mapsOverridden: true });
+    expect(u.map(m => m.name)).toEqual(['Ilios', "King's Row"]);
+  });
 });
 
 describe('getActiveBanIdx', () => {

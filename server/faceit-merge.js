@@ -21,17 +21,37 @@ export function buildTeamsUpdate({ currentTeams, faction1, faction2, score1, sco
   return { team1: t1, team2: t2 };
 }
 
+/** Name key for "is this FACEIT map already in the producer's list?" — folds
+ *  diacritics + apostrophes like the overlays' normMapName so "King’s Row" and
+ *  "King's Row" are the same map. */
+function mapNameKey(name) {
+  return String(name || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[‘’']/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
 /**
  * Maps list for setState(). When the producer has taken the `maps` override
  * (addMap/removeMap), their list is authoritative: keep names/modes/images and
  * extra maps, but still let FACEIT advance per-index progress fields.
  * `faceitMaps` is already forward-only merged vs current state by the caller.
+ *
+ * REGRESSION (v2.1.0, producer report — BO7 late pick vanished): the overridden
+ * branch used to map ONLY over currentMaps, so any map FACEIT revealed LATER
+ * (index >= currentMaps.length — e.g. a Bo7's 6th/7th pick, made long after the
+ * producer touched the map list and took the 🔒) was dropped on every poll tick
+ * and never reached state.maps. Downstream that read as "the board did nothing":
+ * map-pool grayed the card (no series entry, but its mode column already taken
+ * by an earlier map of the same mode) and map-pick showed an empty column. The
+ * override protects the producer's EDITS; it can't sensibly mean "never learn
+ * about a map that didn't exist yet", so unseen tail entries are appended.
+ * Name-guarded, so a map the producer deliberately REMOVED (which shortens
+ * currentMaps and would otherwise resurface as a tail append) stays removed.
  */
 export function buildMapsUpdate({ currentMaps, faceitMaps, perMapBans, mapsOverridden }) {
   if (!mapsOverridden) {
     return faceitMaps.map((m, i) => ({ ...m, picker: perMapBans[i]?.picker || null }));
   }
-  return (currentMaps || []).map((m, i) => {
+  const merged = (currentMaps || []).map((m, i) => {
     const f = faceitMaps[i];
     if (!f) return m;
     return {
@@ -42,6 +62,14 @@ export function buildMapsUpdate({ currentMaps, faceitMaps, perMapBans, mapsOverr
       picker: m.picker || perMapBans[i]?.picker || null,
     };
   });
+  const known = new Set(merged.map(m => mapNameKey(m && m.name)));
+  for (let i = merged.length; i < (faceitMaps || []).length; i++) {
+    const f = faceitMaps[i];
+    if (!f || known.has(mapNameKey(f.name))) continue;
+    known.add(mapNameKey(f.name));
+    merged.push({ ...f, picker: perMapBans[i]?.picker || null });
+  }
+  return merged;
 }
 
 /**

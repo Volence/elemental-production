@@ -833,9 +833,10 @@ export default function MatchHub({ state, updateState, api }) {
                         server.js:~1054) resolves `f.roundScore || m.roundScore || null`, so
                         FACEIT's own score wins the moment it's reported regardless of the
                         maps lock anyway (intended precedence) — while taking the lock would
-                        cost real functionality (FACEIT maps beyond the current list get
-                        dropped; name/mode/image stop syncing until the producer releases
-                        the 🔒) for zero protection benefit. */}
+                        cost real functionality (name/mode/image stop syncing until the
+                        producer releases the 🔒) for zero protection benefit. (Maps FACEIT
+                        reveals LATER are no longer dropped under the lock — buildMapsUpdate
+                        appends unseen tail entries since v2.1.0.) */}
                     <MapScoreInput value={m.roundScore}
                       onCommit={(val) => updateState({ maps: state.maps.map((mm, ii) => ii === i ? { ...mm, roundScore: val } : mm) })} />
                     {/* Map picker toggle — always available */}

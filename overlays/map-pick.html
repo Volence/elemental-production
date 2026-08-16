@@ -144,6 +144,25 @@
     }
     .mp-pick-pill-neutral { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); }
 
+    /* ── Bo6/Bo7 squeeze (v2.1.0) ────────────────────────────────────────────
+       Column width is (1920 - 2*40 - (n-1)*10) / n: ~360px at Bo5, but only
+       ~254px at Bo7. At that width the two top-corner chips — "MAP 6 · CONTROL"
+       (top-left) and the LIVE chip (top-right) — OVERLAP, because both are
+       position:absolute and neither reserves space for the other; the mode
+       label also wrapped to two lines and long map names ran to three. Type is
+       stepped down for >=6 columns only, so Bo1/Bo3/Bo5 are untouched. Applied
+       via a class on .mp-columns (render knows bestOf; CSS can't). */
+    .mp-columns-tight .mp-col-chip { font-size: 15px; padding: 4px 8px; letter-spacing: 0; }
+    .mp-columns-tight .mp-col-live-chip { padding: 4px 8px; gap: 5px; }
+    .mp-columns-tight .mp-live-text { font-size: 15px; }
+    .mp-columns-tight .mp-live-dot { width: 8px; height: 8px; }
+    .mp-columns-tight .mp-col-name { font-size: 25px; }
+    .mp-columns-tight .mp-col-current .mp-col-name { font-size: 29px; }
+    .mp-columns-tight .mp-pick-pill { font-size: 15px; padding: 4px 10px; }
+    .mp-columns-tight .mp-winner-logo { width: 72px; height: 72px; border-width: 2px; }
+    .mp-columns-tight .mp-winner-score { font-size: 26px; }
+    .mp-columns-tight .mp-col-foot { padding: 10px 6px 12px; }
+
     /* Per-column hero bans. EVERY played column shows its two ban tiles now
        (completed maps included), so this row lives in every footer, not just
        the live one. The footer is flex:0 0 auto and the art above is
@@ -472,7 +491,10 @@
         ctx.mapBans = perMapBans[i];
         colsHtml += mapColumn(i, maps[i], ctx);
       }
-      document.querySelector('#mp-grid .slot-content').innerHTML = '<div class="mp-columns">' + colsHtml + '</div>';
+      // >=6 columns get the tight type scale (see .mp-columns-tight): at Bo7 the
+      // MAP chip and the LIVE chip collide in a ~254px column at full size.
+      var tight = bestOf >= 6 ? ' mp-columns-tight' : '';
+      document.querySelector('#mp-grid .slot-content').innerHTML = '<div class="mp-columns' + tight + '">' + colsHtml + '</div>';
     }
 
     var handle = defineOverlay({
