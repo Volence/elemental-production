@@ -116,10 +116,12 @@
     }
     .fs-title-underline { width: 220px; }
     /* Right column: score + chips, right-aligned. `overflow: hidden` is the
-       structural guard behind the grid — should some future chip count still
+       structural guard behind the grid — should some future overrun still
        exceed this column, it gets CLIPPED inside its own column instead of
-       painting over the title block, i.e. the failure mode is "a chip is cut
-       off", never "two texts on top of each other".
+       painting over the title block. (Because the row is right-aligned, the
+       thing that clips off the LEFT edge in that case is the score, not a
+       chip — verified by forcing the overflow. The invariant the guard
+       protects is "never painted over the title", not which element loses.)
        This row itself is nowrap: the score must stay ON the chips' first line.
        (With wrap here, the chips' natural width pushed them onto their own
        flex line and the score got a whole 34px row to itself — ~42px of header
@@ -456,10 +458,12 @@
     // dark auto-extracted navy would otherwise be an invisible dot, which is
     // exactly the signal the chip exists to carry).
     // Compact-chip threshold. Below it the chips run at the scene's 22px label
-    // floor; at 6+ (a BO7 that went the distance, the case that broke the
-    // header) they switch to the documented 18px compact variant — see
-    // .fs-chips-compact for why that exception is legitimate here.
-    var COMPACT_CHIPS_AT = 6;
+    // floor; at 5+ they switch to the documented 18px compact variant — see
+    // .fs-chips-compact for why that exception is legitimate here. 5, not 6:
+    // with long map names, 5 full-size chips already wrap to two rows and
+    // shrink the panel MORE than the 6-chip compact case does (measured 0.897
+    // vs 0.932 fit zoom) — the board would visibly grow when map 6 landed.
+    var COMPACT_CHIPS_AT = 5;
 
     function mapChipsHtml(state, t1Legible, t2Legible) {
       var maps = state.maps || [];

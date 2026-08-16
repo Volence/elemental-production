@@ -1,15 +1,15 @@
 # Changelog
 
-## v2.1.1 — Scene list follows a collection re-import
+## v2.1.1 — Day-one fixes for the v2.1.0 reports
 
 ### Fixed
 
 - **Re-importing the scene collection no longer leaves the top scene bar on the
   old scenes.** Import the JSON with the app open and the scene buttons across
-  the top now switch to the new collection's scenes on their own, within a
-  couple of seconds. No more restarting OBS to get them back. The Production
-  tab's scene list updates at the same moment, so both lists always agree. The
-  app also picks up scenes you add, remove, or reorder by hand in OBS.
+  the top switch to the new collection's scenes on their own. No more
+  restarting OBS to get them back. The Production tab's scene list updates at
+  the same moment. The app also picks up scenes you add, remove, or reorder by
+  hand in OBS.
 - **Final Stats holds together on a Bo7 that goes the distance.** With six or
   seven maps played, the series score used to print on top of the "6 MAPS
   PLAYED" line and the whole board was squashed to fit. Now the title, the

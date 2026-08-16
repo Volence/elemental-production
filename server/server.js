@@ -2429,11 +2429,17 @@ obs.onEvent('onCollectionChanged', async (data) => {
   console.log(`[OBS] Scene collection changed (${data?.sceneCollectionName || 'unknown'}) — full re-sync`);
   lastSyncedState = {};
   browserSourcesConfigured = false; // the new collection's sources need seeding too
+  // Push the scene list NOW: by the time this event fires OBS has already
+  // finished loading the new collection, so GetSceneList is correct — the
+  // heal below only touches media/browser sources, not the scene list. The
+  // producer's strip shouldn't wait 3-5s on the heal (or forever, if a heal
+  // step wedges).
+  broadcastScenes('collection import (immediate)').catch(() => {});
   // Give OBS a beat to finish loading the new collection's sources.
   setTimeout(async () => {
     await healOBS('collection import');
-    // AFTER the heal: by now OBS has settled on the new collection, so the
-    // list we read is the one the producer is actually looking at.
+    // Push again AFTER the heal as a belt-and-braces re-read; the client
+    // handler is idempotent (it just re-sets the same list).
     await broadcastScenes('collection import').catch(() => {});
   }, 2000);
 });
