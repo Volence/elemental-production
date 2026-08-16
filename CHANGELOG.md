@@ -2,8 +2,8 @@
 
 ## v2.1.0 — Producer feedback batch
 
-Sixteen items straight from producer bug reports and requests after the v2
-package went live: thirteen fixes, a real OBS stinger transition, a new Final
+Seventeen items straight from producer bug reports and requests after the v2
+package went live: fourteen fixes, a real OBS stinger transition, a new Final
 Stats scene, and an animation pass.
 
 ### Do this once after updating

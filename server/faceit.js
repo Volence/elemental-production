@@ -109,7 +109,10 @@ const FACEIT_MAP_IDS_BY_KEY = new Map(
  * still render as something a producer can see and correct.
  */
 export function resolveMapId(id, entities) {
-  const fromEntities = (entities || []).find(m => m && m.id === id);
+  // Case-insensitive: FACEIT has shipped both upper and lowercase hex variants
+  // of these ids across endpoints (same reason the table lookup lowercases).
+  const idKey = String(id).toLowerCase();
+  const fromEntities = (entities || []).find(m => m && String(m.id).toLowerCase() === idKey);
   if (fromEntities) return fromEntities;
   const known = FACEIT_MAP_IDS_BY_KEY.get(String(id).toLowerCase());
   if (known) return { id, name: known.name, mode: known.mode };
