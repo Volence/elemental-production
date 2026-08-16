@@ -87,8 +87,12 @@
        hides behind it (the petals alone only ever covered ~56%). ───────── */
     #stg-scrim {
       position: absolute; inset: 0; z-index: 1; opacity: 0;
+      /* Near-full-frame dark at peak (producer feedback: the scene showing
+         through the transition is distracting) — only the far corners keep
+         a soft falloff so the edge doesn't read as a hard rectangle. */
       background: radial-gradient(ellipse at center,
-        rgba(8, 10, 15, 0.94) 0%, rgba(8, 10, 15, 0.86) 48%, rgba(8, 10, 15, 0) 80%);
+        rgba(8, 10, 15, 0.97) 0%, rgba(8, 10, 15, 0.95) 55%,
+        rgba(8, 10, 15, 0.88) 80%, rgba(8, 10, 15, 0.72) 100%);
       animation: stgScrim 1.8s ease-in-out 0s both;
     }
     @keyframes stgScrim {
