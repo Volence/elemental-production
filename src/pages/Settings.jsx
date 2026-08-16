@@ -18,7 +18,7 @@ const BUILTIN_FONTS = {
 // measured peak-coverage frame — re-render and update both together if the
 // stinger art changes.
 const STINGER_WEBM_URL = 'http://localhost:3001/assets/stinger-transition.webm';
-const STINGER_TRANSITION_POINT_MS = 550;
+const STINGER_TRANSITION_POINT_MS = 950;
 
 export default function Settings({ state, updateState, api, obsConnected, setObsConnected, customFonts, setCustomFonts, onDirtyChange }) {
   const [hotkeys, setHotkeys] = useState(state.hotkeys || {});

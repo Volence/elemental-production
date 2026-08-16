@@ -52,13 +52,13 @@ to it and back out again once the animation had played.
    (saves `stinger-transition.webm`).
 2. OBS → **Scene Transitions** dock → **+** → **Stinger** → **Video File** →
    the file you just downloaded.
-3. **Transition Point: 550 ms** → **OK**, then select the stinger as the active
+3. **Transition Point: 950 ms** → **OK**, then select the stinger as the active
    transition. To use it for *specific* scene switches only, leave the default
    as Fade and right-click a scene in the **Scenes** dock → **Transition
    Override** → Stinger.
 
 The transition point is the moment OBS swaps scenes underneath the stinger:
-550 ms is where the animation covers the most screen, measured at render time.
+950 ms is where the animation covers the most screen, measured at render time.
 
 ### Re-rendering it
 
@@ -72,7 +72,7 @@ node scripts/render-stinger.mjs
 Prerequisites: `google-chrome-stable` (headless, drives the capture over CDP)
 and `ffmpeg`/`ffprobe` built with `libvpx-vp9` + `yuva420p`. ImageMagick
 (`magick` or `convert`) is optional but recommended — without it the script
-can't measure the coverage curve, so it falls back to the 550 ms default and
+can't measure the coverage curve, so it falls back to the built-in default transition point and
 skips the alpha verification passes.
 
 The script prints the measured transition point; keep it in sync with the number

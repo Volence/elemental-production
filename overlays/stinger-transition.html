@@ -7,17 +7,28 @@
        placeholder "E" medallion + generic indigo/purple wipe panels (both
        fully removed — nothing from the pre-v2 file survives).
 
-       WHAT PLAYS (spec §6, ~1.1s total, plays ONCE per load — this scene
-       has no state, no defineOverlay, no overlay-core/state-sync; OBS
-       replays the animation fresh every time the scene is shown, which is
-       the correct behavior for a transition bumper):
-         1. Two full-size neon pinwheels scale/rotate up from the center,
-            together covering the frame (0% - ~60% of the timeline).
-         2. A gradient-4 trail band sweeps across the frame left-to-right,
-            peaking while the pinwheels are at full size (~42% - 58%).
-         3. An "ELMT" wordmark flashes at the composition's peak (~50% -
-            70%), then everything (pinwheels, trail, wordmark) fades/sweeps
-            out together, ending fully transparent by the animation's end.
+       WHAT PLAYS (~1.8s total, plays ONCE per load — this scene has no
+       state, no defineOverlay, no overlay-core/state-sync; OBS replays the
+       animation fresh every time the scene is shown, which is the correct
+       behavior for a transition bumper):
+         0. A soft dark radial scrim fades in behind everything — it grounds
+            the petal colors, masks the underlying scene cut, and keeps the
+            overall luminance swing gentle.
+         1. Two full-size pinwheels ease up from the center with a slow
+            partial turn (0% - ~62%). Layer A carries the composition at
+            ~0.8 opacity; layer B is a subtle ~0.4 interleave for the
+            4-color feel — NOT a second full-strength wheel (the original
+            full-opacity counter-spin pair read as a strobing moiré;
+            producer feedback 2026-08: "bright/fast/seizure-inducing").
+         2. A gradient-4 trail band glides across left-to-right at reduced
+            opacity (~45% - 60% peak).
+         3. An "ELMT" wordmark fades in at the composition's peak (~52% -
+            72%), then everything fades/sweeps out together, ending fully
+            transparent by the animation's end.
+       PHOTOSENSITIVITY GUARDRAIL: keep total duration >=1.8s, layer-B
+       opacity <=0.45, and rotation travel <=~110deg — the pre-2026-08
+       values (1.1s, dual full-opacity wheels, 310deg travel, 0.95 trail)
+       are what producers rejected.
 
        COLOR DECISION — four element accents, not team colors (this scene
        plays between ARBITRARY scenes; it has no team context to color
@@ -55,11 +66,11 @@
        a media file (WebM/MP4), not an HTML scene. THIS FILE IS THE MASTER
        — `node scripts/render-stinger.mjs` scrubs it frame-by-frame in
        headless Chrome and encodes public/stinger-transition.webm (VP9 +
-       alpha, 60fps, 1.3s), which Settings offers as a download and
+       alpha, 60fps, 2.0s), which Settings offers as a download and
        producers load into OBS's Stinger transition. Peak screen coverage
-       (= the OBS "Transition Point") is 550ms; the render script measures
+       (= the OBS "Transition Point") is 950ms; the render script measures
        and prints it, so if you change the timings below, RE-RUN THE
-       SCRIPT and update the 550ms figure in Settings.jsx + README.md.
+       SCRIPT and update the 950ms figure in Settings.jsx + README.md.
        Scene collection v2 still ships plain Fade as the wired transition
        — the stinger is opt-in per producer. -->
   <link rel="stylesheet" href="./theme-v2.css">
@@ -70,6 +81,23 @@
 
     #stg-stage { position: absolute; inset: 0; pointer-events: none; }
 
+    /* ── Dark radial scrim — fades in under the pinwheels. Two jobs: keeps
+       the petal colors from reading as raw neon over arbitrary scenes, and
+       raises the frame coverage at the transition point so the scene cut
+       hides behind it (the petals alone only ever covered ~56%). ───────── */
+    #stg-scrim {
+      position: absolute; inset: 0; z-index: 1; opacity: 0;
+      background: radial-gradient(ellipse at center,
+        rgba(8, 10, 15, 0.94) 0%, rgba(8, 10, 15, 0.86) 48%, rgba(8, 10, 15, 0) 80%);
+      animation: stgScrim 1.8s ease-in-out 0s both;
+    }
+    @keyframes stgScrim {
+      0%   { opacity: 0; }
+      25%  { opacity: 1; }
+      66%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
     /* ── Pinwheel pair — see file-header for the centering + color notes ── */
     #stg-pinwheel-group {
       position: absolute; left: 50%; top: 50%;
@@ -77,29 +105,31 @@
       z-index: 2;
     }
     .stg-pinwheel-layer { position: absolute; inset: 0; opacity: 0; }
-    #stg-pinwheel-a { animation: stgSpinA 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0s both; }
+    #stg-pinwheel-a { animation: stgSpinA 1.8s cubic-bezier(0.33, 1, 0.68, 1) 0s both; }
     /* Static 45deg offset on the outer wrapper only (never animated) so B's
        petals interleave into A's gaps instead of overdrawing them; the
        spin/scale animation stays on the inner layer, same free-transform
        reasoning as the file-header centering note. */
     #stg-pinwheel-b-outer { position: absolute; inset: 0; transform: rotate(45deg); }
-    #stg-pinwheel-b { animation: stgSpinB 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0s both; }
+    #stg-pinwheel-b { animation: stgSpinB 1.8s cubic-bezier(0.33, 1, 0.68, 1) 0s both; }
 
+    /* Calm-pass values (see file-header guardrail): slow partial turn
+       (~108deg total travel, was 310deg), tight scale range (0.55->1.2,
+       was 0.05->1.5), layer A ~0.8 / layer B ~0.4 opacity (was 1.0/0.85 —
+       the dual full-strength counter-spin was the strobing-moiré culprit). */
     @keyframes stgSpinA {
-      0%   { opacity: 0;    transform: rotate(-200deg) scale(0.05); }
-      25%  { opacity: 0.9;  transform: rotate(-70deg)  scale(0.6); }
-      45%  { opacity: 1;    transform: rotate(5deg)    scale(1.02); }
-      60%  { opacity: 1;    transform: rotate(0deg)    scale(1); }
-      80%  { opacity: 0.6;  transform: rotate(50deg)   scale(1.2); }
-      100% { opacity: 0;    transform: rotate(110deg)  scale(1.5); }
+      0%   { opacity: 0;    transform: rotate(-70deg) scale(0.55); }
+      22%  { opacity: 0.78; transform: rotate(-30deg) scale(0.85); }
+      45%  { opacity: 0.82; transform: rotate(0deg)   scale(1.04); }
+      62%  { opacity: 0.82; transform: rotate(12deg)  scale(1.08); }
+      100% { opacity: 0;    transform: rotate(38deg)  scale(1.2); }
     }
     @keyframes stgSpinB {
-      0%   { opacity: 0;    transform: rotate(200deg)  scale(0.05); }
-      25%  { opacity: 0.8;  transform: rotate(70deg)   scale(0.6); }
-      45%  { opacity: 0.85; transform: rotate(-5deg)   scale(1.02); }
-      60%  { opacity: 0.85; transform: rotate(0deg)    scale(1); }
-      80%  { opacity: 0.5;  transform: rotate(-50deg)  scale(1.2); }
-      100% { opacity: 0;    transform: rotate(-110deg) scale(1.5); }
+      0%   { opacity: 0;    transform: rotate(70deg)  scale(0.55); }
+      22%  { opacity: 0.38; transform: rotate(30deg)  scale(0.85); }
+      45%  { opacity: 0.42; transform: rotate(0deg)   scale(1.04); }
+      62%  { opacity: 0.42; transform: rotate(-12deg) scale(1.08); }
+      100% { opacity: 0;    transform: rotate(-38deg) scale(1.2); }
     }
 
     /* ── Gradient-4 trail band — sweeps across while the pinwheels are at
@@ -107,15 +137,17 @@
     .stg-trail {
       position: absolute; left: 0; top: 50%; width: 100%; height: 150px; margin-top: -75px;
       background: var(--grad4); z-index: 3; opacity: 0; filter: blur(2px);
-      animation: stgTrailSweep 1.1s ease-in-out 0s both;
+      animation: stgTrailSweep 1.8s ease-in-out 0s both;
     }
+    /* Calm pass: peak opacity 0.55 (was 0.95) and a slower glide — the
+       full-brightness rainbow band was a big part of the flash read. */
     @keyframes stgTrailSweep {
       0%   { opacity: 0;    transform: translateX(-130%) skewX(-12deg); }
-      30%  { opacity: 0; }
-      42%  { opacity: 0.95; transform: translateX(-30%) skewX(-12deg); }
-      58%  { opacity: 0.95; transform: translateX(30%)  skewX(-12deg); }
-      75%  { opacity: 0.6;  transform: translateX(100%) skewX(-12deg); }
-      100% { opacity: 0;    transform: translateX(160%) skewX(-12deg); }
+      32%  { opacity: 0; }
+      45%  { opacity: 0.55; transform: translateX(-25%) skewX(-12deg); }
+      60%  { opacity: 0.55; transform: translateX(25%)  skewX(-12deg); }
+      78%  { opacity: 0.35; transform: translateX(95%)  skewX(-12deg); }
+      100% { opacity: 0;    transform: translateX(150%) skewX(-12deg); }
     }
 
     /* ── "ELMT" wordmark flash — optional per plan, kept because it reads
@@ -128,22 +160,25 @@
       /* Solid white, NOT grad4-clipped text: the wordmark flashes over the
          grad4 trail band, and gradient-on-gradient is near-isoluminant
          (review finding). White-on-grad4 stays readable through the sweep. */
-      color: #fff;
-      filter: drop-shadow(0 0 30px rgba(255,255,255,0.35));
-      animation: stgWordmark 1.1s ease-out 0s both;
+      color: #f4f6fa;
+      filter: drop-shadow(0 0 16px rgba(255,255,255,0.22));
+      animation: stgWordmark 1.8s ease-out 0s both;
     }
+    /* Calm pass: fades in instead of flashing — slightly off-white, softer
+       glow, near-static scale. */
     @keyframes stgWordmark {
-      0%   { opacity: 0; transform: scale(0.9); }
-      40%  { opacity: 0; }
-      50%  { opacity: 1; transform: scale(1); }
-      68%  { opacity: 1; }
-      85%  { opacity: 0; transform: scale(1.06); }
+      0%   { opacity: 0;    transform: scale(0.97); }
+      42%  { opacity: 0; }
+      54%  { opacity: 0.95; transform: scale(1); }
+      72%  { opacity: 0.95; }
+      90%  { opacity: 0;    transform: scale(1.015); }
       100% { opacity: 0; }
     }
   </style>
 </head>
 <body>
   <div id="stg-stage">
+    <div id="stg-scrim"></div>
     <div id="stg-pinwheel-group">
       <div id="stg-pinwheel-a" class="stg-pinwheel-layer"></div>
       <div id="stg-pinwheel-b-outer">

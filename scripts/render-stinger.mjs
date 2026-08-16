@@ -6,7 +6,7 @@
  * the stinger art changes and commit the regenerated public/stinger-transition.webm.
  *
  * Usage:
- *   node scripts/render-stinger.mjs [--fps 60] [--duration 1300]
+ *   node scripts/render-stinger.mjs [--fps 60] [--duration 2000]
  *                                   [--out public/stinger-transition.webm]
  *                                   [--keep-frames] [--http] [--port 3607]
  *
@@ -46,12 +46,12 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // The stinger animation is 1.1s; we render a slightly longer window so the WebM
 // ends on verified-transparent frames (OBS holds the last frame briefly).
-const DEFAULT_DURATION_MS = 1300;
+const DEFAULT_DURATION_MS = 2000; // 1.8s animation + verified-transparent tail
 const DEFAULT_FPS = 60;
 // Fallback only — the coverage scan below measures the real value. Peak coverage
 // lands inside the trail band's 42-58% sweep of a 1.1s timeline. Also used as the
 // "this frame must not be blank" probe point.
-const DEFAULT_TRANSITION_POINT_MS = 550;
+const DEFAULT_TRANSITION_POINT_MS = 900; // fallback only — the coverage scan prints the measured value
 const MAX_WEBM_BYTES = 5 * 1024 * 1024;
 const CDP_TIMEOUT_MS = 15000;
 
