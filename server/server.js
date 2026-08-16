@@ -2404,6 +2404,21 @@ const _obsHost = process.env.OBS_WS_HOST || _savedObs?.host;
 const _obsPort = parseInt(process.env.OBS_WS_PORT) || _savedObs?.port || 4455;
 const _obsPw = process.env.OBS_WS_PASSWORD ?? _savedObs?.password ?? '';
 
+// Push the live scene list to the app. The scene strip is fetched once at
+// mount and once on the OBS connect edge; re-importing a collection while the
+// app is open produces neither, so the strip kept showing the PREVIOUS
+// collection's scenes until OBS was restarted (producer bug report, v2.1.0).
+// Sending the settled list over SSE means the UI never has to guess.
+async function broadcastScenes(reason) {
+  if (!obs.isConnected()) return;
+  const { scenes, currentScene } = await obs.getScenes();
+  // Empty means disconnected mid-call or GetSceneList failed — say nothing
+  // rather than blanking the producer's strip.
+  if (!scenes.length) return;
+  broadcast('obsScenes', { scenes, currentScene });
+  console.log(`[OBS] Scene list pushed to app (${reason}): ${scenes.length} scenes`);
+}
+
 // Scene-collection switch (e.g. the producer imports the downloaded JSON
 // and switches to it): the import replaced every media source with a
 // blank-path version, but syncToOBS's lastSyncedState cache still says
@@ -2415,8 +2430,21 @@ obs.onEvent('onCollectionChanged', async (data) => {
   lastSyncedState = {};
   browserSourcesConfigured = false; // the new collection's sources need seeding too
   // Give OBS a beat to finish loading the new collection's sources.
-  setTimeout(() => healOBS('collection import'), 2000);
+  setTimeout(async () => {
+    await healOBS('collection import');
+    // AFTER the heal: by now OBS has settled on the new collection, so the
+    // list we read is the one the producer is actually looking at.
+    await broadcastScenes('collection import').catch(() => {});
+  }, 2000);
 });
+
+// A collection import also renames/adds/removes scenes one by one — coalesce
+// the burst and push the list once it stops moving. This also covers the
+// producer editing scenes by hand in OBS.
+const pushScenesSoon = obs.trailingDebounce(() => {
+  broadcastScenes('scene list changed').catch(() => {});
+}, 500);
+obs.onEvent('onSceneListChanged', () => pushScenesSoon());
 
 // Auto-cycle replay clips when one finishes playing
 obs.onEvent('onMediaEnd', async (data) => {

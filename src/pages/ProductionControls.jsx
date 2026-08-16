@@ -20,7 +20,7 @@ const SCENE_TO_GROUP = {
   'Interview': '🔊 App Audio', 'Series Winner': '🎙️ Casters',
 };
 
-export default function ProductionControls({ state, updateState, api, obsConnected }) {
+export default function ProductionControls({ state, updateState, api, obsConnected, sceneSync }) {
   const [timerMinutes, setTimerMinutes] = useState(5);
   const [targetTime, setTargetTime] = useState('');
   const [audioSources, setAudioSources] = useState([]);
@@ -56,11 +56,26 @@ export default function ProductionControls({ state, updateState, api, obsConnect
   // The tab is usually opened before OBS is up: that mount fetch comes back
   // empty and nothing asked again, leaving the page on the fallback list.
   // Re-fetch on the disconnected→connected edge of App's status poll.
+  // The immediate fetch can land while OBS is still loading a collection (it
+  // answers with the old list), so ask a second time once it has settled.
   const wasObsConnected = useRef(false);
   useEffect(() => {
-    if (obsConnected && !wasObsConnected.current) loadScenes();
+    const justConnected = obsConnected && !wasObsConnected.current;
     wasObsConnected.current = obsConnected;
+    if (!justConnected) return;
+    loadScenes();
+    const settle = setTimeout(loadScenes, 4000);
+    return () => clearTimeout(settle);
   }, [obsConnected, loadScenes]);
+
+  // Server-pushed scene list (App's SSE 'obsScenes' event): a collection
+  // re-import replaces the scenes while the app is open, and neither the mount
+  // fetch nor the connect edge fires for it.
+  useEffect(() => {
+    if (!sceneSync?.scenes?.length) return;
+    setScenes(sceneSync.scenes);
+    if (sceneSync.currentScene) setCurrentScene(sceneSync.currentScene);
+  }, [sceneSync]);
 
   const captureCurrentScene = (sceneName) => {
     setTimeout(async () => {

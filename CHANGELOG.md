@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.1.1 — Scene list follows a collection re-import
+
+### Fixed
+
+- **Re-importing the scene collection no longer leaves the top scene bar on the
+  old scenes.** Import the JSON with the app open and the scene buttons across
+  the top now switch to the new collection's scenes on their own, within a
+  couple of seconds. No more restarting OBS to get them back. The Production
+  tab's scene list updates at the same moment, so both lists always agree. The
+  app also picks up scenes you add, remove, or reorder by hand in OBS.
+
 ## v2.1.0 — Producer feedback batch
 
 Seventeen items straight from producer bug reports and requests after the v2

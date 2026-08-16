@@ -55,6 +55,44 @@ function scheduleReconnect() {
   }, 5000);
 }
 
+/**
+ * Deliver an OBS event to whatever server.js registered for it under `name`.
+ * Exported so the wiring can be exercised without a live OBS (and so a throwing
+ * handler can never take the websocket listener down with it).
+ */
+export function dispatchEvent(name, data) {
+  const cb = eventCallbacks[name];
+  if (!cb) return;
+  const fail = (e) => console.error(`[OBS] ${name} handler failed:`, (e && e.message) || e);
+  try {
+    const r = cb(data);
+    if (r && typeof r.catch === 'function') r.catch(fail);
+  } catch (e) {
+    fail(e);
+  }
+}
+
+/**
+ * Trailing debounce: coalesce a burst of calls into one run, `ms` after the
+ * last one. A scene-collection import fires dozens of SceneListChanged events
+ * in a row — we only want to act once the dust settles.
+ */
+export function trailingDebounce(fn, ms) {
+  let timer = null;
+  const run = (...args) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      fn(...args);
+    }, ms);
+  };
+  run.cancel = () => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+  };
+  return run;
+}
+
 function registerListeners() {
   if (listenersRegistered) return;
   listenersRegistered = true;
@@ -67,9 +105,7 @@ function registerListeners() {
   });
 
   // Forward media events for replay auto-cycling
-  obs.on('MediaInputPlaybackEnded', (data) => {
-    if (eventCallbacks.onMediaEnd) eventCallbacks.onMediaEnd(data);
-  });
+  obs.on('MediaInputPlaybackEnded', (data) => dispatchEvent('onMediaEnd', data));
 
   // Forward scene-collection switches (fires when the producer imports and
   // switches to a new collection). Importing REPLACES every media source
@@ -78,9 +114,13 @@ function registerListeners() {
   // believes everything is already set and the show goes silent (producer
   // bug report, post-v2.0.0: "imported the JSON and it broke all the music
   // and cinematics").
-  obs.on('CurrentSceneCollectionChanged', (data) => {
-    if (eventCallbacks.onCollectionChanged) eventCallbacks.onCollectionChanged(data);
-  });
+  obs.on('CurrentSceneCollectionChanged', (data) => dispatchEvent('onCollectionChanged', data));
+
+  // Scene added / removed / reordered. An import fires a burst of these; the
+  // consumer debounces. This is what lets the app's scene strip follow a
+  // collection re-import instead of sitting on the old collection's scenes
+  // until OBS is restarted (producer bug report, v2.1.0).
+  obs.on('SceneListChanged', (data) => dispatchEvent('onSceneListChanged', data));
 }
 
 export async function connect(host = 'localhost', port = 4455, password = '') {

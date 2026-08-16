@@ -58,6 +58,9 @@ export default function App() {
   const [scenes, setScenes] = useState([]);
   const [currentScene, setCurrentScene] = useState('');
   const [customFonts, setCustomFonts] = useState([]);
+  // Last scene list pushed by the server (SSE), handed to the Production tab
+  // so both scene strips move together.
+  const [sceneSync, setSceneSync] = useState(null);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [pendingPage, setPendingPage] = useState(null);
 
@@ -101,6 +104,18 @@ export default function App() {
     es.addEventListener('state', (e) => {
       setStateLocal(JSON.parse(e.data));
     });
+    // The server pushes the live scene list whenever OBS's collection is
+    // re-imported or its scenes change, so the strip follows the collection
+    // the producer just loaded (no OBS restart, no polling).
+    es.addEventListener('obsScenes', (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (!Array.isArray(d.scenes) || d.scenes.length === 0) return;
+        setScenes(d.scenes);
+        if (d.currentScene) setCurrentScene(d.currentScene);
+        setSceneSync({ scenes: d.scenes, currentScene: d.currentScene, at: Date.now() });
+      } catch {}
+    });
     es.onerror = () => {
       console.warn('SSE connection lost, reconnecting...');
     };
@@ -127,10 +142,16 @@ export default function App() {
   // The app usually starts before OBS does; the mount fetch then comes back
   // empty and nothing ever asked again (the strip sat on the fallback list all
   // show). Re-fetch on the disconnected→connected edge of the 5s status poll.
+  // The immediate fetch can land while OBS is still loading a collection (it
+  // answers with the old list), so ask a second time once it has settled.
   const wasObsConnected = useRef(false);
   useEffect(() => {
-    if (obsConnected && !wasObsConnected.current) loadScenes();
+    const justConnected = obsConnected && !wasObsConnected.current;
     wasObsConnected.current = obsConnected;
+    if (!justConnected) return;
+    loadScenes();
+    const settle = setTimeout(loadScenes, 4000);
+    return () => clearTimeout(settle);
   }, [obsConnected, loadScenes]);
 
   // Keep current scene in sync
@@ -238,7 +259,7 @@ export default function App() {
 
         <div className="content-body">
           {page === 'match' && <MatchHub state={state} updateState={updateState} api={API} />}
-          {page === 'production' && <ProductionControls state={state} updateState={updateState} api={API} obsConnected={obsConnected} />}
+          {page === 'production' && <ProductionControls state={state} updateState={updateState} api={API} obsConnected={obsConnected} sceneSync={sceneSync} />}
           {page === 'theming' && <Theming state={state} updateState={updateState} api={API} customFonts={customFonts} />}
           {page === 'settings' && <Settings state={state} updateState={updateState} api={API} obsConnected={obsConnected} setObsConnected={setObsConnected} customFonts={customFonts} setCustomFonts={setCustomFonts} onDirtyChange={setSettingsDirty} />}
         </div>
