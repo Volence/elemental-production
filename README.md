@@ -41,7 +41,7 @@ Grab the latest release from the [Releases](https://github.com/Volence/elemental
 
 ## Stinger Transition
 
-The ELMT stinger is a 1.3s branded wipe (two counter-spinning pinwheels, a
+The ELMT stinger is a 2.0s branded wipe (two counter-spinning pinwheels, a
 four-colour trail band, and an `ELMT` wordmark) that plays *over* the cut
 between two scenes. It ships pre-rendered as a transparent VP9 WebM so OBS can
 drive it natively — replacing the old workaround, where

@@ -10,6 +10,15 @@
   couple of seconds. No more restarting OBS to get them back. The Production
   tab's scene list updates at the same moment, so both lists always agree. The
   app also picks up scenes you add, remove, or reorder by hand in OBS.
+- **Final Stats holds together on a Bo7 that goes the distance.** With six or
+  seven maps played, the series score used to print on top of the "6 MAPS
+  PLAYED" line and the whole board was squashed to fit. Now the title, the
+  maps-played line and the score each keep their own space, the map chips drop
+  onto a second row (and go slightly smaller) once there are six of them, and
+  long player and team names end in an ellipsis instead of being cut off mid
+  letter. The sub marker (the small ·5 next to a player who did not play every
+  map) stays visible. Everything on the board also renders noticeably
+  larger than before, because the broken header is no longer stealing room.
 
 ## v2.1.0 — Producer feedback batch
 
@@ -29,7 +38,7 @@ Stats scene, and an animation pass.
    (1920×1080) and drop it in after Map Score.
 2. **Set up the stinger transition** — Settings → OBS Browser Source URLs →
    🎬 Stinger (WebM) → ⬇ Download, then OBS → Scene Transitions → **+** →
-   **Stinger** → pick the file → **Transition Point: 550 ms**. Full walkthrough
+   **Stinger** → pick the file → **Transition Point: 950 ms**. Full walkthrough
    in the README.
 3. **Nothing to do for artwork.** Hero renders and map images now ship inside
    the app and are copied into your user-data folder on first launch. Anything
@@ -116,9 +125,9 @@ Stats scene, and an animation pass.
 ### Added
 
 - **Real OBS stinger transition.** The branded pinwheel wipe now ships as a
-  pre-rendered transparent WebM (VP9 with alpha, 1.3s) that OBS drives
+  pre-rendered transparent WebM (VP9 with alpha, 2.0s) that OBS drives
   natively — download it from Settings, add it as a Stinger transition with a
-  Transition Point of **550 ms**. This replaces the old workaround of cutting
+  Transition Point of **950 ms**. This replaces the old workaround of cutting
   to a stinger *scene* by hand. `overlays/stinger-transition.html` remains the
   master; `node scripts/render-stinger.mjs` re-renders the WebM.
 - **Final Stats scene.** A post-series board on the caster desk layout: every

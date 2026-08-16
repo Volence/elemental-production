@@ -57,18 +57,47 @@
        .v2-panel supplies the surface; these own the scene-local layout.
        Densities are NOT the scoreboard's: this scene runs the mobile
        legibility floor (28px values / 22px labels), which only fits because
-       the totals footer is two columns instead of one 6-row stack. Measured
-       fitPanelToCanvas zoom: 0.98 dual-cam, 0.86 single-cam, 0.80 worst case
-       (a 6-player side after a sub) — i.e. the type is essentially unshrunk
-       on air, which is the whole point of the lift. */
+       the totals footer is two columns instead of one 6-row stack.
+       Measured fitPanelToCanvas zoom (v2.1.1, re-measured across the header
+       fix; "before" = v2.1.0, which also OVERLAPPED the title at 6 chips):
+         BO3, 2 chips, dual-cam ............. 0.98  (0.98 before)
+         BO7, 6 chips, dual-cam ............. 0.93  (0.85)
+         BO7, 6 chips, single-cam ........... 0.81  (0.74)
+         BO7, 6 chips + a sub, dual-cam ..... 0.87  (0.80)
+         BO7, 6 chips + a sub, single-cam ... 0.76  (0.70)
+       The last line is the residual worst case for the whole scene: the
+       single-cam budget (450px) with a 6-player side AND the second chip row
+       that a 6-map series brings. Every case is looser than it was, and type is
+       essentially unshrunk on air in the common ones, which is the point of
+       the lift. */
     .fs-panel { width: 1560px; padding: 10px 24px; }
 
+    /* Header layout — the BO7 crowding fix (v2.1.1).
+       Was: one flex row, `justify-content: space-between`, with min-width:0 on
+       the title area and none on the right group. At six or seven map chips
+       the right group's content (~1170px of nowrap chips) no longer fit, so the
+       flex line took the whole deficit out of the ONLY item allowed to shrink —
+       the title area — collapsing it to ~4px. Its children are nowrap and were
+       not clipped, so "SERIES FINAL / 6 MAPS PLAYED" spilled out of its own
+       4px box while the score (also shrunk, to one digit wide, wrapping "3 - 3"
+       onto three lines) was laid out on top of that spill. Hence the
+       "SERIES FINAL 6 M[4]PS PLAYED" the producer screenshotted: no absolute
+       positioning and no negative margin involved, just flex-shrink plus
+       visible overflow.
+       Now: a two-column grid. The left column is `max-content`, so the title
+       block's width is RESERVED — it cannot be shrunk, therefore it cannot
+       overflow, therefore nothing can ever be painted over it. All slack (and
+       all deficit) lives in the right column, which is minmax(0, 1fr) and
+       absorbs it by wrapping the chips onto a second row. */
     .fs-header {
-      display: flex; justify-content: space-between; align-items: flex-end;
+      display: grid; grid-template-columns: max-content minmax(0, 1fr);
+      column-gap: 32px; align-items: end;
       margin-bottom: 8px; padding-bottom: 6px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-    .fs-title-area { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    /* No min-width:0 here, deliberately: this block must never shrink below its
+       content (see .fs-header). */
+    .fs-title-area { display: flex; flex-direction: column; gap: 4px; }
     .fs-title-row { display: flex; align-items: baseline; gap: 12px; }
     .fs-title {
       font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
@@ -77,28 +106,82 @@
     /* Type scale note (locked mobile-legibility floor: key text >= 28px,
        labels >= 22px). This scene can afford the floor everywhere the
        scoreboard couldn't: it has no bans row and no Obj Time totals row, so
-       ~90px of the same vertical budget is free. The only sub-floor element
-       left is the role tag — see .fs-role-tag. */
+       ~90px of the same vertical budget is free. Two elements are documented
+       exceptions to the floor, both because they are read by color/shape and
+       not letter-by-letter: the role tag (.fs-role-tag) always, and the map
+       chips (.fs-chips-compact) only at 6+ played maps. */
     .fs-subtitle {
       font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.4);
       text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;
     }
     .fs-title-underline { width: 220px; }
-    .fs-header-right { display: flex; align-items: center; gap: 18px; }
-    .fs-score { font-size: 34px; font-weight: 800; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+    /* Right column: score + chips, right-aligned. `overflow: hidden` is the
+       structural guard behind the grid — should some future chip count still
+       exceed this column, it gets CLIPPED inside its own column instead of
+       painting over the title block, i.e. the failure mode is "a chip is cut
+       off", never "two texts on top of each other".
+       This row itself is nowrap: the score must stay ON the chips' first line.
+       (With wrap here, the chips' natural width pushed them onto their own
+       flex line and the score got a whole 34px row to itself — ~42px of header
+       height bought nothing, and fitPanelToCanvas charges for every pixel of
+       it. The wrapping that DOES happen is inside .fs-map-chips, below.) */
+    .fs-header-right {
+      display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end;
+      gap: 18px; min-width: 0; overflow: hidden;
+    }
+    /* flex:none + nowrap: the score is 5 characters and must stay on one line.
+       (Without these it was shrunk to one digit wide and wrapped to 3 lines,
+       which is what put a digit on top of the subtitle AND added ~60px of
+       header height that fitPanelToCanvas then paid for in zoom.) */
+    .fs-score {
+      font-size: 34px; font-weight: 800; letter-spacing: 1px; font-variant-numeric: tabular-nums;
+      flex: none; white-space: nowrap;
+    }
     .fs-score .fs-dash { color: rgba(255,255,255,0.25); }
 
     /* Completed-map chips — the scoreboard's map buttons WITHOUT interactivity
        (this scene has no per-map view to switch to). Static chip look, no
-       hover/active state, no pointer-events. */
-    .fs-map-chips { display: flex; gap: 6px; }
+       hover/active state, no pointer-events.
+       flex: 0 1 auto (shrink, don't grow): this is the region that absorbs the
+       header's width deficit, but it must not GROW past its content either, or
+       a two-chip BO3 would strand the score in the middle of the header instead
+       of keeping it beside the chips. Shrink + min-width:0 + flex-wrap is what
+       turns "too many chips" into a second chip row rather than an overflow. */
+    .fs-map-chips {
+      display: flex; flex-wrap: wrap; justify-content: flex-end;
+      gap: 6px; flex: 0 1 auto; min-width: 0;
+    }
     .fs-map-chip {
       background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
       border-radius: var(--panel-radius); padding: 7px 12px; font-size: 22px; font-weight: 800;
       color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.5px;
       white-space: nowrap; display: flex; align-items: center; gap: 8px; pointer-events: none;
+      min-width: 0;
     }
+    .fs-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .fs-map-dot { width: 13px; height: 13px; border-radius: 50%; flex: none; }
+
+    /* Compact chips, applied at >= 6 completed maps (see mapChipsHtml). Second
+       deliberate sub-floor exception in this scene, on the same terms as
+       .fs-role-tag: a chip is not read letter-by-letter — it is a COUNT of
+       played maps and a winner-COLORED dot, both of which survive the size drop
+       intact (the dot stays a 11px legibility-floored disc). The name is a
+       secondary label, and 18px is still above the package's smallest on-air
+       type. Applied only at 6-7 chips, i.e. only where the alternative is
+       more (and taller) chip rows eating the deck's vertical budget: at 22px
+       the same six chips wrap to two ~41px rows, at 18px to two ~33px ones.
+       The 16ch cap ellipsizes the long map names ("Watchpoint: Gibraltar")
+       rather than letting one chip set the row width. 16ch is deliberately
+       kept above the ~10ch floor below which a truncated map name stops being
+       identifiable ("WATCHPOINT: GIB…" reads; "WATCH…" does not) — and it is a
+       max-width, not a fixed width, so a short name ("BUSAN") still makes a
+       short chip. */
+    .fs-map-chips.fs-chips-compact { gap: 4px; }
+    .fs-chips-compact .fs-map-chip {
+      font-size: 18px; padding: 4px 9px; gap: 6px; letter-spacing: 0.3px;
+    }
+    .fs-chips-compact .fs-map-dot { width: 11px; height: 11px; }
+    .fs-chips-compact .fs-chip-label { max-width: 16ch; }
 
     /* Two-team grid */
     .fs-teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -106,8 +189,13 @@
        repeat(6, 1fr): at 28px the 6-digit Dmg/Heal figures need ~1.6x the
        width of the 2-3 char K/D..FB columns, and equal columns made them
        collide. */
+    /* The Player column is a FIXED px track, not an fr: it is the only column
+       whose content is elastic (names), so making it share the fr pool would
+       let one long nickname steal width from the 6-digit Dmg/Heal figures and
+       collapse them. Fixed track + an ellipsis inside it (.fs-player-name)
+       means a long name is the only thing that ever gives. */
     .fs-team-block {
-      --fs-cols: 190px 0.95fr 1fr 1.15fr 0.7fr 1.55fr 1.55fr;
+      --fs-cols: 210px 0.95fr 1fr 1.1fr 0.7fr 1.5fr 1.5fr;
       border-radius: var(--panel-radius); overflow: hidden;
     }
     .fs-team-heading {
@@ -116,8 +204,11 @@
       text-transform: uppercase; letter-spacing: 0.5px;
     }
     .fs-team-heading .fs-team-logo { width: 30px; height: 30px; border-radius: var(--panel-radius); object-fit: cover; margin-right: 10px; }
-    .fs-team-heading .fs-team-info { display: flex; align-items: center; min-width: 0; }
-    .fs-team-heading .fs-team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fs-team-heading .fs-team-info { display: flex; align-items: center; min-width: 0; flex: 0 1 auto; }
+    /* min-width:0 is load-bearing on a flex child: without it the name's
+       min-content width (one long unbroken word) keeps the box from shrinking
+       and text-overflow never gets a chance to fire. */
+    .fs-team-heading .fs-team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     /* Maps-won pill: a team-color FILL, so its text comes from textOnColor. */
     .fs-maps-won {
       font-size: 22px; font-weight: 800; padding: 3px 10px; border-radius: var(--panel-radius);
@@ -134,7 +225,17 @@
       gap: 4px; padding: 2px 10px; font-size: 28px; line-height: 1.12;
       border-bottom: 1px solid rgba(255,255,255,0.04);
     }
-    .fs-player-name { font-weight: 700; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* The row is a flex box, so text-overflow on IT does nothing — ellipsis
+       only applies to a box that lays out its own inline text. The nickname
+       therefore carries the clipping itself (.fs-player-nick) and is the ONLY
+       flexible child; the role tag and the ·N sub marker are flex:none and sit
+       OUTSIDE the ellipsized span, so neither can be the part that disappears.
+       (Before: the row clipped at its own overflow:hidden, cutting nicknames
+       mid-glyph with no ellipsis and, when the name was long enough, pushing
+       the ·N marker out of the box entirely — exactly the information a sub's
+       row exists to carry.) */
+    .fs-player-name { font-weight: 700; display: flex; align-items: center; gap: 7px; white-space: nowrap; min-width: 0; overflow: hidden; }
+    .fs-player-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
     /* Maps-played marker for a sub / partial-series player (see teamBlockHtml). */
     .fs-maps-mark { font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.45); flex: none; }
     /* Deliberate sub-floor exception: the role tag is a COLOR-CODED chip (gold
@@ -167,8 +268,12 @@
        never inferred from a header in the other column. */
     .fs-totals-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; }
     .fs-totals-names { display: grid; grid-template-columns: 1fr auto 1fr; margin-bottom: 4px; }
-    .fs-totals-name-left { text-align: right; padding-right: 10px; font-size: 28px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .fs-totals-name-right { text-align: left; padding-left: 10px; font-size: 28px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* min-width:0 alongside overflow:hidden: a grid item's automatic minimum
+       size is min-content, which for a long team name is wider than the 1fr
+       track — the pair is what lets the ellipsis fire instead of the name
+       pushing the column open and colliding with the other side. */
+    .fs-totals-name-left { text-align: right; padding-right: 10px; font-size: 28px; font-weight: 800; text-transform: uppercase; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .fs-totals-name-right { text-align: left; padding-left: 10px; font-size: 28px; font-weight: 800; text-transform: uppercase; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .fs-totals-name-spacer { min-width: 120px; }
     .fs-totals-row {
       display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
@@ -350,20 +455,31 @@
     // panel, so it takes the same legibility floor as team-colored text (a
     // dark auto-extracted navy would otherwise be an invisible dot, which is
     // exactly the signal the chip exists to carry).
+    // Compact-chip threshold. Below it the chips run at the scene's 22px label
+    // floor; at 6+ (a BO7 that went the distance, the case that broke the
+    // header) they switch to the documented 18px compact variant — see
+    // .fs-chips-compact for why that exception is legitimate here.
+    var COMPACT_CHIPS_AT = 6;
+
     function mapChipsHtml(state, t1Legible, t2Legible) {
       var maps = state.maps || [];
       var chips = '';
+      var count = 0;
       for (var i = 0; i < maps.length; i++) {
         var m = maps[i] || {};
         if (m.status !== 'completed') continue;
+        count++;
         var dotColor = m.winner === 'team1' ? t1Legible
           : (m.winner === 'team2' ? t2Legible : 'rgba(255,255,255,0.35)');
         chips += '<div class="fs-map-chip">' +
           '<span class="fs-map-dot" style="background:' + escapeHtml(dotColor) + '"></span>' +
-          escapeHtml(m.name || ('Map ' + (i + 1))) +
+          // The name is the only ellipsizable part of a chip; the winner dot is
+          // flex:none and always survives.
+          '<span class="fs-chip-label">' + escapeHtml(m.name || ('Map ' + (i + 1))) + '</span>' +
           '</div>';
       }
-      return chips ? '<div class="fs-map-chips">' + chips + '</div>' : '';
+      var compact = count >= COMPACT_CHIPS_AT ? ' fs-chips-compact' : '';
+      return chips ? '<div class="fs-map-chips' + compact + '">' + chips + '</div>' : '';
     }
 
     function teamBlockHtml(side, teamData, color) {
@@ -380,7 +496,8 @@
         var subMark = (p.maps !== side.maxMaps)
           ? '<span class="fs-maps-mark">&middot;' + p.maps + '</span>' : '';
         return '<div class="fs-player-row"' + mapsTitle + '>' +
-          '<div class="fs-player-name">' + roleTag + '<span>' + escapeHtml(p.nickname || '') + '</span>' + subMark + '</div>' +
+          '<div class="fs-player-name">' + roleTag +
+            '<span class="fs-player-nick">' + escapeHtml(p.nickname || '') + '</span>' + subMark + '</div>' +
           '<div class="fs-stat-val">' + escapeHtml(String(p.kdRatio)) + '</div>' +
           '<div class="fs-stat-val">' + p.kills + '</div>' +
           '<div class="fs-stat-val">' + p.deaths + '</div>' +
