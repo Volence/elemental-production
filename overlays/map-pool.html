@@ -386,14 +386,19 @@
         // Ilios picked/banned this match but not in the season pool) still
         // needs to gray out its sibling pool maps in the same mode. Was: a
         // pool-only scan, so an off-pool map's mode column never froze
-        // (Peninsula bug). Still catalog-dependent though: a series map with
-        // no matching catalog entry (unrecognized/misspelled name, or the
-        // catalog fetch failed — see loadMapCatalog above) contributes no
-        // mode and simply doesn't gray anything, silently.
+        // (Peninsula bug). The catalog is only the FIRST source now: a series
+        // map whose name has no catalog entry (an unrecognized/misspelled
+        // manual name, or the catalog fetch failed — see loadMapCatalog above)
+        // falls back to its OWN `mode` field, which FACEIT-imported and
+        // manually-added maps both carry. Previously such a map contributed no
+        // mode and silently grayed nothing.
         var takenModes = {};
         for (var mi = 0; mi < maps.length; mi++) {
           var mCat = maps[mi] && maps[mi].name ? mapDataByName[normMapName(maps[mi].name)] : null;
           var mGamemodes = (mCat && mCat.gamemodes) || [];
+          if (!mGamemodes.length && maps[mi] && maps[mi].mode) {
+            mGamemodes = [String(maps[mi].mode).toLowerCase()];
+          }
           for (var g = 0; g < mGamemodes.length; g++) takenModes[mGamemodes[g]] = true;
         }
         var cols = '';

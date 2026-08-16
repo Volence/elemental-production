@@ -74,6 +74,18 @@ Stats scene, and an animation pass.
   columns. Maps you **delete** are remembered as deleted, so a sync tick can't
   put one back; re-add it and it syncs again. A series that ends early (3-0 in
   a Bo5) no longer lights up the maps that were never played.
+- **Antarctic Peninsula is recognized on FACEIT matches.** FACEIT calls that
+  map **Antarctica**; the map catalog, your Season Map Pool, the map art
+  filenames, map music and flythroughs all call it **Antarctic Peninsula**. So
+  a FACEIT series that played it — the Bo7 late pick in the report above —
+  landed in the match with a name nothing else could match: the Map Pool card
+  stayed fully grayed with no badge or score, and its art, music and
+  flythrough all missed. FACEIT map names are now translated to the catalog's
+  names as they come in, which fixes every one of those at once. Two related
+  hardenings: a picked map that isn't in the match's veto pool is now resolved
+  to its real name instead of showing a raw internal id like
+  `0X0800000000000CF2` on air, and a series map the catalog doesn't recognize
+  now grays out its mode column using its own mode rather than doing nothing.
 - **King's Row art resolves everywhere.** Map Pick, Map Score and Casters
   Lobby matched map names literally, so the curly apostrophe in "King's Row"
   (and accents like Paraíso) never matched the catalog. All three now

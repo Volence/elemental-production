@@ -1,7 +1,139 @@
+import { normalizeMapName } from './map-image-resolver.js';
+
 const DATA_API_BASE = 'https://open.faceit.com/data/v4';
 const TEAM_LEAGUES_BASE = 'https://www.faceit.com/api/team-leagues/v2';
 
 let apiKey = '';
+
+/**
+ * FACEIT speaks a slightly different OW2 map vocabulary than the rest of this
+ * app. Everything else — /api/maps (OverFast), Settings' Season Map Pool,
+ * data/map-images/'s filenames, map-music.js, flythroughs.js, MatchHub's manual
+ * pool — is keyed on the OverFast display name. FACEIT's voting entities are
+ * keyed on Blizzard's internal name, and across the whole 32-map OW2 entity list
+ * exactly ONE differs after normalizeMapName folding:
+ *
+ *   FACEIT "Antarctica"  vs  catalog "Antarctic Peninsula"
+ *
+ * (Everything else folds clean: "Watchpoint Gibraltar" -> "Watchpoint:
+ * Gibraltar", "Paraiso" -> "Paraíso", "King's Row" apostrophes, etc.)
+ *
+ * PRODUCER BUG (v2.1.0, S9 SA Master Central playoffs Bo7, ELMT x Team Missing
+ * vs Agave Garfo): map 6 was Antarctic Peninsula, picked mid-series. It DID
+ * reach state.maps — FACEIT's voting.map.pick carried all six picks — but under
+ * the name "Antarctica". The Map Pool board cross-references its pool cards to
+ * state.maps BY NORMALIZED NAME (seriesIndex), so the "Antarctic Peninsula"
+ * card found no series entry, and since Ilios had already claimed the Control
+ * column it rendered as an out-of-contention sibling: fully grayed, no badge.
+ * The map art, map music and flythrough lookups missed for the same reason.
+ *
+ * Folding at THIS boundary (the only place FACEIT map names enter the system)
+ * fixes every downstream consumer at once, and keeps the alias list one line
+ * long instead of one copy per overlay. Keys are normalizeMapName() output, so
+ * the table is insensitive to FACEIT's own punctuation/casing drift.
+ *
+ * NOTE "Ecopoint: Antarctica" is a DIFFERENT (arcade/elimination) map and folds
+ * to "ecopoint-antarctica", so it can never collide with this entry.
+ */
+const FACEIT_MAP_NAME_ALIASES = {
+  'antarctica': 'Antarctic Peninsula',
+};
+
+/** FACEIT map name -> the catalog display name the rest of the app uses. */
+export function canonicalMapName(name) {
+  if (!name) return name;
+  return FACEIT_MAP_NAME_ALIASES[normalizeMapName(String(name))] || name;
+}
+
+/**
+ * FACEIT's internal OW2 map ids (`voting.map.entities[].game_map_id`, and the
+ * SAME vocabulary as each stats round's `round_stats.Map`) -> canonical name and
+ * mode. Harvested from the live Data API across several matches; the full pool
+ * is 32 maps.
+ *
+ * This is a FALLBACK, never the primary source: `voting.map.entities` is always
+ * preferred when it carries the id. It exists because a match's entity list is
+ * the VETO pool, not the game's pool — competitions routinely ship a reduced one
+ * (the producers' Bo7 above had 13 entities, not 32). A pick id outside that
+ * reduced list used to fall through to `{ id, name: id }`, putting the raw
+ * 18-character hex string into `state.maps[n].name`, which then failed every
+ * name match in the app (board, art, music, flythrough) AND rendered as
+ * "0X0800000000000CF2" on air. Resolving the id here means such a pick still
+ * gets a real name; a genuinely unknown id at least gets a short, obviously
+ * placeholder label rather than the hex blob.
+ */
+export const FACEIT_MAP_IDS = {
+  '0x0800000000001157': { name: 'Hanaoka', mode: 'Clash' },
+  '0x0800000000001160': { name: 'Throne of Anubis', mode: 'Clash' },
+  '0x0800000000000CF2': { name: 'Antarctic Peninsula', mode: 'Control' },
+  '0x08000000000007E2': { name: 'Busan', mode: 'Control' },
+  '0x080000000000066D': { name: 'Ilios', mode: 'Control' },
+  '0x0800000000000662': { name: 'Lijiang Tower', mode: 'Control' },
+  '0x08000000000004B7': { name: 'Nepal', mode: 'Control' },
+  '0x080000000000069E': { name: 'Oasis', mode: 'Control' },
+  '0x0800000000000EC0': { name: 'Samoa', mode: 'Control' },
+  '0x0800000000000827': { name: 'Circuit Royal', mode: 'Escort' },
+  '0x08000000000002C3': { name: 'Dorado', mode: 'Escort' },
+  '0x0800000000000A44': { name: 'Havana', mode: 'Escort' },
+  '0x0800000000000756': { name: 'Junkertown', mode: 'Escort' },
+  '0x0800000000000871': { name: 'Rialto', mode: 'Escort' },
+  '0x08000000000005BB': { name: 'Route 66', mode: 'Escort' },
+  '0x0800000000000C85': { name: 'Shambali Monastery', mode: 'Escort' },
+  '0x0800000000000184': { name: 'Watchpoint Gibraltar', mode: 'Escort' },
+  '0x0800000000000F35': { name: 'Aatlis', mode: 'Flashpoint' },
+  '0x0800000000000E13': { name: 'New Junk City', mode: 'Flashpoint' },
+  '0x0800000000000D3E': { name: 'Suravasa', mode: 'Flashpoint' },
+  '0x080000000000075E': { name: 'Blizzard World', mode: 'Hybrid' },
+  '0x080000000000068D': { name: 'Eichenwalde', mode: 'Hybrid' },
+  '0x08000000000002AF': { name: 'Hollywood', mode: 'Hybrid' },
+  '0x08000000000000D4': { name: "King's Row", mode: 'Hybrid' },
+  '0x0800000000000B4C': { name: 'Midtown', mode: 'Hybrid' },
+  '0x080000000000102C': { name: 'Neon Junction', mode: 'Hybrid' },
+  '0x08000000000001D4': { name: 'Numbani', mode: 'Hybrid' },
+  '0x0800000000000938': { name: 'Paraiso', mode: 'Hybrid' },
+  '0x0800000000000B34': { name: 'Colosseo', mode: 'Push' },
+  '0x0800000000000D53': { name: 'Esperança', mode: 'Push' },
+  '0x0800000000000AEB': { name: 'New Queen Street', mode: 'Push' },
+  '0x0800000000000EB2': { name: 'Runasapi', mode: 'Push' },
+};
+// Case-insensitive id lookup — FACEIT has shipped both "0x...CF2" and lowercase
+// variants of these ids across endpoints.
+const FACEIT_MAP_IDS_BY_KEY = new Map(
+  Object.entries(FACEIT_MAP_IDS).map(([id, v]) => [id.toLowerCase(), v])
+);
+
+/**
+ * Resolve a FACEIT map id to `{ id, name, mode }`, preferring this match's own
+ * voting entities, then the static id table, then a readable placeholder.
+ * NEVER returns a raw hex id as the display name — a map we can't identify must
+ * still render as something a producer can see and correct.
+ */
+export function resolveMapId(id, entities) {
+  const fromEntities = (entities || []).find(m => m && m.id === id);
+  if (fromEntities) return fromEntities;
+  const known = FACEIT_MAP_IDS_BY_KEY.get(String(id).toLowerCase());
+  if (known) return { id, name: known.name, mode: known.mode };
+  // Last resort: short, obviously-a-placeholder label. The full hex is kept on
+  // `id` so a producer (or a bug report) can still trace it back.
+  return { id, name: `Map ${String(id).slice(-4).toUpperCase()}`, mode: 'Unknown' };
+}
+
+/**
+ * The `voting.map` payload -> `{ mapPool, pickedMaps }`, both carrying catalog
+ * names. Pure and exported so the entity/alias/fallback rules above are
+ * unit-testable without hitting the network.
+ */
+export function buildPickedMaps(mapVoting) {
+  const mapPool = ((mapVoting && mapVoting.entities) || []).map(m => ({
+    id: m.game_map_id || m.guid,
+    name: canonicalMapName(m.name),
+    mode: (m.filters?.voting_tags?.[0] || '').replace('cat:', ''),
+    imageLg: m.image_lg,
+    imageSm: m.image_sm,
+  }));
+  const pickedMaps = ((mapVoting && mapVoting.pick) || []).map(id => resolveMapId(id, mapPool));
+  return { mapPool, pickedMaps };
+}
 
 export function setApiKey(key) {
   apiKey = key;
@@ -49,22 +181,16 @@ export async function getMatchDetails(matchId) {
       };
     }
 
-    // Parse map voting data
+    // Parse map voting data. Names are folded to the app's catalog vocabulary
+    // and unknown pick ids are resolved rather than leaked as hex — see
+    // buildPickedMaps / canonicalMapName / resolveMapId above.
+    //
+    // voting.map.pick DOES include mid-series picks: verified against the
+    // producers' Bo7 (S9 SA Master Central playoffs), whose 6th map was picked
+    // after map 5 and was present in `pick` as the sixth id. So this list is the
+    // whole series, not just the pre-match veto.
     const voting = data.voting || {};
-    const mapVoting = voting.map || {};
-    const mapEntities = (mapVoting.entities || []).map(m => ({
-      id: m.game_map_id || m.guid,
-      name: m.name,
-      mode: (m.filters?.voting_tags?.[0] || '').replace('cat:', ''),
-      imageLg: m.image_lg,
-      imageSm: m.image_sm,
-    }));
-    const mapPicks = mapVoting.pick || [];
-
-    // Build ordered picked maps
-    const pickedMaps = mapPicks.map(id =>
-      mapEntities.find(m => m.id === id) || { id, name: id, mode: 'Unknown' }
-    );
+    const { mapPool: mapEntities, pickedMaps } = buildPickedMaps(voting.map || {});
 
     // Parse hero voting data to extract per-map bans
     // Entity order = ban chronological order (validated across 14+ maps)
