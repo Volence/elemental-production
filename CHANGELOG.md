@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.1.2 — D.Mon ban art
+
+### Fixed
+
+- **A D.Mon ban shows her full render on Ban Reveal, like every other hero.**
+  The shipped hero-render pack predates her release, so banning D.Mon fell
+  back to the small circular face icon while the other bans got full-body
+  art. The pack now includes her official pilot-and-Beast render (same
+  pilot-with-mech composition as D.Va's). Existing installs pick it up
+  automatically on the next launch after updating — new pack files always
+  seed into the app's data folder. Running an older build mid-event? Drop
+  a `dmon.png`/`dmon.webp` into the `hero-renders` folder inside the app's
+  user-data directory and it takes effect on the next scene refresh, no
+  restart needed.
+
 ## v2.1.1 — Day-one fixes for the v2.1.0 reports
 
 ### Fixed
