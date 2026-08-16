@@ -849,6 +849,7 @@ app.post('/api/faceit/match', async (req, res) => {
       selectedMapIdx: -1,
       banSwaps: [],
       mapPickers: [],
+      removedMapKeys: [],
       faceitLastSync: Date.now(),
       faceitLastSyncError: null,
     };
@@ -1080,6 +1081,9 @@ async function faceitPollTick() {
       faceitMaps: maps,
       perMapBans,
       mapsOverridden: isOverridden('maps'),
+      // Maps the producer deleted; without this the tail append re-adds a map
+      // removed off the END of the list on every tick (see buildMapsUpdate).
+      removedMapKeys: currentState.removedMapKeys || [],
     }));
     if (!isOverridden('players')) {
       update.players = { team1: faction1.roster, team2: faction2.roster };
@@ -1926,6 +1930,7 @@ app.post('/api/reset', (req, res) => {
     perMapBans: [],
     banSwaps: [],
     mapPickers: [],
+    removedMapKeys: [],
     selectedMapIdx: -1,
     faceitMatchId: '',
     faceitMatchUrl: '',

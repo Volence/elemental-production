@@ -79,11 +79,11 @@
     /* Completed in-pool map: full color kept (it's not "out", it's already
        played) — just a brighter border + a PLAYED marker when there's no
        score tag to already say so. */
-    .mpo-card-played { border-color: rgba(255,255,255,0.45); }
     /* Picked but not started yet (a late pick sitting in state.maps as
-       'upcoming'). Same "in the series, keep full color" treatment as a played
-       card — the MAP n tag says which slot it took. */
-    .mpo-card-picked { border-color: rgba(255,255,255,0.45); }
+       'upcoming') reads the same as played: "in the series, keep full color",
+       with the MAP n tag saying which slot it took. Aliased deliberately — one
+       rule, so the two states can't drift apart by accident. */
+    .mpo-card-played, .mpo-card-picked { border-color: rgba(255,255,255,0.45); }
     .mpo-played-tag {
       position: absolute; top: 8px; right: 8px; font-size: 12px; font-weight: 800;
       letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.55);
@@ -235,7 +235,13 @@
     // untouched pool card. It now gets the MAP n slot tag + the played border,
     // so a late pick ALWAYS visibly changes the board even with zero picker/
     // score data behind it. `sIdx` = its index in state.maps (-1 = not in it).
-    function cardHtml(name, series, sIdx, modeTaken, t1, t2, delay) {
+    //
+    // `decided` (the series is mathematically over) suppresses that picked
+    // state: a 3-0 Bo5 leaves maps 4 and 5 sitting in state.maps as 'upcoming'
+    // forever, and lighting them would put a MAP 4 / MAP 5 tag on maps nobody
+    // will ever play. They gray out with the rest of their mode column instead.
+    // Completed/live cards are never touched by it — those are facts.
+    function cardHtml(name, series, sIdx, modeTaken, decided, t1, t2, delay) {
       var cat = mapDataByName[normMapName(name)] || {};
       var img = proxied(cat.screenshot);
       var cls = 'mpo-card';
@@ -253,7 +259,7 @@
       } else if (played) {
         cls += ' mpo-card-played';
         if (!series.roundScore) overlays += '<div class="mpo-played-tag">PLAYED</div>';
-      } else if (series) {
+      } else if (series && !decided) {
         // In the series, not started: MAP n (its slot) — the tag that makes a
         // late pick readable before any picker/score data exists.
         cls += ' mpo-card-picked';
@@ -362,6 +368,19 @@
         gridHtml = '<div class="mpo-empty"><div class="mpo-empty-chip">No map pool set<br>' +
           '<span style="font-size:18px;letter-spacing:2px">Settings → Season Map Pool</span></div></div>';
       } else {
+        // Is the series mathematically over? A Bo5 won 3-0 leaves maps 4 and 5
+        // in state.maps as 'upcoming' forever — never-to-be-played entries that
+        // would otherwise light up as picked (MAP 4 / MAP 5) on this board. Map
+        // WINS only (state.maps winners), not teams.score, which a producer can
+        // hand-edit. See cardHtml.
+        var w1 = 0, w2 = 0;
+        for (var wi = 0; wi < maps.length; wi++) {
+          if (!maps[wi]) continue;
+          if (maps[wi].winner === 'team1') w1++;
+          else if (maps[wi].winner === 'team2') w2++;
+        }
+        var decided = Math.max(w1, w2) > Math.floor(bestOf / 2);
+
         // Taken modes are derived from the SERIES's maps (state.maps), not
         // from pool membership — a series map outside the saved pool (e.g.
         // Ilios picked/banned this match but not in the season pool) still
@@ -388,17 +407,14 @@
             if (modes.indexOf(mode) !== -1) names.push(pool[p]);
           }
           if (names.length === 0) continue;
-          // Per-NAME lookup: a mode column can hold TWO series maps in a Bo7
-          // (5 modes, 7 slots) — each card resolves its own entry/slot, no
-          // first-match-wins per column.
-          var idxs = [];
-          for (var e = 0; e < names.length; e++) {
-            idxs.push(seriesIndex(maps, names[e]));
-          }
           var modeTaken = !!takenModes[mode];
           var cards = '';
           for (var c = 0; c < names.length; c++) {
-            cards += cardHtml(names[c], idxs[c] >= 0 ? maps[idxs[c]] : null, idxs[c], modeTaken, t1, t2,
+            // Per-NAME lookup: a mode column can hold TWO series maps in a Bo7
+            // (5 modes, 7 slots) — each card resolves its own entry/slot, no
+            // first-match-wins per column.
+            var sIdx = seriesIndex(maps, names[c]);
+            cards += cardHtml(names[c], sIdx >= 0 ? maps[sIdx] : null, sIdx, modeTaken, decided, t1, t2,
               Math.min(0.75, 0.15 + colIdx * 0.05 + c * 0.08));
           }
           cols += '<div class="mpo-col">' +

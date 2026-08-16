@@ -117,6 +117,12 @@ describe('buildMapsUpdate', () => {
     expect(u[2].picker).toBe('team2');
   });
 
+  // Pins DEDUP of a still-present map (King's Row is only removed from the
+  // MIDDLE, so the tail loop's `i = merged.length` start already skips it —
+  // no removal record needed). It also walks past the positional inheritance
+  // a mid-list removal causes: the remaining Dorado now merges FACEIT index 1
+  // (King's Row's progress). That misattribution is the documented
+  // index-alignment limitation, not something this test asserts against.
   it('does not resurrect a map the producer REMOVED (tail append is name-guarded)', () => {
     const currentMaps = [{ name: 'Ilios' }, { name: 'Dorado' }]; // producer deleted King's Row (idx 1)
     const faceit = [{ name: 'Ilios' }, { name: 'King’s Row' }, { name: 'Dorado' }];
@@ -124,11 +130,46 @@ describe('buildMapsUpdate', () => {
     expect(u.map(m => m.name)).toEqual(['Ilios', 'Dorado']);
   });
 
+  // Pins the APOSTROPHE FOLD in the dedup key (curly vs straight), not removal.
   it('name-guards across curly/straight apostrophes when appending', () => {
     const currentMaps = [{ name: 'Ilios' }, { name: "King's Row" }];
     const faceit = [{ name: 'Ilios' }, { name: 'Nepal' }, { name: 'King’s Row' }];
     const u = buildMapsUpdate({ currentMaps, faceitMaps: faceit, perMapBans: [], mapsOverridden: true });
     expect(u.map(m => m.name)).toEqual(['Ilios', "King's Row"]);
+  });
+
+  // BLOCKER (review round): a map removed off the END of the list is past
+  // merged.length AND absent from the in-list name guard, so the tail append
+  // re-added it on EVERY 15s tick — an unbreakable ping-pong, since removeMap
+  // itself takes the maps 🔒 that enables this branch. state.removedMapKeys
+  // (written by MatchHub's removeMap) is the only thing that can say "gone on
+  // purpose"; merging twice proves it doesn't drift back after one tick.
+  it('does not resurrect a TRAILING removal across repeated merges (removal record)', () => {
+    const faceit = [{ name: 'Ilios' }, { name: 'Dorado' }, { name: 'Nepal' }];
+    let maps = [{ name: 'Ilios' }, { name: 'Dorado' }]; // producer deleted Nepal, the LAST map
+    const removedMapKeys = ['nepal'];
+    for (let tick = 0; tick < 3; tick++) {
+      maps = buildMapsUpdate({ currentMaps: maps, faceitMaps: faceit, perMapBans: [], mapsOverridden: true, removedMapKeys });
+      expect(maps.map(m => m.name)).toEqual(['Ilios', 'Dorado']);
+    }
+  });
+
+  it('re-adding a removed map syncs it again once the key is dropped', () => {
+    const faceit = [{ name: 'Ilios' }, { name: 'Dorado' }, { name: 'King’s Row' }];
+    const currentMaps = [{ name: 'Ilios' }, { name: 'Dorado' }];
+    // Keys are normalizeMapName's ("King's Row"/"King’s Row" -> "kings-row").
+    const stillRemoved = buildMapsUpdate({ currentMaps, faceitMaps: faceit, perMapBans: [], mapsOverridden: true, removedMapKeys: ['kings-row'] });
+    expect(stillRemoved.map(m => m.name)).toEqual(['Ilios', 'Dorado']);
+    // MatchHub's addMap drops the key when the producer re-adds that name.
+    const readded = buildMapsUpdate({ currentMaps, faceitMaps: faceit, perMapBans: [{}, {}, { picker: 'team2' }], mapsOverridden: true, removedMapKeys: [] });
+    expect(readded.map(m => m.name)).toEqual(['Ilios', 'Dorado', 'King’s Row']);
+    expect(readded[2].picker).toBe('team2');
+  });
+
+  it('tolerates a removal record written with a different apostrophe/accent form', () => {
+    const faceit = [{ name: 'Ilios' }, { name: "King's Row" }];
+    const u = buildMapsUpdate({ currentMaps: [{ name: 'Ilios' }], faceitMaps: faceit, perMapBans: [], mapsOverridden: true, removedMapKeys: ['King’s Row'] });
+    expect(u.map(m => m.name)).toEqual(['Ilios']);
   });
 });
 

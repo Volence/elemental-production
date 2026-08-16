@@ -26,6 +26,7 @@ const defaultState = {
   activeBanMapIdx: -1, // DERIVED (getActiveBanIdx): which map's bans heroBans was resolved from; -1 = none. Overlays label the Ban Reveal map from this instead of re-deriving client-side. Kept in lockstep with heroBans (see faceit-merge deriveActiveBanState).
   banSwaps: [], // per-map ⇄ ban-side corrections (true = swap team1Ban/team2Ban), survives FACEIT auto-sync
   mapPickers: [], // per-map manual picker overrides ('team1'|'team2'|'none'), survives FACEIT auto-sync
+  removedMapKeys: [], // maps the producer DELETED, as normalizeMapName keys (written by MatchHub removeMap, dropped again by addMap). A deletion isn't recoverable from the maps array itself, so the FACEIT tail-append (faceit-merge buildMapsUpdate) would re-add a map removed off the END on every poll tick. Cleared with banSwaps/mapPickers.
   players: { team1: [], team2: [] },
   playerStats: [],
   mapVeto: [], // { action: 'ban'|'pick', team: 'team1'|'team2', map: {} }

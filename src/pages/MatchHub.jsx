@@ -7,6 +7,20 @@ const normalizeHeroName = (s) => s
   ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '')
   : '';
 
+// Map-name key for state.removedMapKeys. These keys are COMPARED SERVER-SIDE
+// (faceit-merge.js buildMapsUpdate), so this must stay byte-equivalent to
+// normalizeMapName in server/map-image-resolver.js — KEEP IN SYNC. That module
+// can't be imported here: it pulls in fs/path and would not survive the browser
+// bundle. (normalizeHeroName above is NOT interchangeable — it drops separators
+// instead of hyphenating them, so its keys wouldn't match the server's.)
+const normalizeMapKey = (s) => s
+  ? s.normalize('NFD').replace(/[̀-ͯ]/g, '')  // strip diacritics (Paraíso -> Paraiso)
+      .replace(/[‘’']/g, '')                   // strip apostrophes (King’s/King's -> Kings)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  : '';
+
 const findHeroByName = (allHeroes, name) => {
   const n = normalizeHeroName(name);
   if (!n) return null;
@@ -220,6 +234,7 @@ export default function MatchHub({ state, updateState, api }) {
         perMapBans: [],
         banSwaps: [],
         mapPickers: [],
+        removedMapKeys: [],
         selectedMapIdx: -1,
       });
     } else if (mode === 'scrim') {
@@ -234,6 +249,7 @@ export default function MatchHub({ state, updateState, api }) {
         perMapBans: [],
         banSwaps: [],
         mapPickers: [],
+        removedMapKeys: [],
         selectedMapIdx: -1,
         bestOf: 1,
       });
@@ -255,6 +271,10 @@ export default function MatchHub({ state, updateState, api }) {
     }];
     const updates = { maps };
     if (state.mode === 'scrim') updates.bestOf = maps.length;
+    // Re-adding a map cancels its removal record, so FACEIT may sync it again.
+    const key = normalizeMapKey(map.name);
+    const removed = (state.removedMapKeys || []).filter(k => k !== key);
+    if (removed.length !== (state.removedMapKeys || []).length) updates.removedMapKeys = removed;
     updateState(updates);
     setOverride('maps');
     setShowMapPicker(false);
@@ -264,6 +284,15 @@ export default function MatchHub({ state, updateState, api }) {
     const maps = state.maps.filter((_, i) => i !== idx);
     const updates = { maps };
     if (state.mode === 'scrim') updates.bestOf = maps.length;
+    // Record the deletion by NAME. Removing a map that FACEIT still reports —
+    // especially the LAST one — is invisible in the maps array alone, so the
+    // sync tick's tail-append would put it straight back every 15s (and this
+    // very call takes the maps 🔒, so nothing else stops it). See
+    // buildMapsUpdate in server/faceit-merge.js.
+    const key = normalizeMapKey(state.maps[idx]?.name);
+    if (key && !(state.removedMapKeys || []).includes(key)) {
+      updates.removedMapKeys = [...(state.removedMapKeys || []), key];
+    }
     updateState(updates);
     setOverride('maps');
   };
@@ -829,8 +858,9 @@ export default function MatchHub({ state, updateState, api }) {
                         }}>⇄ Bans</button>
                     )}
                     {/* Map score shown on overlays — always available (manual/scrim + FACEIT).
-                        No setOverride('maps') here: the merge (server/faceit-merge.js:41,
-                        server.js:~1054) resolves `f.roundScore || m.roundScore || null`, so
+                        No setOverride('maps') here: the merge (buildMapsUpdate in
+                        server/faceit-merge.js, called from the FACEIT poll tick in
+                        server.js) resolves `f.roundScore || m.roundScore || null`, so
                         FACEIT's own score wins the moment it's reported regardless of the
                         maps lock anyway (intended precedence) — while taking the lock would
                         cost real functionality (name/mode/image stop syncing until the

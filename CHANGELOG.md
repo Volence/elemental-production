@@ -69,8 +69,11 @@ Stats scene, and an animation pass.
   on every sync tick and never reached the boards at all, and a pick that had
   landed but not started yet drew like an untouched pool map. The late map is
   now merged in, the Map Pool card marks its slot (**MAP 6**) alongside the
-  picker badge, and the Map Pick board's column chips no longer collide at
-  seven columns.
+  picker badge, and the Map Pick board draws every map in the series — even
+  when Best-of says five — without its column chips colliding at seven
+  columns. Maps you **delete** are remembered as deleted, so a sync tick can't
+  put one back; re-add it and it syncs again. A series that ends early (3-0 in
+  a Bo5) no longer lights up the maps that were never played.
 - **King's Row art resolves everywhere.** Map Pick, Map Score and Casters
   Lobby matched map names literally, so the curly apostrophe in "King's Row"
   (and accents like Paraíso) never matched the catalog. All three now

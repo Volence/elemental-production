@@ -151,7 +151,7 @@
        position:absolute and neither reserves space for the other; the mode
        label also wrapped to two lines and long map names ran to three. Type is
        stepped down for >=6 columns only, so Bo1/Bo3/Bo5 are untouched. Applied
-       via a class on .mp-columns (render knows bestOf; CSS can't). */
+       via a class on .mp-columns (render knows the column count; CSS can't). */
     .mp-columns-tight .mp-col-chip { font-size: 15px; padding: 4px 8px; letter-spacing: 0; }
     .mp-columns-tight .mp-col-live-chip { padding: 4px 8px; gap: 5px; }
     .mp-columns-tight .mp-live-text { font-size: 15px; }
@@ -335,7 +335,7 @@
         '</div>';
     }
 
-    // One map column. `ctx`: { t1, t2, t1color, t2color, bestOf, mapBans, banColIdx }.
+    // One map column. `ctx`: { t1, t2, t1color, t2color, colCount, mapBans, banColIdx }.
     // Any column with revealed bans shows them (nameless); banColIdx sizes the
     // active column's tiles larger (84px vs 56px). States (v4 mockup):
     //  - completed: team-color border/wash + circled winner logo + roundScore
@@ -351,7 +351,7 @@
       var status = map.status || 'upcoming';
       var isCompleted = status === 'completed';
       var isCurrent = status === 'current';
-      var isLast = i === ctx.bestOf - 1;
+      var isLast = i === ctx.colCount - 1; // last RENDERED column (see colCount in render)
       var isDecider = isLast && !isCompleted && !isCurrent;
 
       var winnerColor = '';
@@ -398,7 +398,7 @@
       // Footer: name + picker pill + bans (on every played column that has
       // them; ctx.banColIdx just picks the 84px vs 56px tile size). Only
       // rendered once the slot actually has a map name — an unconfigured
-      // trailing slot (bestOf > maps.length) gets the bare placeholder art and
+      // trailing slot (colCount > maps.length) gets the bare placeholder art and
       // no footer.
       var footHtml = '';
       if (map.name) {
@@ -465,6 +465,13 @@
 
       var maps = state.maps || [];
       var bestOf = state.bestOf || maps.length || 5;
+      // Column count is the WIDER of the two, never bestOf alone: a Bo7 whose
+      // bestOf is stale or producer-locked at 5 still has 7 entries in
+      // state.maps (the sync tick appends late FACEIT picks past the locked
+      // list — see buildMapsUpdate), and rendering only bestOf columns dropped
+      // them silently, which is the exact "the late pick shows nothing" symptom
+      // this board is supposed to have fixed. Both inputs are already in key().
+      var colCount = Math.max(bestOf, maps.length);
       var perMapBans = state.perMapBans || [];
 
       document.querySelector('#mp-header .slot-content').innerHTML = headerHtml(t1, t2, t1color, t2color, state.eventName);
@@ -485,15 +492,17 @@
         if (banColIdx < 0) { for (var bd = maps.length - 1; bd >= 0; bd--) { if (maps[bd] && maps[bd].status === 'completed') { banColIdx = bd; break; } } }
       }
 
-      var ctx = { t1: t1, t2: t2, t1color: t1color, t2color: t2color, bestOf: bestOf, banColIdx: banColIdx };
+      var ctx = { t1: t1, t2: t2, t1color: t1color, t2color: t2color, colCount: colCount, banColIdx: banColIdx };
       var colsHtml = '';
-      for (var i = 0; i < bestOf; i++) {
+      for (var i = 0; i < colCount; i++) {
         ctx.mapBans = perMapBans[i];
         colsHtml += mapColumn(i, maps[i], ctx);
       }
       // >=6 columns get the tight type scale (see .mp-columns-tight): at Bo7 the
       // MAP chip and the LIVE chip collide in a ~254px column at full size.
-      var tight = bestOf >= 6 ? ' mp-columns-tight' : '';
+      // Gated on the RENDERED count, not bestOf — a 7-column board built from
+      // maps.length needs the squeeze just as much as a real Bo7.
+      var tight = colCount >= 6 ? ' mp-columns-tight' : '';
       document.querySelector('#mp-grid .slot-content').innerHTML = '<div class="mp-columns' + tight + '">' + colsHtml + '</div>';
     }
 
