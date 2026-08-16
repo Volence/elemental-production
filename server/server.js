@@ -1185,6 +1185,10 @@ app.post('/api/overrides/clear', (req, res) => {
 app.delete('/api/overrides', async (req, res) => {
   const released = { ...(getState().overrides || {}) };
   clearAllOverrides();
+  // Relinquish = back on FACEIT authority, so producer map DELETIONS are
+  // relinquished too — without this a stale record would silently re-hide a
+  // FACEIT map the next time the producer takes the maps lock.
+  setState({ removedMapKeys: [] });
   reconcileHeroBans();
   const s = getState();
   let refreshed = false;
