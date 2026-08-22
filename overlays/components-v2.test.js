@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { pinwheelSVG } from './pinwheel.js';
 globalThis.pinwheelSVG = pinwheelSVG;
-import { banTile, teamPlate, safeImg, eventHeader, mapPips, topFrame, camFrame, banArtTile } from './components-v2.js';
+import { banTile, teamPlate, safeImg, eventHeader, mapPips, topFrame, camFrame, banArtTile, banArtFrame, banFocusFromColumns } from './components-v2.js';
 
 describe('banTile', () => {
   it('renders portrait via provided src with slash overlay and 56px default', () => {
@@ -307,5 +307,180 @@ describe('banTile size option', () => {
   it('accepts a size override for the 84px map-board tiles', () => {
     const html = banTile({ portrait: 'x.png', heroName: 'Ana', teamColor: '#f00', size: 84 });
     expect(html).toContain('84px');
+  });
+});
+
+// ── Subject-aware ban-art framing ───────────────────────────────────────────
+// Regression cover for the v2.1.3 producer report "some heroes are offset in
+// their frame, especially dmon and mauga". The numbers below are the real
+// measured values: hero-bans' reveal panel is ~710x665 at 1920x1080, and the
+// image dimensions / alpha-mass profiles are what data/hero-renders/ actually
+// contains (measured off the alpha channel of the shipped pack).
+describe('banArtFrame', () => {
+  const PANEL = { tileW: 710, tileH: 665 };
+  // dmon.webp 2500x1690 — the widest canvas in the pack, and the one whose
+  // subject sits furthest off-centre (mass centroid 0.652, i.e. the mech is
+  // well right of canvas centre because the sword sweeps out to the left).
+  const DMON = { imgW: 2500, imgH: 1690, cx: 0.652, x5: 0.320, x95: 0.926 };
+  // mizuki.webp 1850x2350 — portrait-relative to the panel, the common case.
+  const MIZUKI = { imgW: 1850, imgH: 2350, cx: 0.397, x5: 0.150, x95: 0.641 };
+
+  it('centres the subject, not the canvas (the reported defect)', () => {
+    const f = banArtFrame({ ...PANEL, ...DMON });
+    const subjectCentre = f.left + DMON.cx * f.width;
+    // Old behaviour put the canvas centre on the tile centre, leaving the
+    // subject ~15% of the image width to the right. Allow a small residual:
+    // the no-blank-gutter clamp can hold the image back a few px.
+    expect(Math.abs(subjectCentre - PANEL.tileW / 2)).toBeLessThan(30);
+  });
+
+  it('keeps the subject core fully inside the tile', () => {
+    for (const hero of [DMON, MIZUKI]) {
+      const f = banArtFrame({ ...PANEL, ...hero });
+      expect(f.left + hero.x5 * f.width).toBeGreaterThanOrEqual(-0.5);
+      expect(f.left + hero.x95 * f.width).toBeLessThanOrEqual(PANEL.tileW + 0.5);
+    }
+  });
+
+  it('never crops vertically — a hero\'s head is always in frame', () => {
+    for (const hero of [DMON, MIZUKI]) {
+      const f = banArtFrame({ ...PANEL, ...hero });
+      expect(f.height).toBeLessThanOrEqual(PANEL.tileH + 0.5);
+      expect(f.top).toBeGreaterThanOrEqual(-0.5);
+    }
+  });
+
+  it('stays bottom-anchored, as the CSS it replaces was', () => {
+    const f = banArtFrame({ ...PANEL, ...MIZUKI });
+    expect(f.top + f.height).toBeCloseTo(PANEL.tileH, 5);
+  });
+
+  it('never renders a hero smaller than plain object-fit:contain would', () => {
+    for (const hero of [DMON, MIZUKI]) {
+      const contain = Math.min(PANEL.tileW / hero.imgW, PANEL.tileH / hero.imgH);
+      const f = banArtFrame({ ...PANEL, ...hero });
+      expect(f.width / hero.imgW).toBeGreaterThanOrEqual(contain - 1e-9);
+    }
+  });
+
+  it('leaves portrait-relative renders at exactly the contain scale', () => {
+    // Invariant 1: the scale-up is landscape-only, so 47 of the 54 renders in
+    // the pack keep the size they have today and only re-centre.
+    const f = banArtFrame({ ...PANEL, ...MIZUKI });
+    expect(f.height).toBeCloseTo(PANEL.tileH, 5);
+    expect(f.width).toBeCloseTo(MIZUKI.imgW * (PANEL.tileH / MIZUKI.imgH), 5);
+  });
+
+  it('scales a landscape render up to fill the tile height', () => {
+    const f = banArtFrame({ ...PANEL, ...DMON });
+    const contain = Math.min(PANEL.tileW / DMON.imgW, PANEL.tileH / DMON.imgH);
+    expect(f.width / DMON.imgW).toBeGreaterThan(contain);
+    expect(f.height).toBeCloseTo(PANEL.tileH, 5);
+  });
+
+  it('opens no blank gutter when the image is wide enough to cover the tile', () => {
+    const f = banArtFrame({ ...PANEL, ...DMON });
+    expect(f.left).toBeLessThanOrEqual(0);
+    expect(f.left + f.width).toBeGreaterThanOrEqual(PANEL.tileW);
+  });
+
+  it('falls back to centred framing when no profile is supplied', () => {
+    const f = banArtFrame({ ...PANEL, imgW: 1000, imgH: 1000 });
+    expect(f.left + f.width / 2).toBeCloseTo(PANEL.tileW / 2, 5);
+  });
+
+  it('survives a degenerate profile without dividing by zero', () => {
+    const f = banArtFrame({ ...PANEL, imgW: 1000, imgH: 1000, cx: 0.5, x5: 0.5, x95: 0.5 });
+    expect(Number.isFinite(f.width)).toBe(true);
+    expect(Number.isFinite(f.left)).toBe(true);
+  });
+
+  it('returns null for a tile or image with no size (nothing to frame)', () => {
+    expect(banArtFrame({ tileW: 0, tileH: 665, imgW: 100, imgH: 100 })).toBeNull();
+    expect(banArtFrame({ tileW: 710, tileH: 665, imgW: 0, imgH: 100 })).toBeNull();
+  });
+
+  it('also works at map-intro deck-tile scale', () => {
+    // .mi-ban-tile is 140px wide with aspect-ratio 1/1.12 (map-intro.html:154).
+    const DECK = { tileW: 140, tileH: 140 * 1.12 };
+    const f = banArtFrame({ ...DECK, ...DMON });
+    expect(f.left + DMON.x5 * f.width).toBeGreaterThanOrEqual(-0.5);
+    expect(f.left + DMON.x95 * f.width).toBeLessThanOrEqual(DECK.tileW + 0.5);
+    expect(f.height).toBeLessThanOrEqual(DECK.tileH + 0.5);
+    expect(f.top + f.height).toBeCloseTo(DECK.tileH, 5);
+  });
+});
+
+// banFocusFromColumns is the pure half of the alpha measurement — the part
+// that decides WHERE a hero is. Split out of _measureBanFocus specifically so
+// it can be tested without a canvas, after a review caught the bug pinned by
+// the first two cases below.
+describe('banFocusFromColumns', () => {
+  const uniform = (n) => new Array(n).fill(1);
+
+  it('puts a uniform profile at dead centre', () => {
+    // A render with no alpha at all (a JPEG drop-in — .jpg is a supported
+    // hero-render extension) profiles as uniform. It must measure as centred,
+    // so framing leaves it exactly where object-fit:contain had it.
+    // The first implementation returned 0.459 here: it accumulated the
+    // centroid inside the quantile loop and broke out at the 95% column, so
+    // the right-hand 5% of ink was missing from the numerator while the
+    // left-hand 5% was still in it — a systematic leftward bias.
+    expect(banFocusFromColumns(uniform(96), 96).cx).toBeCloseTo(0.5, 6);
+  });
+
+  it('is not biased by mass beyond the 95% quantile', () => {
+    // Body block plus a thin right-hand tail — the "hero holding a long prop"
+    // shape this whole feature exists for. cx must be the TRUE centroid.
+    const cols = new Array(96).fill(0);
+    for (let i = 20; i < 60; i++) cols[i] = 10;
+    for (let i = 60; i < 96; i++) cols[i] = 1;
+    let num = 0, den = 0;
+    cols.forEach((c, i) => { num += c * (i + 0.5); den += c; });
+    expect(banFocusFromColumns(cols, 96).cx).toBeCloseTo(num / den / 96, 6);
+  });
+
+  it('mirrors: a left-heavy profile is the reflection of a right-heavy one', () => {
+    const right = new Array(96).fill(0);
+    for (let i = 60; i < 96; i++) right[i] = 5;
+    for (let i = 0; i < 60; i++) right[i] = 1;
+    const left = [...right].reverse();
+    const a = banFocusFromColumns(right, 96);
+    const b = banFocusFromColumns(left, 96);
+    expect(a.cx).toBeCloseTo(1 - b.cx, 6);
+    expect(a.x5).toBeCloseTo(1 - b.x95, 1);
+  });
+
+  it('brackets the subject core between the 5% and 95% mass quantiles', () => {
+    const cols = new Array(100).fill(0);
+    for (let i = 40; i < 60; i++) cols[i] = 1; // all mass in the middle fifth
+    const f = banFocusFromColumns(cols, 100);
+    expect(f.cx).toBeCloseTo(0.5, 2);
+    expect(f.x5).toBeGreaterThanOrEqual(0.39);
+    expect(f.x95).toBeLessThanOrEqual(0.61);
+    expect(f.x5).toBeLessThan(f.x95);
+  });
+
+  it('returns null when there is no ink at all', () => {
+    expect(banFocusFromColumns(new Array(96).fill(0), 96)).toBeNull();
+    expect(banFocusFromColumns([], 0)).toBeNull();
+  });
+
+  it('always reports x5/x95 inside [0, 1]', () => {
+    for (const cols of [uniform(8), [0, 0, 5, 0, 0], [1, 0, 0, 0, 9]]) {
+      const f = banFocusFromColumns(cols, cols.length);
+      expect(f.x5).toBeGreaterThanOrEqual(0);
+      expect(f.x95).toBeLessThanOrEqual(1);
+      expect(f.cx).toBeGreaterThanOrEqual(0);
+      expect(f.cx).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
+describe('banArtTile render img', () => {
+  it('carries the focus hook so framing runs once the render loads', () => {
+    const html = banArtTile({ renderUrl: 'http://localhost:3001/hero-renders/dmon.webp', heroName: 'D.Mon', teamColor: '#f00' });
+    expect(html).toContain('v2-ban-art-render-img');
+    expect(html).toContain('applyBanArtFocus');
   });
 });

@@ -210,6 +210,15 @@
     var API = 'http://localhost:3001';
     var heroData = [];
 
+    // Headline map-name sizing. MAX mirrors .mi-name's font-size in this
+    // file's <style> — keep the two in sync; MAX is what every name that fits
+    // renders at, and CSS still owns the look for the (brief) pre-fit frame.
+    // MIN is the floor a long name may shrink to; at 1720px of box that is
+    // enough for every name in the 32-map pool, and stays well above the
+    // spec's 72px mobile-legibility floor for this scene's key text.
+    var MI_NAME_MAX_PX = 132;
+    var MI_NAME_MIN_PX = 92;
+
     // Dep (overlay-core loads it before the first render).
     function loadHeroes() {
       if (window.__HERO_DATA__) { heroData = window.__HERO_DATA__; return Promise.resolve(); }
@@ -430,7 +439,17 @@
           mapPips({ maps: maps, bestOf: bestOf, team1Color: t1color, team2Color: t2color }) + '</div>';
       }
 
-      document.querySelector('#mi-stage .slot-content').innerHTML = html;
+      var stage = document.querySelector('#mi-stage .slot-content');
+      stage.innerHTML = html;
+
+      // The map name is this scene's headline, so a long one shrinks to fit
+      // instead of ellipsising — "WATCHPOINT: GIBRALTAR" (the longest name in
+      // the pool) used to go on air as "WATCHPOINT: GIBRALT…". Must run AFTER
+      // innerHTML so the element can be measured. See fitTextToWidth in
+      // theme-helpers.js; MI_NAME_MAX_PX/MIN_PX are the .mi-name CSS size and
+      // the floor we allow it down to (still far above the 72px mobile floor
+      // the spec sets for this scene's key text).
+      fitTextToWidth(stage.querySelector('.mi-name'), MI_NAME_MAX_PX, MI_NAME_MIN_PX);
     }
 
     defineOverlay({

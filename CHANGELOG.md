@@ -1,5 +1,46 @@
 # Changelog
 
+## v2.1.3 — Producer report batch
+
+Five items from producer reports. Overlay-only plus dashboard — **no scene
+collection re-import needed**.
+
+### Fixed
+
+- **Hero renders sit properly in their Ban Reveal frames.** Some heroes looked
+  shoved to one side of their panel, D.Mon and Mauga worst of all. The official
+  art has each character sitting in a different spot on their own canvas — a
+  sword or a minigun pushes the character off to one side — and the overlay was
+  centring the picture rather than the character. Ban Reveal (and the small ban
+  cards on Map Intro) now find where the character actually is and centre on
+  that. Wide renders like D.Mon's and Mauga's also grow to fill the panel
+  height instead of floating in a letterbox. A hero is never cropped top or
+  bottom, and never appears smaller than before — only the odd sword tip or gun
+  barrel can now run off the edge of the frame.
+- **Uploading a team logo works, and tells you it worked.** Clicking 📁 Upload
+  on a team's logo did nothing at all — no logo, no error, no clue. The upload
+  reached the app but was thrown away before it was saved. Logos now upload and
+  appear immediately, with a green confirmation under the field; if something
+  does go wrong you get the reason instead of silence. The same fault was
+  silently breaking **Upload Font** in Settings, which is fixed the same way and
+  also confirms now.
+- **The YouTube icon on Starting Soon and End of Stream is a YouTube icon
+  again.** It was drawing as a plain filled rectangle because the little play
+  triangle was missing from the artwork. (The Twitch and Discord icons are
+  solid shapes on purpose — that is how those logos are drawn.)
+- **Neon Junction can be added by hand in Match Hub.** The manual map list was
+  a hand-maintained copy that had fallen behind, so Neon Junction was missing
+  and the Clash maps (Hanaoka, Throne of Anubis) were absent entirely. The
+  picker now reads the same live map list the Season Map Pool editor uses, so
+  it stays current on its own — all 32 competitive maps are there, and Stadium
+  maps still stay out of it. Neon Junction and Throne of Anubis were also
+  missing from the map-music and flythrough lists, so they would have played
+  neither; both are now matched like every other map.
+- **Long map names print in full on Map Intro.** "WATCHPOINT: GIBRALTAR" was
+  going on air as "WATCHPOINT: GIBRALT…". The name now shrinks a little to fit
+  rather than being cut off. Only the very longest name in the pool shrinks at
+  all, and only by about 3% — every other map still renders at full size.
+
 ## v2.1.2 — D.Mon ban art
 
 ### Fixed

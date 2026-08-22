@@ -27,6 +27,7 @@ import * as mapMusic from './map-music.js';
 import { buildTeamsUpdate, buildMapsUpdate, computeActiveBan, deriveActiveBanState, deriveScores } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
+import { rawUpload, uploadedBytes, uploadedFilename } from './upload-middleware.js';
 import { BROWSER_SOURCES } from './browser-sources.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -2258,17 +2259,27 @@ app.get('/api/history', (req, res) => {
   res.json(getState().matchHistory);
 });
 
-// ============ LOGO UPLOAD ============
+// ============ BINARY UPLOADS (team logos, overlay fonts) ============
+// rawUpload / uploadedBytes / uploadedFilename live in upload-middleware.js so
+// they can be unit-tested without booting this file's listener and pollers —
+// see that module for the two producer bugs they exist to prevent recurring.
 
 /** Upload a team logo image — returns a local URL usable by overlays */
-app.post('/api/upload-logo', express.raw({ type: '*/*', limit: '10mb' }), (req, res) => {
-  const filename = (req.headers['x-filename'] || 'logo.png').replace(/[^a-zA-Z0-9._-]/g, '_');
+app.post('/api/upload-logo', rawUpload, (req, res) => {
+  const bytes = uploadedBytes(req, res);
+  if (!bytes) return;
+  const filename = uploadedFilename(req, 'logo.png');
   const logosDir = path.join(CACHE_DIR, 'logos');
-  if (!fs.existsSync(logosDir)) fs.mkdirSync(logosDir, { recursive: true });
-  const safeName = `${Date.now()}_${filename}`;
-  fs.writeFileSync(path.join(logosDir, safeName), req.body);
-  console.log(`[Logos] Saved ${safeName}`);
-  res.json({ success: true, url: `http://localhost:${PORT}/cache/logos/${encodeURIComponent(safeName)}` });
+  try {
+    if (!fs.existsSync(logosDir)) fs.mkdirSync(logosDir, { recursive: true });
+    const safeName = `${Date.now()}_${filename}`;
+    fs.writeFileSync(path.join(logosDir, safeName), bytes);
+    console.log(`[Logos] Saved ${safeName} (${bytes.length} bytes)`);
+    res.json({ success: true, url: `http://localhost:${PORT}/cache/logos/${encodeURIComponent(safeName)}` });
+  } catch (e) {
+    console.error(`[Logos] Save failed: ${e.message}`);
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // ============ FONT UPLOAD ============
@@ -2287,18 +2298,27 @@ app.get('/api/fonts', (req, res) => {
   }
 });
 
-app.post('/api/fonts/upload', express.raw({ type: '*/*', limit: '10mb' }), (req, res) => {
-  const filename = req.headers['x-filename'] || 'uploaded-font.ttf';
-  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+// Same silent-failure bug as /api/upload-logo had (see rawUpload above) — the
+// font uploader is the other caller that posts a bare ArrayBuffer, so it was
+// broken in exactly the same way and is fixed by the same parser + guard.
+app.post('/api/fonts/upload', rawUpload, (req, res) => {
+  const bytes = uploadedBytes(req, res);
+  if (!bytes) return;
+  const safeName = uploadedFilename(req, 'uploaded-font.ttf');
   const filePath = path.join(FONTS_DIR, safeName);
-  fs.writeFileSync(filePath, req.body);
-  console.log(`[Fonts] Saved ${safeName}`);
-  res.json({
-    success: true,
-    name: safeName.replace(/\.(ttf|otf|woff|woff2)$/i, '').replace(/[-_]/g, ' '),
-    filename: safeName,
-    url: `http://localhost:${PORT}/fonts/${encodeURIComponent(safeName)}`,
-  });
+  try {
+    fs.writeFileSync(filePath, bytes);
+    console.log(`[Fonts] Saved ${safeName} (${bytes.length} bytes)`);
+    res.json({
+      success: true,
+      name: safeName.replace(/\.(ttf|otf|woff|woff2)$/i, '').replace(/[-_]/g, ' '),
+      filename: safeName,
+      url: `http://localhost:${PORT}/fonts/${encodeURIComponent(safeName)}`,
+    });
+  } catch (e) {
+    console.error(`[Fonts] Save failed: ${e.message}`);
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // ============ START ============

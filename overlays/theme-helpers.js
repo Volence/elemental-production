@@ -68,6 +68,43 @@ function fitPanelToCanvas(panel, bottomEdge) {
   }
 }
 
+/* Shrink a single-line headline's font-size until it fits its own box, so a
+   long value renders SMALLER rather than ellipsised.
+
+   PRODUCER REPORT (v2.1.3, "the map name is too long"): map-intro's 132px map
+   name is capped at max-width 1720px with white-space:nowrap + ellipsis, and
+   "WATCHPOINT: GIBRALTAR" — the longest name in the 32-map pool — overflowed
+   it, going on air as "WATCHPOINT: GIBRALT…". Ellipsising is the right
+   behaviour for the constrained flex captions elsewhere in the package (team
+   plates, player rows), where a shrinking name would desync from its
+   neighbours. It is the wrong behaviour for a full-screen headline whose
+   whole job is to name the map: nothing else competes for that row, so the
+   type can simply get smaller.
+
+   Font-size (not `zoom`, and not `transform`) so the surrounding centred
+   layout reflows around the real box: the underline/chips below stay put and
+   the text stays crisp. `zoom` is what fitPanelToCanvas uses, for a different
+   problem — scaling a whole panel including its children.
+
+   Measures with scrollWidth vs clientWidth, which is exactly the condition
+   that triggers the ellipsis, and steps down geometrically with a floor so a
+   pathological value can never shrink to nothing. Idempotent: callers set
+   the element's text then call this on every render. */
+function fitTextToWidth(el, maxPx, minPx) {
+  if (!el) return;
+  maxPx = maxPx || 132;
+  minPx = minPx || Math.round(maxPx * 0.6);
+  var size = maxPx;
+  el.style.fontSize = size + 'px';
+  // ~24 steps at 0.97 spans the full max->min range; the loop almost always
+  // exits on the first test (only the longest names shrink at all).
+  for (var i = 0; i < 24 && size > minPx; i++) {
+    if (el.scrollWidth <= el.clientWidth) break;
+    size = Math.max(minPx, Math.round(size * 0.97));
+    el.style.fontSize = size + 'px';
+  }
+}
+
 // Accent/punctuation-insensitive hero matching ("Lúcio" ↔ "Lucio" ↔ "lucio")
 function normHeroName(s) {
   if (!s) return '';

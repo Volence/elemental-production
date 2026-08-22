@@ -324,9 +324,15 @@ function banArtTile(opts) {
     // styled dark plate underneath first and let the hidden img reveal it.
     // Callers with a catalog-provided URL pass nothing and get byte-identical
     // markup to before this flag existed.
+    // onload -> subject-aware framing (see banArtFrame above). Inline because
+    // this builder returns a STRING; the handler is defensive so a scene that
+    // somehow loads components-v2.js without the runtime half still renders.
     artHtml = '<div class="v2-ban-art">' +
       (opts.bgFallback ? '<div class="v2-ban-art-fallback-bg"></div>' : '') +
-      safeImg(renderUrl, { 'class': 'v2-ban-art-render-img' + idleClass, alt: heroName }) +
+      safeImg(renderUrl, {
+        'class': 'v2-ban-art-render-img' + idleClass, alt: heroName,
+        onload: 'if(window.applyBanArtFocus)window.applyBanArtFocus(this)'
+      }) +
       '</div>';
   } else {
     var portraitHtml = portrait
@@ -358,6 +364,235 @@ function banArtTile(opts) {
   return '<div class="' + cls + '" style="' + wrapperStyle + '">' +
     artHtml + beforeSlashHtml + slashHtml + nameHtml + afterNameHtml +
     '</div>';
+}
+
+/* ===========================================================================
+   SUBJECT-AWARE BAN-ART FRAMING (producer report, v2.1.3: "some heroes are
+   offset in their frame, especially dmon and mauga")
+   ===========================================================================
+   The pack's hero renders are official OW2 art with wildly different canvas
+   aspects (ramattra 1561x3147 = 0.50, dmon 2500x1690 = 1.48) and, worse,
+   subjects that are NOT centred on their own canvas: a prop pushes the
+   character to one side. Measured alpha-mass centroids across the 53-render
+   pack run from mercy 0.32 to dmon 0.65 (0.50 would be centred).
+
+   Plain `object-fit:contain; object-position:bottom center` (still the CSS
+   default in theme-v2.css, and the fallback if anything below fails) centres
+   the CANVAS, so those subjects land off-centre in the tile. And for a
+   canvas wider than the tile, contain fits the WIDTH — leaving zero
+   horizontal slack — so `object-position` cannot correct it at all. That is
+   exactly why dmon and mauga were the two the producer named: they are the
+   two widest canvases in the pack.
+
+   Fix: measure where the art's ink actually is (alpha mass profile, once per
+   URL, off a 96px-wide offscreen raster) and size/position the <img>
+   explicitly instead of leaning on object-fit.
+
+   Two invariants keep this safe for live broadcast — see banArtFrame():
+     1. The scale never goes BELOW contain, and never above "fills the tile
+        height", so a hero is never smaller than before and is NEVER cropped
+        vertically (no clipped heads, ever).
+     2. Horizontal cropping is bounded by the subject's core mass box (the
+        5%..95% mass quantiles), so only thin prop tails — a sword tip, a
+        minigun barrel — can leave the frame.
+   For every render that is portrait-relative to its tile (49 of the 53 at
+   hero-bans' measured 710x673 panel — all but dmon, mauga, jetpack-cat and
+   wrecking-ball) invariant 1 pins the scale to exactly what contain already
+   produced, so those tiles only re-centre horizontally; the scale-up is
+   landscape-only. Vertical placement stays bottom-anchored throughout.
+
+   Measurement is browser-only (canvas). banArtFrame() itself is pure
+   geometry and is unit-tested in components-v2.test.js. */
+
+// Largest raster we decode for a profile. The profile only feeds a centring
+// decision, so 96 columns is ample and keeps the work at ~10k pixels.
+var _BAN_FOCUS_RASTER = 96;
+// Mass quantiles bounding the "subject core" that must stay in frame. 5%/95%
+// means the thin outer tails of the art (a trailing cape, a gun barrel) may
+// crop, but the body of the character may not.
+var _BAN_FOCUS_CORE_Q = 0.05;
+// url -> {cx, x5, x95} once measured, or null if the measurement failed
+// (tainted canvas, decode error). null is sticky: we do not retry per tile.
+var _banFocusCache = {};
+
+/* Alpha-mass profile of a loaded <img>. Returns {cx, x5, x95} as fractions of
+   image width, or null if the pixels can't be read.
+
+   Same-origin in practice: hero renders are served by our own Express at
+   /hero-renders/ and every overlay is served from the same origin, so the
+   canvas is clean. The try/catch is for the case where a producer's drop-in
+   render is pointed at some other origin — then we simply keep the CSS
+   fallback rather than throwing on air. */
+/* The pure half, split out so it can be unit-tested without a canvas: turn a
+   per-column alpha-mass profile into {cx, x5, x95}. Exported via the CJS
+   guard; `cols` is any indexable of column sums, `w` its length. */
+function banFocusFromColumns(cols, w) {
+  if (!w) return null;
+  var total = 0, i;
+  for (i = 0; i < w; i++) total += cols[i];
+  // A fully opaque rectangle (a JPEG drop-in, or a render exported without
+  // alpha) profiles as perfectly uniform. That yields cx=0.5 and a core of
+  // [0.05, 0.95] — the neutral answer, which is the right one: with no alpha
+  // there is no subject information, so framing reduces to centred.
+  if (total <= 0) return null;
+
+  // The centroid MUST be summed over every column, not just up to the 95%
+  // quantile. An earlier version folded it into the quantile loop below and
+  // broke out at x95, so the right-hand 5% of ink was missing from the
+  // numerator while the left-hand 5% was still in it — a systematic leftward
+  // bias of up to ~0.04 of image width. It fell hardest on exactly the
+  // prop-on-one-side heroes this code exists to correct, and it shifted a
+  // no-alpha render off-centre when it should have been left alone. The
+  // "uniform profile gives cx exactly 0.5" test below pins it.
+  var centroid = 0;
+  for (i = 0; i < w; i++) centroid += cols[i] * (i + 0.5);
+
+  var acc = 0, x5 = 0, x95 = w, seen5 = false;
+  for (i = 0; i < w; i++) {
+    acc += cols[i];
+    if (!seen5 && acc >= total * _BAN_FOCUS_CORE_Q) { x5 = i; seen5 = true; }
+    if (acc >= total * (1 - _BAN_FOCUS_CORE_Q)) { x95 = i + 1; break; }
+  }
+  return { cx: centroid / total / w, x5: x5 / w, x95: Math.min(1, x95 / w) };
+}
+
+function _measureBanFocus(img) {
+  var iw = img.naturalWidth, ih = img.naturalHeight;
+  if (!iw || !ih) return null;
+  try {
+    var w = Math.min(_BAN_FOCUS_RASTER, iw);
+    var h = Math.max(1, Math.round(ih * (w / iw)));
+    var cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    var ctx = cv.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, w, h);
+    var data = ctx.getImageData(0, 0, w, h).data;
+
+    var cols = new Float64Array(w);
+    for (var y = 0; y < h; y++) {
+      var row = y * w * 4;
+      for (var x = 0; x < w; x++) cols[x] += data[row + x * 4 + 3] / 255;
+    }
+    return banFocusFromColumns(cols, w);
+  } catch (e) {
+    return null; // tainted/undecodable — keep the CSS fallback
+  }
+}
+
+/* Pure geometry: where to put an imgW x imgH render inside a tileW x tileH
+   tile so the subject reads centred. `cx` is the alpha-mass centroid and
+   [x5, x95] the core-mass box, both as fractions of image width (what
+   _measureBanFocus returns). Returns pixel {left, top, width, height} for an
+   absolutely-positioned <img>.
+
+   Order of the clamps matters and is load-bearing:
+     a. scale  = min(fill-height, largest scale whose core still fits the
+                 tile width), floored at contain — invariants 1 and 2 above.
+     b. place  so the centroid lands on the tile's horizontal centre,
+     c. nudge  so the core box is fully inside the tile (only possible when
+               the core actually fits), then
+     d. clamp  so no blank gutter opens on a tile the image is wide enough to
+               cover. (d) is the hard constraint and therefore runs last.
+   Vertical is always bottom-anchored, matching the CSS this replaces. */
+function banArtFrame(opts) {
+  opts = opts || {};
+  var tileW = opts.tileW, tileH = opts.tileH, imgW = opts.imgW, imgH = opts.imgH;
+  if (!(tileW > 0) || !(tileH > 0) || !(imgW > 0) || !(imgH > 0)) return null;
+
+  var cx = typeof opts.cx === 'number' ? opts.cx : 0.5;
+  var x5 = typeof opts.x5 === 'number' ? opts.x5 : 0;
+  var x95 = typeof opts.x95 === 'number' ? opts.x95 : 1;
+  var coreFrac = Math.max(0.05, x95 - x5); // guard a degenerate profile
+
+  var sContain = Math.min(tileW / imgW, tileH / imgH);
+  var sFillH = tileH / imgH;
+  var sCoreFit = tileW / (coreFrac * imgW);
+  var s = Math.max(sContain, Math.min(sFillH, sCoreFit));
+
+  var w = imgW * s, h = imgH * s;
+
+  var left = tileW / 2 - cx * w;                       // (b)
+  var coreL = left + x5 * w, coreR = left + x95 * w;   // (c)
+  if (coreR - coreL <= tileW) {
+    if (coreL < 0) left -= coreL;
+    else if (coreR > tileW) left -= (coreR - tileW);
+  }
+  if (w >= tileW) left = Math.min(0, Math.max(tileW - w, left)); // (d) no gutter
+  else left = Math.max(0, Math.min(tileW - w, left));            //     stay inside
+
+  return { left: left, top: tileH - h, width: w, height: h };
+}
+
+/* Glue, called from the render <img>'s inline onload (see banArtTile). Kept
+   on `window` because banArtTile emits HTML STRINGS — there is no element to
+   bind a listener to at build time, and an inline hook means no scene has to
+   remember to call anything after innerHTML (the same reason safeImg emits
+   an inline onerror). No-ops harmlessly if measurement fails, leaving the
+   theme-v2.css contain/bottom-center fallback in place. */
+function applyBanArtFocus(img) {
+  if (!img || img.getAttribute('data-focus-applied')) return;
+  var box = img.parentNode;
+  if (!box) return;
+  var tileW = box.clientWidth, tileH = box.clientHeight;
+  // Inserted-but-not-yet-laid-out (cached image, load before first layout):
+  // retry once on the next frame rather than measuring a zero-size box.
+  if (!(tileW > 0) || !(tileH > 0)) {
+    if (img.getAttribute('data-focus-retry')) return;
+    img.setAttribute('data-focus-retry', '1');
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () { applyBanArtFocus(img); });
+    }
+    return;
+  }
+
+  var src = img.getAttribute('src') || '';
+  var focus = Object.prototype.hasOwnProperty.call(_banFocusCache, src)
+    ? _banFocusCache[src]
+    : (_banFocusCache[src] = _measureBanFocus(img));
+  if (!focus) return;
+
+  var f = banArtFrame({
+    tileW: tileW, tileH: tileH,
+    imgW: img.naturalWidth, imgH: img.naturalHeight,
+    cx: focus.cx, x5: focus.x5, x95: focus.x95
+  });
+  if (!f) return;
+
+  img.setAttribute('data-focus-applied', '1');
+  // Explicit box wins over the class's inset:0/100%/object-fit — which stay
+  // in the stylesheet as the pre-measurement and failure look. `transform`
+  // is deliberately untouched: v2-idle-sway owns it on this same element.
+  img.style.left = f.left.toFixed(1) + 'px';
+  img.style.top = f.top.toFixed(1) + 'px';
+  img.style.right = 'auto';
+  img.style.bottom = 'auto';
+  img.style.width = f.width.toFixed(1) + 'px';
+  img.style.height = f.height.toFixed(1) + 'px';
+}
+
+/* The framed box is in PIXELS, derived from the tile's size at load time,
+   whereas the CSS it replaces was resolution-independent (inset:0/100%). So
+   anything that resizes the tile without reloading the page would otherwise
+   leave a stale box until the next render() — most plausibly a producer
+   editing the Ban Reveal browser source's width/height (or hitting "Fit to
+   screen") in OBS, which resizes the CEF viewport in place while
+   hero-bans' percentage-based panel geometry relayouts around it. Clearing
+   the applied flag and re-running restores the invariant. Cheap: the alpha
+   profile is cached per URL, so a re-frame is arithmetic only. */
+function _reframeBanArt() {
+  if (typeof document === 'undefined') return;
+  var imgs = document.querySelectorAll('.v2-ban-art-render-img');
+  for (var i = 0; i < imgs.length; i++) {
+    imgs[i].removeAttribute('data-focus-applied');
+    imgs[i].removeAttribute('data-focus-retry');
+    applyBanArtFocus(imgs[i]);
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.applyBanArtFocus = applyBanArtFocus;
+  if (window.addEventListener) window.addEventListener('resize', _reframeBanArt);
 }
 
 // Accent/punctuation-insensitive first-word extraction for map abbreviations
@@ -599,6 +834,8 @@ if (typeof module !== 'undefined' && module.exports) {
     mapPips: mapPips,
     topFrame: topFrame,
     camFrame: camFrame,
-    banArtTile: banArtTile
+    banArtTile: banArtTile,
+    banArtFrame: banArtFrame,
+    banFocusFromColumns: banFocusFromColumns
   };
 }

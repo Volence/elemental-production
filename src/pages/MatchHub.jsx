@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import ConfirmModal from '../components/ConfirmModal'
+import { COMPETITIVE_MODES, OW2_MAPS_FALLBACK, competitiveMapsFromCatalog } from '../lib/ow2-maps'
 
 // Accent/punctuation-insensitive hero matching: FACEIT sends "Lucio"/"Torbjorn",
 // OverFast names are "Lúcio"/"Torbjörn", and keys are "lucio"/"soldier-76".
@@ -26,23 +27,6 @@ const findHeroByName = (allHeroes, name) => {
   if (!n) return null;
   return allHeroes.find(h => normalizeHeroName(h.key) === n || normalizeHeroName(h.name) === n) || null;
 };
-
-// OW2 map pool for manual mode
-const OW2_MAPS = [
-  { name: 'Busan', mode: 'Control' }, { name: 'Ilios', mode: 'Control' }, { name: 'Lijiang Tower', mode: 'Control' },
-  { name: 'Nepal', mode: 'Control' }, { name: 'Oasis', mode: 'Control' }, { name: 'Antarctic Peninsula', mode: 'Control' },
-  { name: 'Samoa', mode: 'Control' },
-  { name: 'Circuit Royal', mode: 'Escort' }, { name: 'Dorado', mode: 'Escort' }, { name: 'Havana', mode: 'Escort' },
-  { name: 'Junkertown', mode: 'Escort' }, { name: 'Rialto', mode: 'Escort' }, { name: 'Route 66', mode: 'Escort' },
-  { name: 'Shambali Monastery', mode: 'Escort' }, { name: 'Watchpoint: Gibraltar', mode: 'Escort' },
-  { name: 'Blizzard World', mode: 'Hybrid' }, { name: 'Eichenwalde', mode: 'Hybrid' },
-  { name: 'Hollywood', mode: 'Hybrid' }, { name: "King's Row", mode: 'Hybrid' },
-  { name: 'Midtown', mode: 'Hybrid' }, { name: 'Numbani', mode: 'Hybrid' }, { name: 'Paraíso', mode: 'Hybrid' },
-  { name: 'Colosseo', mode: 'Push' }, { name: 'Esperança', mode: 'Push' },
-  { name: 'New Queen Street', mode: 'Push' }, { name: 'Runasapi', mode: 'Push' },
-  { name: 'New Junk City', mode: 'Flashpoint' }, { name: 'Suravasa', mode: 'Flashpoint' },
-  { name: 'Aatlis', mode: 'Flashpoint' },
-];
 
 // roundScore is read by all four score-displaying overlays' render keys, so a
 // per-keystroke PATCH (the pattern the sibling team-name inputs use — those are
@@ -86,12 +70,27 @@ export default function MatchHub({ state, updateState, api }) {
   const [error, setError] = useState('');
   const [heroes, setHeroes] = useState({ tank: [], damage: [], support: [] });
   const [mapImages, setMapImages] = useState({});
+  // Manual map picker contents. Derived from the same /api/maps catalog that
+  // feeds mapImages below (and Settings' Season Map Pool editor), so a map the
+  // catalog knows can always be added by hand — the producer report this
+  // replaces was Neon Junction missing from a hand-maintained copy of the
+  // pool. OW2_MAPS_FALLBACK covers first paint and an unreachable OverFast.
+  const [pickerMaps, setPickerMaps] = useState(OW2_MAPS_FALLBACK);
   const [banTeam, setBanTeam] = useState('team1');
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [selectedMapIdx, setSelectedMapIdx] = useState(-1); // -1 = auto (current/last)
   const [showNewMatchConfirm, setShowNewMatchConfirm] = useState(false);
   const [logoUploadTarget, setLogoUploadTarget] = useState('team1');
   const logoInputRef = useRef(null);
+  // { team, kind: 'busy'|'ok'|'error', text } — the upload confirmation the
+  // producer asked for. Success clears itself; errors stay until the next
+  // attempt so a producer who looked away still sees what went wrong.
+  const [logoStatus, setLogoStatus] = useState(null);
+  useEffect(() => {
+    if (logoStatus?.kind !== 'ok') return;
+    const t = setTimeout(() => setLogoStatus(null), 4000);
+    return () => clearTimeout(t);
+  }, [logoStatus]);
 
   useEffect(() => {
     fetch(`${api}/api/heroes/grouped`).then(r => r.json()).then(setHeroes).catch(() => {});
@@ -108,6 +107,9 @@ export default function MatchHub({ state, updateState, api }) {
         if (m.name) byName[normalizeHeroName(m.name)] = m.screenshot || m.image || '';
       });
       setMapImages(byName);
+      // Same response drives the picker; keep the fallback if it's unusable.
+      const competitive = competitiveMapsFromCatalog(Array.isArray(list) ? list : []);
+      if (competitive) setPickerMaps(competitive);
     }).catch(() => {});
   }, [api]);
 
@@ -370,16 +372,48 @@ export default function MatchHub({ state, updateState, api }) {
     updateState({ heroBans: { team1: [], team2: [] }, perMapBans });
   };
 
+  // Producer report (v2.1.3): "uploading logos for team icons doesnt work (and
+  // has no confirmation that it has worked)". Two separate defects, both fixed
+  // here:
+  //
+  // 1. It genuinely didn't work. A bare ArrayBuffer body makes fetch send NO
+  //    Content-Type, which made the server's raw body parser skip the body —
+  //    see the rawUpload comment in server.js. The explicit octet-stream
+  //    header below is the client half of that fix; either half alone is
+  //    enough, and having both means an old dashboard talking to a new server
+  //    (or the reverse, mid-rollout) still works.
+  // 2. Even once it worked there was no feedback, and every failure path was
+  //    silent: a non-2xx reply made `res.json()` throw inside an un-awaited
+  //    async handler, so the producer saw a click that did literally nothing.
+  //    Every path now ends in a visible `logoStatus` message.
   const uploadLogo = async (team, file) => {
-    const res = await fetch(`${api}/api/upload-logo`, {
-      method: 'POST',
-      headers: { 'X-Filename': file.name },
-      body: await file.arrayBuffer(),
-    });
-    const data = await res.json();
-    if (data.success) {
+    const label = team === 'team1' ? 'Team 1' : 'Team 2';
+    setLogoStatus({ team, kind: 'busy', text: `Uploading ${file.name}…` });
+    try {
+      const res = await fetch(`${api}/api/upload-logo`, {
+        method: 'POST',
+        // encodeURIComponent because a header value is a ByteString: fetch
+        // THROWS on any code point > 255, so an accented or CJK filename
+        // failed the upload before it was sent. Server decodes (guarded).
+        headers: { 'X-Filename': encodeURIComponent(file.name), 'Content-Type': 'application/octet-stream' },
+        body: await file.arrayBuffer(),
+      });
+      // Never assume the reply is JSON — the failure this bug produced was an
+      // HTML error page, and blindly calling res.json() on it is what swallowed
+      // the error in the first place.
+      const raw = await res.text();
+      let data = null;
+      try { data = JSON.parse(raw); } catch { /* not JSON — handled below */ }
+      if (!res.ok || !data || !data.success) {
+        const why = (data && data.error) || `server returned ${res.status}`;
+        setLogoStatus({ team, kind: 'error', text: `Upload failed — ${why}` });
+        return;
+      }
       overrideField(`teams.${team}.logo`,
         { teams: { ...state.teams, [team]: { ...state.teams[team], logo: data.url } } });
+      setLogoStatus({ team, kind: 'ok', text: `${label} logo updated 🔒` });
+    } catch (e) {
+      setLogoStatus({ team, kind: 'error', text: `Upload failed — ${e.message}` });
     }
   };
 
@@ -622,6 +656,17 @@ export default function MatchHub({ state, updateState, api }) {
                   <button className="btn btn-ghost btn-sm" style={{ whiteSpace: 'nowrap' }}
                     onClick={() => { setLogoUploadTarget(team); logoInputRef.current?.click(); }}>📁 Upload</button>
                 </div>
+                {logoStatus?.team === team && (
+                  <div style={{
+                    marginTop: 6, fontSize: '0.7rem', lineHeight: 1.4,
+                    color: logoStatus.kind === 'error' ? 'var(--danger)'
+                      : logoStatus.kind === 'ok' ? 'var(--success)'
+                        : 'var(--text-secondary)',
+                  }}>
+                    {logoStatus.kind === 'error' ? '⚠️ ' : logoStatus.kind === 'ok' ? '✅ ' : '⏳ '}
+                    {logoStatus.text}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -922,16 +967,22 @@ export default function MatchHub({ state, updateState, api }) {
         {showMapPicker && (
           <div style={{ marginTop: 16, padding: 16, background: 'var(--bg-input)', borderRadius: 8 }}>
             <div className="card-title" style={{ marginBottom: 12 }}>Select Map</div>
-            {['Control', 'Escort', 'Hybrid', 'Push', 'Flashpoint'].map(mode => (
-              <div key={mode} style={{ marginBottom: 12 }}>
-                <div className="role-label">{mode}</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {OW2_MAPS.filter(m => m.mode === mode).map(m => (
-                    <button key={m.name} className="btn btn-ghost btn-sm" onClick={() => addMap(m)}>{m.name}</button>
-                  ))}
+            {COMPETITIVE_MODES.map(mode => {
+              const inMode = pickerMaps.filter(m => m.mode === mode);
+              // A mode with no maps in the catalog renders nothing rather than
+              // an empty heading (Clash, if a future catalog ever drops it).
+              if (!inMode.length) return null;
+              return (
+                <div key={mode} style={{ marginBottom: 12 }}>
+                  <div className="role-label">{mode}</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {inMode.map(m => (
+                      <button key={m.name} className="btn btn-ghost btn-sm" onClick={() => addMap(m)}>{m.name}</button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

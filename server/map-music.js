@@ -27,6 +27,11 @@ const MAP_DEFS = [
   { display: "King's Row", aliases: ['kings row'] },
   { display: 'Lijiang Tower', aliases: ['lijiang tower'] },
   { display: 'Midtown', aliases: ['midtown'] },
+  // Neon Junction and Throne of Anubis were absent while the Match Hub's map
+  // picker couldn't add them either; both became reachable in v2.1.3 (see
+  // src/lib/ow2-maps.js), so they need entries here or a series featuring one
+  // silently gets no map music.
+  { display: 'Neon Junction', aliases: ['neon junction'] },
   { display: 'Nepal', aliases: ['nepal'] },
   { display: 'New Junk City', aliases: ['new junk city'] },
   { display: 'New Queen Street', aliases: ['new queen street'] },
@@ -39,6 +44,8 @@ const MAP_DEFS = [
   { display: 'Samoa', aliases: ['samoa'] },
   { display: 'Shambali Monastery', aliases: ['shambali monastery'] },
   { display: 'Suravasa', aliases: ['suravasa'] },
+  // Clash sibling of Temple of Anubis — falls back to that track's naming.
+  { display: 'Throne of Anubis', aliases: ['throne of anubis', 'temple of anubis'] },
   { display: 'Throne Room', aliases: ['throne', 'eichenwalde'] },
   { display: 'Watchpoint: Gibraltar', aliases: ['watchpoint gibraltar'] },
 ];

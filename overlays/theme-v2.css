@@ -296,6 +296,14 @@
   border: 1px solid; border-radius: var(--panel-radius); box-sizing: border-box;
 }
 .v2-ban-art { position: absolute; inset: 0; }
+/* PRE-MEASUREMENT / FALLBACK framing only. components-v2.js's
+   applyBanArtFocus() overwrites left/top/width/height inline once the render
+   has loaded and its alpha-mass profile says where the character actually is
+   — see the big SUBJECT-AWARE BAN-ART FRAMING comment there. These values are
+   what a viewer sees for the one frame before that runs, and permanently if
+   the measurement can't be taken (e.g. a drop-in render served cross-origin,
+   which would taint the canvas). Keep them: they must stay a sane look on
+   their own, not a placeholder. */
 .v2-ban-art-render-img {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: contain; object-position: bottom center;

@@ -25,6 +25,8 @@ const MAP_DEFS = [
   { display: "King's Row", aliases: ['kings row'] },
   { display: 'Lijiang Tower', aliases: ['lilijang', 'lijiang'] },
   { display: 'Midtown', aliases: ['midtown'] },
+  // Newly reachable in v2.1.3 — see the same note in server/map-music.js.
+  { display: 'Neon Junction', aliases: ['neon junction', 'neon'] },
   { display: 'Nepal', aliases: ['nepal'] },
   { display: 'New Junk City', aliases: ['new junk city'] },
   { display: 'New Queen Street', aliases: ['new queen'] },
@@ -37,6 +39,7 @@ const MAP_DEFS = [
   { display: 'Samoa', aliases: ['samoa'] },
   { display: 'Shambali Monastery', aliases: ['shambali'] },
   { display: 'Suravasa', aliases: ['suravasa'] },
+  { display: 'Throne of Anubis', aliases: ['throne of anubis', 'throne'] },
   { display: 'Throne Room', aliases: ['throne'] },
   { display: 'Watchpoint: Gibraltar', aliases: ['gibraltar'] },
 ];

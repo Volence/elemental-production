@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import FolderBrowser from '../components/FolderBrowser'
 import ConfirmModal from '../components/ConfirmModal'
+import { STADIUM_ONLY_MAPS } from '../lib/ow2-maps'
 
 const BUILTIN_FONTS = {
   'Bebas Neue': 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap',
@@ -56,15 +57,19 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
   const [castersBgMusicSelected, setCastersBgMusicSelected] = useState(state.castersBgMusicFile || '');
   const [bgMusicSaving, setBgMusicSaving] = useState(false);
   const [bgMusicError, setBgMusicError] = useState('');
+  // Font upload feedback — { kind: 'busy'|'ok'|'error', text }. Success clears
+  // itself after a few seconds; errors persist until the next attempt.
+  const [fontStatus, setFontStatus] = useState(null);
+  useEffect(() => {
+    if (fontStatus?.kind !== 'ok') return;
+    const t = setTimeout(() => setFontStatus(null), 4000);
+    return () => clearTimeout(t);
+  }, [fontStatus]);
 
   // Season Map Pool editor (feeds state.mapPool → Map Pool overlay/scene).
-  // Stadium-only maps carry normal competitive gamemodes in the OverFast
-  // catalog (no distinguishing field), so they'd leak into the picker —
-  // curated exclusion list, verified against the OW wiki / OWCS 2026 usage
-  // (Aatlis + Neon Junction ARE real competitive maps and stay listed).
-  const STADIUM_ONLY_MAPS = new Set([
-    'Arena Victoriae', 'Gogadoro', 'Wuxing University', 'Place Lacroix', 'Redwood Dam',
-  ]);
+  // The Stadium-only exclusion list this used to declare inline now lives in
+  // src/lib/ow2-maps.js, shared with the Match Hub's manual map picker — see
+  // that file for why the two surfaces had drifted apart.
   // Comparison-only normalization: OverFast's catalog names use typographic
   // apostrophes ("King's Row") while an older save/manual edit of state.mapPool
   // may carry the ASCII form. Kept in sync BY HAND with
@@ -423,22 +428,52 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
             onChange={async (e) => {
               const file = e.target.files[0];
               if (!file) return;
-              const res = await fetch(`${api}/api/fonts/upload`, {
-                method: 'POST',
-                headers: { 'X-Filename': file.name },
-                body: await file.arrayBuffer(),
-              });
-              const font = await res.json();
-              if (font.success) {
+              // Content-Type + defensive parsing for the same reason the team
+              // logo uploader needs them (see uploadLogo in MatchHub.jsx and
+              // rawUpload in server.js): a bare ArrayBuffer body sends no
+              // content type, the server's raw parser skipped it, and the
+              // resulting HTML error page made this handler's res.json()
+              // throw — a click that silently did nothing.
+              setFontStatus({ kind: 'busy', text: `Uploading ${file.name}…` });
+              try {
+                const res = await fetch(`${api}/api/fonts/upload`, {
+                  method: 'POST',
+                  // encodeURIComponent: header values are ByteStrings, so a
+                  // font filename with any code point > 255 makes fetch throw.
+                  headers: { 'X-Filename': encodeURIComponent(file.name), 'Content-Type': 'application/octet-stream' },
+                  body: await file.arrayBuffer(),
+                });
+                const raw = await res.text();
+                let font = null;
+                try { font = JSON.parse(raw); } catch { /* not JSON — handled below */ }
+                if (!res.ok || !font || !font.success) {
+                  const why = (font && font.error) || `server returned ${res.status}`;
+                  setFontStatus({ kind: 'error', text: `Font upload failed — ${why}` });
+                  return;
+                }
                 setCustomFonts(prev => [...prev, font]);
                 const style = document.createElement('style');
                 style.textContent = `@font-face { font-family: '${font.name}'; src: url('${font.url}'); }`;
                 document.head.appendChild(style);
                 updateState({ font: { family: font.name, url: font.url, custom: true } });
+                setFontStatus({ kind: 'ok', text: `${font.name} installed and applied to overlays` });
+              } catch (err) {
+                setFontStatus({ kind: 'error', text: `Font upload failed — ${err.message}` });
+              } finally {
+                e.target.value = '';
               }
-              e.target.value = '';
             }} />
         </div>
+        {fontStatus && (
+          <div style={{
+            marginTop: 8, fontSize: '0.72rem', lineHeight: 1.4,
+            color: fontStatus.kind === 'error' ? 'var(--danger)'
+              : fontStatus.kind === 'ok' ? 'var(--success)' : 'var(--text-secondary)',
+          }}>
+            {fontStatus.kind === 'error' ? '⚠️ ' : fontStatus.kind === 'ok' ? '✅ ' : '⏳ '}
+            {fontStatus.text}
+          </div>
+        )}
         <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '8px 0' }}>
           Controls the font used across all OBS overlay browser sources
         </p>
