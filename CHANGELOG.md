@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.2.0 - Real hero-ban attribution from FACEIT
+
+Dashboard and sync only - **no scene collection re-import needed**.
+
+### Added
+
+- **Ban sides come from FACEIT now, not a guess.** FACEIT keeps a veto history
+  for every match that records which team banned each hero and which team
+  picked each map; the app now reads it on match import and on every auto-sync
+  tick. Until now ban sides were inferred ("the map picker made the first
+  ban") and the picker itself was inferred from who lost the previous map -
+  right most of the time, flipped often enough that the ⇄ Bans button existed.
+  Bans are now attributed by FACEIT itself, including mid-series: a ban made
+  during the match shows up on the correct team within one sync tick.
+- **The Hero Bans card tells you which one you got.** When every map's bans are
+  confirmed, the old amber "best guess" warning is replaced by a green
+  confirmation. When FACEIT's history is missing or incomplete for this match
+  (it happens on walkovers and disrupted vetos), the warning stays and says how
+  many maps are still guesses.
+
+### Changed
+
+- **Producer corrections still outrank everything.** ⇄ Bans and the manual
+  map-picker dropdown behave exactly as before and always win, over FACEIT's
+  attribution included. One refinement: changing the map picker no longer
+  re-shuffles bans that FACEIT confirmed - who picked the map and who banned
+  what are now independent facts.
+- If the veto history can't be fetched at all (it is an undocumented FACEIT
+  endpoint and could vanish someday), the app quietly falls back to the old
+  guessing behavior - a match import can never fail because of it.
+
 ## v2.1.3 — Producer report batch
 
 Five items from producer reports. Overlay-only plus dashboard — **no scene

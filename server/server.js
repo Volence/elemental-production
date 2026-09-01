@@ -24,7 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
-import { buildTeamsUpdate, buildMapsUpdate, computeActiveBan, deriveActiveBanState, deriveScores } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, computeActiveBan, deriveActiveBanState, deriveScores } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
 import { rawUpload, uploadedBytes, uploadedFilename } from './upload-middleware.js';
@@ -753,38 +753,11 @@ app.post('/api/obs/transform', async (req, res) => {
 // heroNameToKey now lives in faceit-merge.js alongside computeHeroBans (the
 // single derive), so the FACEIT name\u2192dashboard-key mapping has one home.
 
-/**
- * Assign FACEIT's chronological bans (ban1/ban2) to teams via the map picker,
- * then layer producer corrections on top (manual picker choice, \u21c4 ban swap).
- * Corrections live in state (mapPickers/banSwaps arrays keyed by map index) so
- * they survive every auto-sync tick instead of flipping back 15s later.
- */
-function buildPerMapBans(rawBans, maps, banSwaps = [], mapPickers = []) {
-  return (rawBans || []).map((bans, i) => {
-    // Heuristic: map 1 \u2192 higher seed (faction1) picks; later maps \u2192 loser of previous picks
-    let picker = 'team1';
-    if (i > 0) {
-      const prevWinner = maps[i - 1]?.winner;
-      if (prevWinner) picker = prevWinner === 'team1' ? 'team2' : 'team1';
-    }
-    if (mapPickers[i]) picker = mapPickers[i] === 'none' ? null : mapPickers[i];
-    // HEURISTIC, not API data: FACEIT doesn't report which team banned each
-    // hero, only the chronological ban order (ban1/ban2 from entity order).
-    // We assume ban1 belongs to the map picker. When wrong, the producer's
-    // ⇄ Bans correction (banSwaps) fixes it — there's a matching warning in
-    // the dashboard's Hero Bans card.
-    const banPicker = picker || 'team1';
-    const entry = {
-      ...bans,
-      picker,
-      team1Ban: banPicker === 'team1' ? bans.ban1 : bans.ban2,
-      team2Ban: banPicker === 'team2' ? bans.ban1 : bans.ban2,
-    };
-    return banSwaps[i]
-      ? { ...entry, team1Ban: entry.team2Ban, team2Ban: entry.team1Ban }
-      : entry;
-  });
-}
+// buildPerMapBans now lives in faceit-merge.js (pure + unit-tested) and
+// prefers FACEIT's real veto attribution (democracy history, fetched in
+// faceit.getMatchDetails and carried on each raw entry as `api`) over the
+// old map-picker heuristic. Producer corrections (mapPickers/banSwaps)
+// still outrank both.
 
 // computeActiveBan + getActiveBanIdx now live in faceit-merge.js (pure +
 // unit-tested). getActiveBanIdx resolves selected → current →

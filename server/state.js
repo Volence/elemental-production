@@ -21,7 +21,7 @@ const defaultState = {
   },
   maps: [], // { name, mode, image, status: 'upcoming'|'current'|'completed', winner: null|'team1'|'team2' }
   heroBans: { team1: [], team2: [] },
-  perMapBans: [], // [{ ban1: { name, role, image }, ban2: { name, role, image }, picker: 'team1'|'team2' }]
+  perMapBans: [], // [{ ban1: { name, role, image }, ban2, picker: 'team1'|'team2'|null, team1Ban, team2Ban, api?: { picker, team1Ban, team2Ban } }] — `api` = FACEIT veto-history attribution (real who-banned-what from faceit.getVetoHistory; absent when FACEIT didn't report it, and buildPerMapBans falls back to the picker heuristic)
   selectedMapIdx: -1, // producer-selected map for ban/stat display; -1 = auto (live map)
   activeBanMapIdx: -1, // DERIVED (getActiveBanIdx): which map's bans heroBans was resolved from; -1 = none. Overlays label the Ban Reveal map from this instead of re-deriving client-side. Kept in lockstep with heroBans (see faceit-merge deriveActiveBanState).
   banSwaps: [], // per-map ⇄ ban-side corrections (true = swap team1Ban/team2Ban), survives FACEIT auto-sync

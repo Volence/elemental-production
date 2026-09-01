@@ -928,8 +928,12 @@ export default function MatchHub({ state, updateState, api }) {
                         // In FACEIT mode the picker decides which chronological
                         // ban (ban1/ban2) belongs to which team — re-derive the
                         // sides now (instead of waiting for the next sync tick)
-                        // and drop any ⇄ swap, which was relative to the old sides
-                        if (state.mode === 'faceit' && (perMapBans[i].ban1 || perMapBans[i].ban2)) {
+                        // and drop any ⇄ swap, which was relative to the old sides.
+                        // NOT when the veto history attributed the bans (api):
+                        // those sides are facts, not picker-derived — changing
+                        // who picked the map must not flip them.
+                        if (state.mode === 'faceit' && (perMapBans[i].ban1 || perMapBans[i].ban2)
+                            && !(perMapBans[i].api?.team1Ban || perMapBans[i].api?.team2Ban)) {
                           const banPicker = picker || 'team1';
                           perMapBans[i] = {
                             ...perMapBans[i],
@@ -1014,20 +1018,41 @@ export default function MatchHub({ state, updateState, api }) {
           </div>
         </div>
 
-        {state.mode === 'faceit' && (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', marginBottom: 12,
-            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
-            borderRadius: 6, fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.5,
-          }}>
-            <span style={{ fontSize: '0.85rem' }}>⚠️</span>
-            <span>
-              FACEIT's API doesn't report <em>which team</em> banned each hero, so ban sides are a best
-              guess based on map picks and may be flipped. If a ban shows on the wrong team, click
-              <strong> ⇄ Bans</strong> on that map above — the correction sticks through auto-sync.
-            </span>
-          </div>
-        )}
+        {state.mode === 'faceit' && (() => {
+          // Ban sides are confirmed when FACEIT's veto history attributed them
+          // (perMapBans[i].api, see server/faceit.js getVetoHistory); only maps
+          // that actually have bans count. No bans yet -> nothing to warn about.
+          const withBans = (state.perMapBans || []).filter(b => b && (b.ban1 || b.ban2));
+          if (!withBans.length) return null;
+          const unconfirmed = withBans.filter(b => !(b.api?.team1Ban || b.api?.team2Ban)).length;
+          return unconfirmed === 0 ? (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', marginBottom: 12,
+              background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
+              borderRadius: 6, fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.5,
+            }}>
+              <span style={{ fontSize: '0.85rem' }}>✓</span>
+              <span>
+                Ban sides confirmed from FACEIT's veto history — every map's bans are attributed to
+                the team that made them. <strong>⇄ Bans</strong> still overrides if something looks off.
+              </span>
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', marginBottom: 12,
+              background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+              borderRadius: 6, fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.5,
+            }}>
+              <span style={{ fontSize: '0.85rem' }}>⚠️</span>
+              <span>
+                FACEIT's veto history didn't attribute the bans on {unconfirmed === withBans.length
+                  ? 'these maps' : `${unconfirmed} of ${withBans.length} maps`}, so those ban sides are a
+                best guess based on map picks and may be flipped. If a ban shows on the wrong team, click
+                <strong> ⇄ Bans</strong> on that map above — the correction sticks through auto-sync.
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Current bans display */}
         {allBans.length > 0 && (

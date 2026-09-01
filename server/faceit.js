@@ -2,6 +2,10 @@ import { normalizeMapName } from './map-image-resolver.js';
 
 const DATA_API_BASE = 'https://open.faceit.com/data/v4';
 const TEAM_LEAGUES_BASE = 'https://www.faceit.com/api/team-leagues/v2';
+const INTERNAL_API_BASE = 'https://api.faceit.com';
+// api.faceit.com sits behind Cloudflare bot protection that blocks default
+// non-browser UAs (curl/node-fetch get a challenge page). A desktop UA passes.
+const BROWSER_UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36';
 
 let apiKey = '';
 
@@ -138,6 +142,102 @@ export function buildPickedMaps(mapVoting) {
   return { mapPool, pickedMaps };
 }
 
+/**
+ * Democracy history tickets -> per-game veto facts. Input is
+ * `payload.tickets` from api.faceit.com/democracy/v1/match/{id}/history —
+ * the ONLY place FACEIT durably reports WHO picked each map and WHO banned
+ * each hero (`selected_by`); the Data API's voting object never carries
+ * attribution, which is why buildPerMapBans had to guess for a season.
+ *
+ * Tickets arrive as per-game (map, attacking_first, heroes) triplets in game
+ * order. Rather than trusting the triplet interleave, same-type tickets are
+ * paired by index: the i-th heroes ticket is game i's bans, and map PICK
+ * entities flattened across map tickets in order give game i's picker (this
+ * also survives a single map ticket carrying the whole series' picks).
+ * Unplayed trailing games (a Bo5 ending 3-1 still ships 5 empty-ish triplets)
+ * are trimmed; a disrupted middle game stays, as `{mapPickedBy, bans: []}`.
+ */
+export function parseVetoHistory(tickets) {
+  if (!Array.isArray(tickets)) return [];
+  const mapPicks = [];
+  const heroGames = [];
+  for (const t of tickets) {
+    const entities = Array.isArray(t?.entities) ? t.entities : [];
+    if (t?.entity_type === 'map') {
+      for (const e of entities) {
+        if (e?.status === 'pick') mapPicks.push(e.selected_by || null);
+      }
+    } else if (t?.entity_type === 'heroes') {
+      const drops = entities.filter(e => e?.status === 'drop');
+      // `round` is chronological when FACEIT sets it; a stable sort keeps
+      // entity order for the (common) all-round-0 tickets.
+      drops.sort((a, b) => (a.round || 0) - (b.round || 0));
+      heroGames.push(drops.map(e => ({ heroId: e.guid, faction: e.selected_by || null })));
+    }
+  }
+  const games = [];
+  for (let i = 0; i < Math.max(mapPicks.length, heroGames.length); i++) {
+    games.push({ mapPickedBy: mapPicks[i] || null, bans: heroGames[i] || [] });
+  }
+  while (games.length && !games[games.length - 1].mapPickedBy && !games[games.length - 1].bans.length) {
+    games.pop();
+  }
+  return games;
+}
+
+/**
+ * Per-game veto facts -> the app's team vocabulary (faction1 = team1, the
+ * same equivalence buildTeamsUpdate and the poll tick already rely on).
+ * Returns one `{ picker, team1Ban, team2Ban } | null` per game:
+ *   - picker: which team picked the map (null when FACEIT didn't say)
+ *   - teamNBan: resolved hero object, via the same heroMap getMatchDetails
+ *     builds from voting.heroes.entities (guids are one vocabulary)
+ * Any unattributed drop poisons that game's BAN attribution (halves can't be
+ * trusted — the other ban is then ambiguous), but the picker survives. A game
+ * with no facts at all collapses to null so callers can fall back wholesale.
+ */
+export function buildApiAttribution(vetoGames, heroMap) {
+  return (vetoGames || []).map(game => {
+    const picker = game.mapPickedBy === 'faction1' ? 'team1'
+      : game.mapPickedBy === 'faction2' ? 'team2' : null;
+    const attributed = (game.bans || []).every(b => b.faction);
+    let team1Ban = null;
+    let team2Ban = null;
+    if (attributed) {
+      const resolve = (id) => heroMap?.[id] || { name: id, role: 'Unknown', image: '' };
+      for (const b of game.bans || []) {
+        if (b.faction === 'faction1' && !team1Ban) team1Ban = resolve(b.heroId);
+        if (b.faction === 'faction2' && !team2Ban) team2Ban = resolve(b.heroId);
+      }
+    }
+    if (!picker && !team1Ban && !team2Ban) return null;
+    return { picker, team1Ban, team2Ban };
+  });
+}
+
+/**
+ * Fetch the durable veto history for a match — WHO picked each map and WHO
+ * banned each hero, which the Data API never reports. UNDOCUMENTED internal
+ * endpoint (no auth): the same one FACEIT's own match room UI replays vetos
+ * from, and unlike `democracy/v1/match/{id}` (no /history) it survives match
+ * finish instead of 404ing. Because it's unofficial, EVERY failure — HTTP
+ * error, Cloudflare challenge, shape drift, network — collapses to null so
+ * callers fall back to the picker heuristic instead of breaking the import.
+ */
+export async function getVetoHistory(matchId) {
+  try {
+    const res = await fetch(`${INTERNAL_API_BASE}/democracy/v1/match/${matchId}/history`, {
+      headers: { 'User-Agent': BROWSER_UA },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const games = parseVetoHistory(data?.payload?.tickets);
+    return games.length ? games : null;
+  } catch {
+    return null;
+  }
+}
+
 export function setApiKey(key) {
   apiKey = key;
 }
@@ -162,9 +262,15 @@ export function parseMatchUrl(url) {
  */
 export async function getMatchDetails(matchId) {
   try {
-    const res = await fetch(`${DATA_API_BASE}/matches/${matchId}`, {
-      headers: authHeaders(),
-    });
+    // Veto history rides along on every fetch (import + 15s poll tick) so a
+    // ban made mid-series gets real attribution on the next tick. It can
+    // never fail the match load — getVetoHistory resolves null on any error.
+    const [res, vetoGames] = await Promise.all([
+      fetch(`${DATA_API_BASE}/matches/${matchId}`, {
+        headers: authHeaders(),
+      }),
+      getVetoHistory(matchId),
+    ]);
     if (!res.ok) throw new Error(`FACEIT API ${res.status}`);
     const data = await res.json();
 
@@ -208,20 +314,28 @@ export async function getMatchDetails(matchId) {
         image: h.image_sm || h.image_lg || '',
       };
     }
-    const allHeroIds = new Set(heroEntityIds);
     const heroPicks = heroVoting.pick || [];
 
+    // Real attribution from the veto history, when FACEIT kept it. Democracy
+    // guids and voting.heroes game_heroes_id are one vocabulary, so heroMap
+    // resolves both.
+    const apiAttribution = buildApiAttribution(vetoGames || [], heroMap);
+
     // For each map, find banned heroes (missing from pick list) in entity order
-    const perMapBans = heroPicks.map(pickList => {
+    const perMapBans = heroPicks.map((pickList, i) => {
       const available = new Set(pickList);
       // Entity order gives us ban chronological order: ban1 first, ban2 second
       const bannedInOrder = heroEntityIds
         .filter(id => !available.has(id))
         .map(id => heroMap[id] || { name: id, role: 'Unknown', image: '' });
-      return {
-        ban1: bannedInOrder[0] || null,  // First ban (map picker's ban)
-        ban2: bannedInOrder[1] || null,  // Second ban (other team's ban)
+      const entry = {
+        ban1: bannedInOrder[0] || null,  // First ban, chronological (fallback pairing)
+        ban2: bannedInOrder[1] || null,  // Second ban
       };
+      // Attach who-banned-what / who-picked when the history covered game i;
+      // buildPerMapBans (faceit-merge.js) prefers this over its heuristic.
+      if (apiAttribution[i]) entry.api = apiAttribution[i];
+      return entry;
     });
 
     return {

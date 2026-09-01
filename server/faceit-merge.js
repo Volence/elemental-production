@@ -111,6 +111,51 @@ export function deriveScores(maps) {
 }
 
 /**
+ * Assign each map's hero bans to teams, preferring FACEIT's own attribution
+ * and guessing only where it's missing, then layer producer corrections on
+ * top. Three tiers, weakest to strongest:
+ *
+ *   1. HEURISTIC (legacy, now the fallback): map 1 → team1 picks, later maps →
+ *      loser of the previous map picks; the picker is assumed to have made
+ *      ban1 (chronological first). This was ALL we had for a season.
+ *   2. API attribution (`bans.api`, from the democracy veto history — see
+ *      parseVetoHistory/buildApiAttribution in faceit.js): real picker and
+ *      real per-team bans. When only the picker survived (disrupted veto),
+ *      it still seeds the ban heuristic. `api` stays on the entry so the
+ *      dashboard can show attribution as confirmed rather than guessed.
+ *   3. Producer corrections (mapPickers/banSwaps arrays keyed by map index,
+ *      kept in state so they survive every auto-sync tick): a human watching
+ *      the broadcast outranks everything, including the API.
+ */
+export function buildPerMapBans(rawBans, maps, banSwaps = [], mapPickers = []) {
+  return (rawBans || []).map((bans, i) => {
+    const api = bans.api || null;
+    let picker = api?.picker || 'team1';
+    if (!api?.picker && i > 0) {
+      const prevWinner = maps[i - 1]?.winner;
+      if (prevWinner) picker = prevWinner === 'team1' ? 'team2' : 'team1';
+    }
+    if (mapPickers[i]) picker = mapPickers[i] === 'none' ? null : mapPickers[i];
+
+    let team1Ban, team2Ban;
+    if (api?.team1Ban || api?.team2Ban) {
+      team1Ban = api.team1Ban;
+      team2Ban = api.team2Ban;
+    } else {
+      // No (trustworthy) API bans: assume ban1 belongs to the map picker.
+      // The dashboard's Hero Bans card warns about this and offers ⇄ Bans.
+      const banPicker = picker || 'team1';
+      team1Ban = banPicker === 'team1' ? bans.ban1 : bans.ban2;
+      team2Ban = banPicker === 'team2' ? bans.ban1 : bans.ban2;
+    }
+    const entry = { ...bans, picker, team1Ban, team2Ban };
+    return banSwaps[i]
+      ? { ...entry, team1Ban: entry.team2Ban, team2Ban: entry.team1Ban }
+      : entry;
+  });
+}
+
+/**
  * Which map's bans should populate heroBans (what the overlays display):
  *   1. producer-selected map (explicit override), else
  *   2. the live ('current') map, else

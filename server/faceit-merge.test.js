@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTeamsUpdate, buildMapsUpdate, getActiveBanIdx, computeHeroBans, computeActiveBan, heroNameToKey, deriveActiveBanState, deriveScores } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, getActiveBanIdx, computeHeroBans, computeActiveBan, heroNameToKey, deriveActiveBanState, deriveScores } from './faceit-merge.js';
 
 const faction1 = { id: 'f1', name: 'Alpha', avatar: 'a.png', roster: [] };
 const faction2 = { id: 'f2', name: 'Beta', avatar: 'b.png', roster: [] };
@@ -380,5 +380,58 @@ describe('deriveActiveBanState', () => {
       activeBanMapIdx: 0,
     };
     expect(deriveActiveBanState(state, notOverridden)).toBeNull();
+  });
+});
+
+
+describe('buildPerMapBans', () => {
+  const dva = { name: 'DVa', role: 'Tank', image: 'dva.jpg' };
+  const freja = { name: 'Freja', role: 'Damage', image: 'freja.jpg' };
+  const rawWithApi = (api) => [{ ban1: dva, ban2: freja, api }];
+
+  it('uses API attribution verbatim when present (no picker heuristic)', () => {
+    // Heuristic would give ban1 (DVa) to team1 on map 1; API says the reverse.
+    const out = buildPerMapBans(rawWithApi({ picker: 'team2', team1Ban: freja, team2Ban: dva }), []);
+    expect(out[0].picker).toBe('team2');
+    expect(out[0].team1Ban).toEqual(freja);
+    expect(out[0].team2Ban).toEqual(dva);
+  });
+
+  it('falls back to the picker heuristic when no API attribution exists', () => {
+    const maps = [{ winner: 'team1' }, {}];
+    const out = buildPerMapBans([{ ban1: dva, ban2: freja }, { ban1: freja, ban2: dva }], maps);
+    // map 1: team1 assumed picker, gets ban1; map 2: loser of map 1 (team2) picks
+    expect(out[0]).toMatchObject({ picker: 'team1', team1Ban: dva, team2Ban: freja });
+    expect(out[1]).toMatchObject({ picker: 'team2', team1Ban: dva, team2Ban: freja });
+  });
+
+  it('uses the API picker to seed the ban heuristic when only bans are unattributed', () => {
+    const out = buildPerMapBans(rawWithApi({ picker: 'team2', team1Ban: null, team2Ban: null }), []);
+    expect(out[0]).toMatchObject({ picker: 'team2', team1Ban: freja, team2Ban: dva });
+  });
+
+  it('lets a producer mapPickers correction override the API picker without touching attributed bans', () => {
+    const out = buildPerMapBans(rawWithApi({ picker: 'team2', team1Ban: freja, team2Ban: dva }), [], [], ['team1']);
+    expect(out[0].picker).toBe('team1');
+    expect(out[0].team1Ban).toEqual(freja);
+    expect(out[0].team2Ban).toEqual(dva);
+  });
+
+  it('still applies a producer banSwap on top of API-attributed bans', () => {
+    const out = buildPerMapBans(rawWithApi({ picker: 'team1', team1Ban: dva, team2Ban: freja }), [], [true]);
+    expect(out[0].team1Ban).toEqual(freja);
+    expect(out[0].team2Ban).toEqual(dva);
+  });
+
+  it('keeps the api marker on entries so the UI can tell attribution is confirmed', () => {
+    const api = { picker: 'team1', team1Ban: dva, team2Ban: freja };
+    expect(buildPerMapBans(rawWithApi(api), [])[0].api).toEqual(api);
+    expect(buildPerMapBans([{ ban1: dva, ban2: freja }], [])[0].api).toBeUndefined();
+  });
+
+  it('honors mapPickers "none" (explicit no-pick) with attributed bans intact', () => {
+    const out = buildPerMapBans(rawWithApi({ picker: 'team1', team1Ban: dva, team2Ban: freja }), [], [], ['none']);
+    expect(out[0].picker).toBeNull();
+    expect(out[0].team1Ban).toEqual(dva);
   });
 });
