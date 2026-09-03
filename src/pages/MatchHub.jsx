@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import ConfirmModal from '../components/ConfirmModal'
 import { COMPETITIVE_MODES, OW2_MAPS_FALLBACK, competitiveMapsFromCatalog } from '../lib/ow2-maps'
+import { banTargetIdx } from '../lib/ban-target'
 
 // Accent/punctuation-insensitive hero matching: FACEIT sends "Lucio"/"Torbjorn",
 // OverFast names are "Lúcio"/"Torbjörn", and keys are "lucio"/"soldier-76".
@@ -312,16 +313,10 @@ export default function MatchHub({ state, updateState, api }) {
     updateState({ maps, ...(extra || {}) });
   };
 
-  // Index of the map that ban edits apply to. Never a completed map: once a
-  // winner is set, new ban edits belong to the NEXT map (even before it's added).
-  const getActiveBanMapIdx = () => {
-    if (selectedMapIdx >= 0) return selectedMapIdx;
-    const maps = state.maps || [];
-    const currentIdx = maps.findIndex(m => m.status === 'current');
-    if (currentIdx >= 0) return currentIdx;
-    if (maps.length > 0 && maps[maps.length - 1].status === 'completed') return maps.length;
-    return Math.max(0, maps.length - 1);
-  };
+  // Index of the map that ban edits apply to. Shared with a unit test that
+  // pins it to the server's resolver (getActiveBanIdx) — see src/lib/ban-target.js
+  // for why the two must agree (bans vanished on ▶ Play when they didn't).
+  const getActiveBanMapIdx = () => banTargetIdx(state.maps, selectedMapIdx);
 
   const toggleBan = (heroKey) => {
     const bans = { ...state.heroBans };

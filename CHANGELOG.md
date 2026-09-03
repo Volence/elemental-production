@@ -1,5 +1,33 @@
 # Changelog
 
+## v2.2.1 — Manual mode keeps what you set
+
+Dashboard and server only — **no scene collection re-import needed**.
+
+### Fixed
+
+- **Map picks and bans no longer reset in Manual mode.** Producer report, third
+  time round, and this time the cause was found rather than patched around.
+  Two independent things were wiping hand-entered data:
+  1. **FACEIT auto-sync kept running after the switch to Manual.** Loading a
+     FACEIT match and then switching the Match Hub to Manual (or Scrim) left the
+     match loaded and the 15-second sync running, with its indicator hidden
+     (the FACEIT card only shows in FACEIT mode). Every tick replaced the maps,
+     per-map bans, hero bans, players and team names with FACEIT's data — often
+     still empty because the veto hadn't happened yet. Manual mode takes no
+     locks on purpose, so none of the earlier lock/merge fixes could reach it.
+     FACEIT now writes **only in FACEIT mode**: leaving FACEIT mode stops the
+     sync, the sync refuses to start or resume (including at app launch from a
+     saved state) outside it, and the tick re-checks on every run.
+  2. **Bans were stored on the wrong map, then dropped on ▶ Play.** With no map
+     live — a freshly set-up series, or the gap after a Win (Manual Win doesn't
+     start the next map) — the dashboard filed new bans under the *last* map in
+     the list while the overlays resolve bans from the *next* map to be played.
+     The moment ▶ Play was pressed, the server re-derived the on-air bans from
+     the played map's empty slot and the chips vanished. Ban edits now target
+     the next map to be played, matching the server; a unit test pins the two
+     rules together so they can't drift apart again.
+
 ## v2.2.0 - Real hero-ban attribution from FACEIT
 
 Dashboard and sync only - **no scene collection re-import needed**.

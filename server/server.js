@@ -24,7 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
-import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, computeActiveBan, deriveActiveBanState, deriveScores } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, computeActiveBan, deriveActiveBanState, deriveScores, faceitSyncAllowed } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
 import { rawUpload, uploadedBytes, uploadedFilename } from './upload-middleware.js';
@@ -427,6 +427,11 @@ app.patch('/api/state', (req, res) => {
     ? { ...req.body, maps: normalizeSingleCurrent(withLocalMapImagesForState(req.body.maps)) }
     : req.body;
   setState(body);
+  // Leaving FACEIT mode ends FACEIT's authority: stop the poll (and persist
+  // faceitAutoSync=false) so a match id left over from before the switch can't
+  // keep overwriting hand-entered maps/bans every 15s. faceitPollTick also
+  // refuses to run outside faceit mode, so this is belt AND braces.
+  if ('mode' in body && body.mode !== 'faceit') stopFaceitPoll(`switched to ${body.mode} mode`);
   // heroBans is derived from (perMapBans, maps, selectedMapIdx). If this PATCH
   // touched any of those but did NOT set heroBans itself, re-derive so the HUD
   // wings + Ban Reveal stay in sync with the scoreboard. When the body already
@@ -970,7 +975,8 @@ async function refreshFromFaceit() {
 
 /** Re-fetch current FACEIT match data (used when clearing overrides) */
 app.post('/api/faceit/refresh', async (req, res) => {
-  if (!getState().faceitMatchId) return res.status(400).json({ error: 'No FACEIT match loaded' });
+  const gate = faceitSyncAllowed(getState());
+  if (!gate.allowed) return res.status(400).json({ error: `FACEIT refresh refused: ${gate.reason}` });
   try {
     await refreshFromFaceit();
     res.json({ success: true });
@@ -995,11 +1001,14 @@ const FACEIT_POLL_INTERVAL = 15000; // 15 seconds
 
 async function faceitPollTick() {
   const currentState = getState();
-  const matchId = currentState.faceitMatchId;
-  if (!matchId) {
-    stopFaceitPoll('no match loaded');
+  // FACEIT writes in FACEIT mode only (see faceitSyncAllowed). Checked on EVERY
+  // tick, not just at start, so a mode switch mid-poll ends it too.
+  const gate = faceitSyncAllowed(currentState);
+  if (!gate.allowed) {
+    stopFaceitPoll(gate.reason);
     return;
   }
+  const matchId = currentState.faceitMatchId;
 
   try {
     const [details, stats] = await Promise.all([
@@ -1094,8 +1103,12 @@ async function faceitPollTick() {
 
 function startFaceitPoll() {
   if (faceitPollInterval) return; // already running
-  const state = getState();
-  if (!state.faceitMatchId) return;
+  const gate = faceitSyncAllowed(getState());
+  if (!gate.allowed) {
+    console.log(`[FACEIT Poll] Not started: ${gate.reason}`);
+    if (getState().faceitAutoSync) setState({ faceitAutoSync: false });
+    return;
+  }
   faceitPollInterval = setInterval(faceitPollTick, FACEIT_POLL_INTERVAL);
   setState({ faceitAutoSync: true });
   console.log(`[FACEIT Poll] Started — polling every ${FACEIT_POLL_INTERVAL / 1000}s`);
@@ -2306,7 +2319,10 @@ reconcileHeroBans();
 
 // If a FACEIT match was mid-sync when the server last stopped, resume polling
 // so the persisted "Auto Sync ON" state is actually true again.
-if (getState().faceitAutoSync && getState().faceitMatchId) {
+// startFaceitPoll refuses (and clears the persisted flag) outside FACEIT mode:
+// a state.json saved in Manual mode with a stale match id must NOT wake the
+// poll up and start overwriting the producer's maps/bans at launch.
+if (getState().faceitAutoSync) {
   startFaceitPoll();
 }
 

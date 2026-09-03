@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, getActiveBanIdx, computeHeroBans, computeActiveBan, heroNameToKey, deriveActiveBanState, deriveScores } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, getActiveBanIdx, computeHeroBans, computeActiveBan, heroNameToKey, deriveActiveBanState, deriveScores, faceitSyncAllowed } from './faceit-merge.js';
 
 const faction1 = { id: 'f1', name: 'Alpha', avatar: 'a.png', roster: [] };
 const faction2 = { id: 'f2', name: 'Beta', avatar: 'b.png', roster: [] };
@@ -433,5 +433,38 @@ describe('buildPerMapBans', () => {
     const out = buildPerMapBans(rawWithApi({ picker: 'team1', team1Ban: dva, team2Ban: freja }), [], [], ['none']);
     expect(out[0].picker).toBeNull();
     expect(out[0].team1Ban).toEqual(dva);
+  });
+});
+
+describe('faceitSyncAllowed', () => {
+  // Producer report (third time): "the map picks and bans keep resetting" in
+  // Manual mode. The auto-sync tick only ever checked faceitMatchId, and
+  // switching to Manual/Scrim left the loaded match id (and the running poll)
+  // in place — so FACEIT kept writing maps/perMapBans/heroBans every 15s over
+  // the hand-entered ones. Manual mode never takes overrides (that's the
+  // point of it), so the ONLY safe rule is: FACEIT writes in FACEIT mode only.
+  it('allows the tick in faceit mode with a loaded match', () => {
+    expect(faceitSyncAllowed({ mode: 'faceit', faceitMatchId: '1-abc' })).toEqual({ allowed: true });
+  });
+
+  it('refuses in manual mode even when a match id lingers from before the switch', () => {
+    const r = faceitSyncAllowed({ mode: 'manual', faceitMatchId: '1-abc', faceitAutoSync: true });
+    expect(r.allowed).toBe(false);
+    expect(r.reason).toMatch(/manual/);
+  });
+
+  it('refuses in scrim mode', () => {
+    expect(faceitSyncAllowed({ mode: 'scrim', faceitMatchId: '1-abc' }).allowed).toBe(false);
+  });
+
+  it('refuses without a loaded match', () => {
+    const r = faceitSyncAllowed({ mode: 'faceit', faceitMatchId: '' });
+    expect(r.allowed).toBe(false);
+    expect(r.reason).toMatch(/no match/i);
+  });
+
+  it('refuses on a missing/garbage state', () => {
+    expect(faceitSyncAllowed(undefined).allowed).toBe(false);
+    expect(faceitSyncAllowed({}).allowed).toBe(false);
   });
 });

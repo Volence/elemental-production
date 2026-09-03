@@ -260,3 +260,25 @@ export function deriveActiveBanState(state, isOverridden) {
   if (bansChanged) update.heroBans = heroBans;
   return update;
 }
+
+/**
+ * May FACEIT write into state right now? The ONE rule every FACEIT writer
+ * (poll tick, poll start, boot resume, /api/faceit/refresh) must consult.
+ *
+ * Producer report, third time round ("map picks and bans keep resetting in
+ * manual mode"): the auto-sync tick only ever checked faceitMatchId. Switching
+ * the dashboard to Manual/Scrim left the previously loaded match id — and the
+ * running 15s poll — untouched, and the FACEIT card (with its Auto Sync
+ * indicator) is hidden outside FACEIT mode, so the poll kept overwriting
+ * maps / perMapBans / heroBans / players / team names with FACEIT's (often
+ * still-empty, pre-veto) data with nothing on screen to explain it. Manual
+ * mode deliberately takes NO overrides — the dashboard's setOverride calls
+ * are all gated on mode === 'faceit' — so merge-side override fixes could
+ * never cover it. The only sound rule: FACEIT writes in FACEIT mode only.
+ */
+export function faceitSyncAllowed(state) {
+  const mode = state && state.mode;
+  if (mode !== 'faceit') return { allowed: false, reason: `mode is ${mode || 'unset'}, not faceit` };
+  if (!state.faceitMatchId) return { allowed: false, reason: 'no match loaded' };
+  return { allowed: true };
+}
