@@ -220,22 +220,81 @@ export function buildApiAttribution(vetoGames, heroMap) {
  * banned each hero, which the Data API never reports. UNDOCUMENTED internal
  * endpoint (no auth): the same one FACEIT's own match room UI replays vetos
  * from, and unlike `democracy/v1/match/{id}` (no /history) it survives match
- * finish instead of 404ing. Because it's unofficial, EVERY failure — HTTP
- * error, Cloudflare challenge, shape drift, network — collapses to null so
- * callers fall back to the picker heuristic instead of breaking the import.
+ * finish instead of 404ing.
+ *
+ * Resolves `{ games, error }` and NEVER throws: `games` is the parsed veto list
+ * (null when unusable) and `error` a short producer-readable reason (null on
+ * success). Callers fall back to the picker heuristic instead of breaking the
+ * import — but no longer SILENTLY.
+ *
+ * PRODUCER BUG (v2.2.0, live broadcast, Track Hunters vs ELMT Stellar,
+ * 1-4559c9d9-7d2f-401d-8c7f-0abd7aff6d94): on map 2 every overlay showed Track
+ * Hunters→Mei / Stellar→D.Mon. The truth (and what this endpoint reports when
+ * queried afterwards) is the reverse. At that moment the history yielded no
+ * attribution and this function used to swallow everything to null, so the
+ * heuristic took over with nothing in the logs or on the dashboard to say so.
+ * The reason is now logged (on transitions only — see noteVetoHistoryResult)
+ * and carried to state as faceitVetoHistoryError for the Hero Bans card.
  */
 export async function getVetoHistory(matchId) {
+  let result;
   try {
     const res = await fetch(`${INTERNAL_API_BASE}/democracy/v1/match/${matchId}/history`, {
       headers: { 'User-Agent': BROWSER_UA },
     });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const games = parseVetoHistory(data?.payload?.tickets);
-    return games.length ? games : null;
-  } catch {
-    return null;
+    const body = await res.text();
+    // Cloudflare answers a blocked UA with an HTML challenge page — usually a
+    // 403 with `cf-mitigated: challenge`, but match on the body too.
+    const challenged = res.headers?.get?.('cf-mitigated') === 'challenge'
+      || /just a moment|challenge-platform|cf-chl/i.test(body.slice(0, 4000));
+    if (!res.ok) {
+      result = { games: null, error: `HTTP ${res.status}${challenged ? ' (Cloudflare challenge)' : ''}` };
+    } else {
+      let data;
+      try {
+        data = JSON.parse(body);
+      } catch {
+        data = undefined;
+      }
+      if (data === undefined) {
+        result = { games: null, error: challenged ? 'Cloudflare challenge page instead of JSON' : 'non-JSON response' };
+      } else if (!Array.isArray(data?.payload?.tickets)) {
+        result = { games: null, error: 'unexpected response shape (no payload.tickets)' };
+      } else {
+        const games = parseVetoHistory(data.payload.tickets);
+        result = games.length
+          ? { games, error: null }
+          : { games: null, error: 'history has no picks or bans yet' };
+      }
+    }
+  } catch (e) {
+    result = { games: null, error: `network error: ${e?.message || e}` };
   }
+  noteVetoHistoryResult(matchId, result.error);
+  return result;
+}
+
+// Last logged veto-history outcome, so the 15s poll logs TRANSITIONS
+// (ok→failing, failing→ok, reason change, new match) instead of one line per tick.
+let lastVetoHistoryLog = { matchId: null, error: null };
+
+/**
+ * Pure: the log line for a veto-history outcome given the previous one, or null
+ * when nothing changed. A new match starts from "ok", so its first failure logs
+ * and its first success stays quiet.
+ */
+export function vetoHistoryLogLine(prev, matchId, error) {
+  const prevError = prev && prev.matchId === matchId ? prev.error : null;
+  if (prevError === error) return null;
+  if (!error) return `[FACEIT] Veto history for ${matchId} recovered (was: ${prevError}) — ban sides confirmed again`;
+  if (!prevError) return `[FACEIT] Veto history unavailable for ${matchId}: ${error} — ban sides fall back to the picker guess (confirmed maps are kept)`;
+  return `[FACEIT] Veto history for ${matchId} still unavailable, reason changed: ${prevError} → ${error}`;
+}
+
+function noteVetoHistoryResult(matchId, error) {
+  const line = vetoHistoryLogLine(lastVetoHistoryLog, matchId, error);
+  if (line) (error ? console.warn : console.log)(line);
+  lastVetoHistoryLog = { matchId, error };
 }
 
 export function setApiKey(key) {
@@ -264,8 +323,9 @@ export async function getMatchDetails(matchId) {
   try {
     // Veto history rides along on every fetch (import + 15s poll tick) so a
     // ban made mid-series gets real attribution on the next tick. It can
-    // never fail the match load — getVetoHistory resolves null on any error.
-    const [res, vetoGames] = await Promise.all([
+    // never fail the match load — getVetoHistory never throws; its failure
+    // reason rides out on the result as vetoHistoryError.
+    const [res, vetoHistory] = await Promise.all([
       fetch(`${DATA_API_BASE}/matches/${matchId}`, {
         headers: authHeaders(),
       }),
@@ -301,8 +361,20 @@ export async function getMatchDetails(matchId) {
     const voting = data.voting || {};
     const { mapPool: mapEntities, pickedMaps } = buildPickedMaps(voting.map || {});
 
-    // Parse hero voting data to extract per-map bans
-    // Entity order = ban chronological order (validated across 14+ maps)
+    // Parse hero voting data to extract per-map bans.
+    // ban1/ban2 below are simply the banned heroes in voting.heroes ENTITY order.
+    // That order is NOT chronological, and NOT a reliable proxy for who banned
+    // what. An earlier comment here claimed "entity order = ban chronological
+    // order (validated across 14+ maps)"; the veto history disproves it. In
+    // Track Hunters vs ELMT Stellar (1-4559c9d9-7d2f-401d-8c7f-0abd7aff6d94)
+    // map 3's history has Jetpack Cat dropped in round 1 and Zarya in round 2,
+    // yet entity order lists Zarya first. That's structural, not a fluke:
+    // voting.heroes.entities is ONE hero-pool list for the whole match (in
+    // that match DVa is entity 0, Zarya 10, Mei 19, Jetpack Cat 48, D.Mon 52),
+    // so ban1 is just whichever banned hero sits earlier in the catalog. Across
+    // a dozen real maps the picker-made-ban1 guess disagreed with the history
+    // every time. Treat ban1/ban2 as an unordered pair; the heuristic built on
+    // them in buildPerMapBans is a last-resort guess.
     const heroVoting = voting.heroes || {};
     const heroEntities = heroVoting.entities || [];
     const heroEntityIds = heroEntities.map(h => h.game_heroes_id);
@@ -319,18 +391,18 @@ export async function getMatchDetails(matchId) {
     // Real attribution from the veto history, when FACEIT kept it. Democracy
     // guids and voting.heroes game_heroes_id are one vocabulary, so heroMap
     // resolves both.
-    const apiAttribution = buildApiAttribution(vetoGames || [], heroMap);
+    const apiAttribution = buildApiAttribution(vetoHistory.games || [], heroMap);
 
     // For each map, find banned heroes (missing from pick list) in entity order
     const perMapBans = heroPicks.map((pickList, i) => {
       const available = new Set(pickList);
-      // Entity order gives us ban chronological order: ban1 first, ban2 second
+      // Entity order only — NOT chronological (see above)
       const bannedInOrder = heroEntityIds
         .filter(id => !available.has(id))
         .map(id => heroMap[id] || { name: id, role: 'Unknown', image: '' });
       const entry = {
-        ban1: bannedInOrder[0] || null,  // First ban, chronological (fallback pairing)
-        ban2: bannedInOrder[1] || null,  // Second ban
+        ban1: bannedInOrder[0] || null,  // first banned hero in entity order (heuristic input only)
+        ban2: bannedInOrder[1] || null,  // second banned hero in entity order
       };
       // Attach who-banned-what / who-picked when the history covered game i;
       // buildPerMapBans (faceit-merge.js) prefers this over its heuristic.
@@ -347,6 +419,9 @@ export async function getMatchDetails(matchId) {
       mapPool: mapEntities,
       pickedMaps,
       perMapBans,
+      // Why the veto history gave nothing (null when it answered). Written to
+      // state.faceitVetoHistoryError by every sync path for the Hero Bans card.
+      vetoHistoryError: vetoHistory.error,
       results: data.results || {},
       startedAt: data.started_at,
       finishedAt: data.finished_at,

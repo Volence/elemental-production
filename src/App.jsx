@@ -5,6 +5,9 @@ import Theming from './pages/Theming'
 import Settings from './pages/Settings'
 import StatusBar from './components/StatusBar'
 import ConfirmModal from './components/ConfirmModal'
+import UpdateBanner from './components/UpdateBanner'
+import { useUpdater } from './lib/useUpdater.js'
+import { isMatchLive, updateBanner } from './lib/update-status.js'
 import { sampleBuckets, pickTwoColors, ELMT_ACCENT_FALLBACK } from './lib/color-extract.js'
 import { DEFAULT_SCENES } from './lib/scenes.js'
 
@@ -63,6 +66,17 @@ export default function App() {
   const [sceneSync, setSceneSync] = useState(null);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [pendingPage, setPendingPage] = useState(null);
+
+  // In-app updater (Electron only; everything hides in a plain browser).
+  // Dismissal is per session and per version+stage: hiding the "downloading"
+  // pill still lets the "ready — restart" pill appear once it finishes, but
+  // hiding "ready" keeps it gone until the next launch (it still installs on
+  // quit, and Settings keeps the button).
+  const updater = useUpdater();
+  const [dismissedUpdate, setDismissedUpdate] = useState(null);
+  const [confirmUpdateOpen, setConfirmUpdateOpen] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [installError, setInstallError] = useState(null);
 
   const fetchState = useCallback(async () => {
     try {
@@ -186,6 +200,34 @@ export default function App() {
     doExtract();
   }, [state?.teams?.team1?.logo, state?.teams?.team2?.logo]);
 
+  const doInstallUpdate = async () => {
+    setConfirmUpdateOpen(false);
+    setInstallError(null);
+    setInstalling(true);
+    const res = await updater.installUpdate();
+    // On success the app is quitting; nothing left to render.
+    if (!res?.ok) {
+      setInstalling(false);
+      setInstallError(res?.message || 'Install failed');
+    }
+  };
+
+  // Restarting kills the Express server behind every OBS browser source, so
+  // a show that looks live gets a confirm first (ConfirmModal, never
+  // window.confirm — native dialogs break Electron keyboard focus). OBS's
+  // streaming/recording flags are the strongest signal but best-effort: a
+  // slow/failed stats call must not block the click, so it's capped and falls
+  // back to the dashboard-state heuristic alone.
+  const requestInstallUpdate = async () => {
+    let obsStats = null;
+    try {
+      const res = await fetch(`${API}/api/obs/stats`, { signal: AbortSignal.timeout(1500) });
+      if (res.ok) obsStats = await res.json();
+    } catch { /* fall back to state heuristic */ }
+    if (isMatchLive(state, obsStats)) setConfirmUpdateOpen(true);
+    else doInstallUpdate();
+  };
+
   const switchScene = async (name) => {
     await fetch(`${API}/api/obs/scene`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -233,6 +275,21 @@ export default function App() {
           ))}
         </nav>
 
+        {updater.supported && (() => {
+          const banner = updateBanner(updater.status);
+          const key = banner && `${banner.version}:${banner.kind === 'restart' ? 'ready' : 'pending'}`;
+          if (!banner || key === dismissedUpdate) return null;
+          return (
+            <UpdateBanner
+              status={updater.status}
+              onRestart={requestInstallUpdate}
+              onDismiss={() => setDismissedUpdate(key)}
+              installError={installError}
+              installing={installing}
+            />
+          );
+        })()}
+
         <div className="sidebar-status">
           <span className={`status-dot ${obsConnected ? 'connected' : 'disconnected'}`} />
           <span>OBS {obsConnected ? 'Connected' : 'Disconnected'}</span>
@@ -261,7 +318,7 @@ export default function App() {
           {page === 'match' && <MatchHub state={state} updateState={updateState} api={API} />}
           {page === 'production' && <ProductionControls state={state} updateState={updateState} api={API} obsConnected={obsConnected} sceneSync={sceneSync} />}
           {page === 'theming' && <Theming state={state} updateState={updateState} api={API} customFonts={customFonts} />}
-          {page === 'settings' && <Settings state={state} updateState={updateState} api={API} obsConnected={obsConnected} setObsConnected={setObsConnected} customFonts={customFonts} setCustomFonts={setCustomFonts} onDirtyChange={setSettingsDirty} />}
+          {page === 'settings' && <Settings state={state} updateState={updateState} api={API} obsConnected={obsConnected} setObsConnected={setObsConnected} customFonts={customFonts} setCustomFonts={setCustomFonts} onDirtyChange={setSettingsDirty} updater={updater} onInstallUpdate={requestInstallUpdate} installError={installError} installing={installing} />}
         </div>
       </main>
       <StatusBar state={state} />
@@ -271,6 +328,13 @@ export default function App() {
         confirmLabel="Leave"
         onConfirm={() => { setSettingsDirty(false); setPage(pendingPage); setPendingPage(null); }}
         onCancel={() => setPendingPage(null)}
+      />
+      <ConfirmModal
+        open={confirmUpdateOpen}
+        message="A match looks live — restarting to update can take up to a minute, and every overlay will be blank until the app is back. Restart anyway?"
+        confirmLabel="Restart anyway"
+        onConfirm={doInstallUpdate}
+        onCancel={() => setConfirmUpdateOpen(false)}
       />
     </>
   );

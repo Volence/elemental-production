@@ -1118,3 +1118,79 @@ input[type="checkbox"]:checked::after {
   align-items: center;
   gap: 6px;
 }
+
+/* ========== UPDATE PILL (sidebar) ==========
+   Lives in the sidebar, not over the content: it must never cover a scene
+   button or a score control mid-show. Tone per state: accent while
+   downloading, success when ready to restart, warning for manual download. */
+.update-pill {
+  margin: 0 8px 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  --pill-tone: var(--accent);
+  --pill-glow: var(--accent-glow);
+  border-color: var(--pill-glow);
+  box-shadow: inset 3px 0 0 var(--pill-tone);
+}
+
+.update-pill.tone-success { --pill-tone: var(--success); --pill-glow: var(--success-glow); }
+.update-pill.tone-warning { --pill-tone: var(--warning); --pill-glow: var(--warning-glow); }
+
+.update-pill-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.update-pill-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.update-pill-dismiss:hover { color: var(--text-primary); }
+
+.update-pill-progress {
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+
+.update-pill-progress > div {
+  height: 100%;
+  background: var(--pill-tone);
+  transition: width 300ms ease;
+}
+
+.update-pill-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.update-pill-actions a {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.update-pill-actions a:hover { color: var(--text-primary); }
+
+.update-pill-error {
+  margin-top: 6px;
+  color: var(--danger);
+  font-size: 0.7rem;
+}

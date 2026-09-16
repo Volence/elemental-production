@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, getActiveBanIdx, computeHeroBans, computeActiveBan, heroNameToKey, deriveActiveBanState, deriveScores, faceitSyncAllowed } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, carryForwardApiAttribution, getActiveBanIdx, computeHeroBans, computeActiveBan, heroNameToKey, deriveActiveBanState, deriveScores, faceitSyncAllowed, faceitSyncStillCurrent } from './faceit-merge.js';
 
 const faction1 = { id: 'f1', name: 'Alpha', avatar: 'a.png', roster: [] };
 const faction2 = { id: 'f2', name: 'Beta', avatar: 'b.png', roster: [] };
@@ -429,10 +429,160 @@ describe('buildPerMapBans', () => {
     expect(buildPerMapBans([{ ban1: dva, ban2: freja }], [])[0].api).toBeUndefined();
   });
 
+  it('fills the unconfirmed side by elimination when the api confirmed only one of two bans', () => {
+    const dvaOnTeam2 = rawWithApi({ picker: 'team1', team1Ban: null, team2Ban: dva });
+    expect(buildPerMapBans(dvaOnTeam2, [])[0]).toMatchObject({ team1Ban: freja, team2Ban: dva });
+    const frejaOnTeam1 = rawWithApi({ picker: 'team1', team1Ban: freja, team2Ban: null });
+    expect(buildPerMapBans(frejaOnTeam1, [])[0]).toMatchObject({ team1Ban: freja, team2Ban: dva });
+    // banSwap still applies on top of the filled pair
+    expect(buildPerMapBans(dvaOnTeam2, [], [true])[0]).toMatchObject({ team1Ban: dva, team2Ban: freja });
+  });
+
+  it('never duplicates or moves the confirmed hero when elimination is ambiguous', () => {
+    const mercy = { name: 'Mercy', role: 'Support', image: '' };
+    // only the confirmed hero is banned so far: other side stays empty
+    const single = [{ ban1: dva, ban2: null, api: { picker: null, team1Ban: null, team2Ban: dva } }];
+    expect(buildPerMapBans(single, [])[0]).toMatchObject({ team1Ban: null, team2Ban: dva });
+    // confirmed hero isn't among the raw bans (inconsistent data): don't guess
+    const mismatch = [{ ban1: freja, ban2: mercy, api: { picker: null, team1Ban: null, team2Ban: dva } }];
+    expect(buildPerMapBans(mismatch, [])[0]).toMatchObject({ team1Ban: null, team2Ban: dva });
+  });
+
   it('honors mapPickers "none" (explicit no-pick) with attributed bans intact', () => {
     const out = buildPerMapBans(rawWithApi({ picker: 'team1', team1Ban: dva, team2Ban: freja }), [], [], ['none']);
     expect(out[0].picker).toBeNull();
     expect(out[0].team1Ban).toEqual(dva);
+  });
+});
+
+describe('carryForwardApiAttribution', () => {
+  // PRODUCER BUG (v2.2.0, live, Track Hunters vs ELMT Stellar): a sync whose
+  // veto-history fetch yielded nothing downgraded a confirmed map to the
+  // picker guess and flipped every overlay's ban sides mid-broadcast.
+  const mei = { name: 'Mei', role: 'Damage', image: '' };
+  const dmon = { name: 'D.Mon', role: 'Tank', image: '' };
+  const zarya = { name: 'Zarya', role: 'Tank', image: '' };
+  const MATCH = '1-4559c9d9-7d2f-401d-8c7f-0abd7aff6d94';
+  const confirmed = { picker: 'team1', team1Ban: dmon, team2Ban: mei };
+  // State as a good tick left it: buildPerMapBans output (api kept on entry).
+  const prevState = (api = confirmed, raw = { ban1: mei, ban2: dmon }) => ({
+    matchId: MATCH,
+    perMapBans: buildPerMapBans([{ ...raw, api }], []),
+  });
+
+  it('keeps confirmed attribution when the same match comes back with the same bans but no api', () => {
+    const fresh = [{ ban1: mei, ban2: dmon }];
+    const out = carryForwardApiAttribution(fresh, prevState(), MATCH);
+    expect(out[0].api).toEqual(confirmed);
+    const bans = buildPerMapBans(out, []);
+    expect(bans[0]).toMatchObject({ picker: 'team1', team1Ban: dmon, team2Ban: mei });
+  });
+
+  it('treats the ban pair as unordered (entity order means nothing)', () => {
+    const out = carryForwardApiAttribution([{ ban1: dmon, ban2: mei }], prevState(), MATCH);
+    expect(out[0].api).toEqual(confirmed);
+  });
+
+  it('does NOT carry bans when the banned heroes changed (a genuinely different veto)', () => {
+    const out = carryForwardApiAttribution([{ ban1: mei, ban2: zarya }], prevState(), MATCH);
+    // picker isn't carried either: D.Mon vanished, so the veto was redone
+    expect(out[0].api).toBeUndefined();
+    expect(buildPerMapBans(out, [])[0].api).toBeUndefined();
+  });
+
+  it('does NOT carry across matches', () => {
+    const prev = { ...prevState(), matchId: '1-some-other-match' };
+    expect(carryForwardApiAttribution([{ ban1: mei, ban2: dmon }], prev, MATCH)[0].api).toBeUndefined();
+    expect(carryForwardApiAttribution([{ ban1: mei, ban2: dmon }], prevState(), '')[0].api).toBeUndefined();
+    expect(carryForwardApiAttribution([{ ban1: mei, ban2: dmon }], null, MATCH)[0].api).toBeUndefined();
+  });
+
+  it('lets a fresh api win over the carried one', () => {
+    const freshApi = { picker: 'team2', team1Ban: mei, team2Ban: dmon };
+    const fresh = [{ ban1: mei, ban2: dmon, api: freshApi }];
+    const out = carryForwardApiAttribution(fresh, prevState(), MATCH);
+    expect(out[0]).toBe(fresh[0]);
+  });
+
+  it('still applies a producer banSwap on top of carried attribution (and mapPickers)', () => {
+    // The previous state was itself swapped: team sides flipped, api untouched.
+    const prev = { matchId: MATCH, perMapBans: buildPerMapBans([{ ban1: mei, ban2: dmon, api: confirmed }], [], [true]) };
+    expect(prev.perMapBans[0].team1Ban).toEqual(mei);
+    const out = buildPerMapBans(carryForwardApiAttribution([{ ban1: mei, ban2: dmon }], prev, MATCH), [], [true], ['team2']);
+    expect(out[0]).toMatchObject({ picker: 'team2', team1Ban: mei, team2Ban: dmon, api: confirmed });
+  });
+
+  it('merges a partial fresh api (picker only — a drop not yet attributed) with confirmed bans', () => {
+    const fresh = [{ ban1: mei, ban2: dmon, api: { picker: 'team1', team1Ban: null, team2Ban: null } }];
+    const out = carryForwardApiAttribution(fresh, prevState(), MATCH);
+    expect(out[0].api).toEqual(confirmed);
+  });
+
+  it('carries a confirmed picker (no bans yet) as bans arrive, but not the absent bans', () => {
+    const pickerOnly = { picker: 'team2', team1Ban: null, team2Ban: null };
+    const prev = prevState(pickerOnly, { ban1: null, ban2: null });
+    // bans landed during an outage: picker survives (map picked before bans)
+    const out = carryForwardApiAttribution([{ ban1: mei, ban2: dmon }], prev, MATCH);
+    expect(out[0].api).toEqual(pickerOnly);
+    // ...and seeds the heuristic exactly as a fresh picker-only api would
+    expect(buildPerMapBans(out, [])[0]).toMatchObject({ picker: 'team2', team1Ban: dmon, team2Ban: mei });
+  });
+
+  it('carries a one-sided confirmation when the second ban lands during an outage', () => {
+    // tick N: only Stellar's Mei was banned + confirmed; tick N+1: D.Mon lands
+    // in the Data API but the history fetch fails.
+    const oneSided = { picker: 'team1', team1Ban: null, team2Ban: mei };
+    const prev = prevState(oneSided, { ban1: mei, ban2: null });
+    for (const fresh of [[{ ban1: mei, ban2: dmon }], [{ ban1: dmon, ban2: mei }]]) {
+      const out = carryForwardApiAttribution(fresh, prev, MATCH);
+      expect(out[0].api).toEqual(oneSided); // the other side is NOT invented in api
+      // ...buildPerMapBans fills the open slot by elimination: Mei stays on
+      // team2 whatever the entity order, D.Mon goes to team1.
+      expect(buildPerMapBans(out, [])[0]).toMatchObject({ team1Ban: dmon, team2Ban: mei });
+      // the heuristic alone (team1 picker gets ban1) would have put Mei on team1
+      if (fresh[0].ban1 === mei) expect(buildPerMapBans(fresh, [])[0].team1Ban).toEqual(mei);
+    }
+  });
+
+  it('does not carry a one-sided confirmation whose hero is no longer banned', () => {
+    const oneSided = { picker: 'team1', team1Ban: null, team2Ban: mei };
+    const prev = prevState(oneSided, { ban1: mei, ban2: null });
+    const out = carryForwardApiAttribution([{ ban1: zarya, ban2: dmon }], prev, MATCH);
+    expect(out[0].api).toBeUndefined();
+  });
+
+  it('carries a one-sided confirmation unchanged when the set did not grow', () => {
+    const oneSided = { picker: null, team1Ban: mei, team2Ban: null };
+    const prev = prevState(oneSided, { ban1: mei, ban2: null });
+    const out = carryForwardApiAttribution([{ ban1: mei, ban2: null }], prev, MATCH);
+    expect(out[0].api).toEqual(oneSided);
+    expect(buildPerMapBans(out, [])[0]).toMatchObject({ team1Ban: mei, team2Ban: null });
+  });
+
+  it('does not carry bans onto a map whose bans disappeared', () => {
+    const out = carryForwardApiAttribution([{ ban1: null, ban2: null }], prevState(), MATCH);
+    expect(out[0].api).toBeUndefined();
+  });
+
+  it('works per index and passes untouched entries through', () => {
+    const prev = { matchId: MATCH, perMapBans: [{ ban1: mei, ban2: dmon, api: confirmed }, { ban1: zarya, ban2: null }] };
+    const fresh = [{ ban1: mei, ban2: dmon }, { ban1: zarya, ban2: null }, { ban1: dmon, ban2: mei }];
+    const out = carryForwardApiAttribution(fresh, prev, MATCH);
+    expect(out[0].api).toEqual(confirmed);
+    expect(out[1]).toBe(fresh[1]);
+    expect(out[2]).toBe(fresh[2]);
+  });
+});
+
+describe('faceitSyncStillCurrent', () => {
+  // A poll/refresh for match A in flight when the producer loads match B must
+  // not write A's result into B's state.
+  it('allows the write only while the fetched match is still loaded', () => {
+    expect(faceitSyncStillCurrent({ faceitMatchId: 'A' }, 'A')).toBe(true);
+    expect(faceitSyncStillCurrent({ faceitMatchId: 'B' }, 'A')).toBe(false);
+    expect(faceitSyncStillCurrent({ faceitMatchId: '' }, 'A')).toBe(false);
+    expect(faceitSyncStillCurrent({ faceitMatchId: '' }, '')).toBe(false);
+    expect(faceitSyncStillCurrent(null, 'A')).toBe(false);
   });
 });
 

@@ -15,6 +15,7 @@ import { app, BrowserWindow, shell, globalShortcut, ipcMain } from 'electron';
 import { join } from 'path';
 import { fork } from 'child_process';
 import { existsSync, copyFileSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
+import { initUpdater } from './updater.js';
 
 const SERVER_PORT = 3001;
 const IS_DEV = process.env.ELECTRON_IS_DEV === '1';
@@ -30,6 +31,22 @@ function appPath(relativePath) {
   return join(__dirname, '..', '..', relativePath);
 }
 
+/**
+ * globalShortcut.register THROWS on an accelerator it can't parse (e.g.
+ * "Ctrl+Unidentified" / "Ctrl+Dead" — the Settings capture stores the raw
+ * e.key). Uncaught, one bad key aborted the whole loop and every hotkey after
+ * it silently went dead — and since saving hotkeys re-runs this mid-show, that
+ * can happen live. Isolate each registration instead.
+ */
+function safeRegister(accelerator, label, handler) {
+  try {
+    return globalShortcut.register(accelerator, handler);
+  } catch (e) {
+    console.warn(`[Hotkeys] Invalid accelerator "${accelerator}" for ${label} (skipped):`, e.message);
+    return null;  // already logged; callers only warn on a plain `false`
+  }
+}
+
 async function fetchAndRegisterHotkeys() {
   try {
     const res = await fetch(`http://localhost:${SERVER_PORT}/api/hotkeys`);
@@ -40,19 +57,19 @@ async function fetchAndRegisterHotkeys() {
     if (config.sceneSwitch) {
       for (const [scene, accelerator] of Object.entries(config.sceneSwitch)) {
         if (!accelerator) continue;
-        const ok = globalShortcut.register(accelerator, () => {
+        const ok = safeRegister(accelerator, `scene ${scene}`, () => {
           fetch(`http://localhost:${SERVER_PORT}/api/obs/scene`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: scene }),
           }).catch(e => console.warn('[Hotkeys] Scene switch failed:', e.message));
         });
-        if (!ok) console.warn(`[Hotkeys] Failed to register ${accelerator} for ${scene}`);
+        if (ok === false) console.warn(`[Hotkeys] Failed to register ${accelerator} for ${scene}`);
       }
     }
 
     if (config.swapSides) {
-      const ok = globalShortcut.register(config.swapSides, async () => {
+      const ok = safeRegister(config.swapSides, 'swap sides', async () => {
         try {
           const stateRes = await fetch(`http://localhost:${SERVER_PORT}/api/state`);
           const state = await stateRes.json();
@@ -65,7 +82,7 @@ async function fetchAndRegisterHotkeys() {
           console.warn('[Hotkeys] Swap sides failed:', e.message);
         }
       });
-      if (!ok) console.warn(`[Hotkeys] Failed to register ${config.swapSides} for swap sides`);
+      if (ok === false) console.warn(`[Hotkeys] Failed to register ${config.swapSides} for swap sides`);
     }
 
     console.log('[Hotkeys] Registered global shortcuts');
@@ -212,7 +229,12 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: join(__dirname, 'preload.js'),
+      // electron-vite emits the preload to out/preload/index.cjs (see the
+      // preload section of electron.vite.config.js). This used to point at
+      // out/main/preload.js, which was never built — window.electronAPI was
+      // undefined in every build, so hotkey reloads silently did nothing.
+      // CJS because a sandboxed preload can't be an ES module.
+      preload: join(__dirname, '..', 'preload', 'index.cjs'),
     },
     backgroundColor: '#0a0a12',
     autoHideMenuBar: true,
@@ -243,6 +265,10 @@ app.whenReady().then(async () => {
     console.log('[Electron] Dev mode — server managed externally');
   }
 
+  // Before createWindow so the IPC handlers exist when the dashboard asks.
+  // Never throws; checks only run in packaged builds (see updater.js).
+  initUpdater({ getWindow: () => mainWindow });
+
   createWindow();
 
   await fetchAndRegisterHotkeys();
@@ -253,10 +279,26 @@ app.whenReady().then(async () => {
   });
 });
 
+function stopServer() {
+  if (serverProcess && serverProcess.exitCode === null && !serverProcess.killed) {
+    serverProcess.kill();
+  }
+}
+
 app.on('window-all-closed', () => {
   globalShortcut.unregisterAll();
-  if (serverProcess) serverProcess.kill();
+  stopServer();
   app.quit();
+});
+
+// app.quit() called directly — which is how "Restart to update"
+// (autoUpdater.quitAndInstall) exits — does NOT emit window-all-closed, so
+// the forked server would outlive the app: the Windows installer can't
+// replace the exe it's running from, and the relaunched app finds port 3001
+// still taken. Stop it here too (idempotent with the handler above).
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+  stopServer();
 });
 
 app.on('activate', () => {

@@ -1,5 +1,50 @@
 # Changelog
 
+## v2.3.0 — In-app updates, and ban sides that hold
+
+Dashboard, desktop app and sync only — **no scene collection re-import needed**.
+**Install this version by hand** (older builds can't update themselves); every
+release after it installs from inside the app.
+
+### Added
+
+- **Update available / Restart to update.** The desktop app checks GitHub for a
+  newer release at launch and every 4 hours, downloads it in the background and
+  shows a pill in the sidebar ("Update vX ready — Restart to update", plus a
+  What's new link). Settings gets an **Updates** card with the running version
+  and a Check for updates button. It **never restarts on its own**: the update
+  installs only when the producer clicks Restart or quits normally. If a match
+  looks live (FACEIT auto-sync on, a map in play, the break between maps, or
+  OBS streaming/recording) Restart asks first — a restart takes up to a minute
+  and blanks every overlay. On Linux, in-app updating needs the AppImage; any
+  other Linux install gets a download link instead.
+- Release files are now named without spaces
+  (`Elemental-Production-Setup-X.exe`, `Elemental-Production-X.AppImage`) and
+  ship with the update manifests the updater reads.
+
+### Fixed
+
+- **Hero bans swapping sides on air.** When FACEIT's veto history didn't answer
+  on a sync, every screen silently fell back to guessing ban sides — and the
+  guess was wrong far more often than right (it assumed FACEIT lists bans in
+  the order they were made; it lists them in fixed hero order). Live example:
+  Track Hunters vs ELMT Stellar, map 2 aired Track Hunters→Mei / Stellar→D.Mon,
+  the reverse of what happened. Now:
+  - Ban sides FACEIT has confirmed **stay confirmed** for that match while the
+    same heroes are banned, even if a later sync can't reach the history.
+  - A side confirmed before the second ban lands keeps its hero, and the other
+    team gets the remaining ban.
+  - When sides can't be confirmed, the Hero Bans card says why (e.g. "veto
+    history unavailable (HTTP 403)") and the server logs it once instead of
+    failing silently.
+  - A sync that finishes after a different match was loaded is discarded
+    instead of writing the old match's data into the new one.
+- **Hotkeys reload when saved.** The desktop app's preload script was never
+  built, so saving hotkeys in Settings didn't re-register them until the next
+  launch. It's built now; one invalid key no longer disables the rest.
+- **Restart/quit no longer leaves the background server running**, which would
+  have blocked the Windows installer and the relaunch.
+
 ## v2.2.1 — Manual mode keeps what you set
 
 Dashboard and server only — **no scene collection re-import needed**.

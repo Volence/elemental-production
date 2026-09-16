@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import FolderBrowser from '../components/FolderBrowser'
 import ConfirmModal from '../components/ConfirmModal'
 import { STADIUM_ONLY_MAPS } from '../lib/ow2-maps'
+import { updateStatusText, releaseUrl } from '../lib/update-status.js'
 
 const BUILTIN_FONTS = {
   'Bebas Neue': 'https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap',
@@ -21,7 +22,7 @@ const BUILTIN_FONTS = {
 const STINGER_WEBM_URL = 'http://localhost:3001/assets/stinger-transition.webm';
 const STINGER_TRANSITION_POINT_MS = 950;
 
-export default function Settings({ state, updateState, api, obsConnected, setObsConnected, customFonts, setCustomFonts, onDirtyChange }) {
+export default function Settings({ state, updateState, api, obsConnected, setObsConnected, customFonts, setCustomFonts, onDirtyChange, updater, onInstallUpdate, installError, installing }) {
   const [hotkeys, setHotkeys] = useState(state.hotkeys || {});
   const [hotkeysDirty, setHotkeysDirty] = useState(false);
   const [capturingKey, setCapturingKey] = useState(null);
@@ -904,6 +905,43 @@ export default function Settings({ state, updateState, api, obsConnected, setObs
           </div>
         ))}
       </div>
+
+      {/* App version + updates (desktop app only — hidden in a plain browser) */}
+      {updater?.supported && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">⬆️ Updates</span>
+            <span className="badge badge-accent">Version {updater.appVersion || '…'}</span>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: updater.status.state === 'error' ? 'var(--danger)' : 'var(--text-secondary)', margin: '8px 0 12px' }}>
+            {updateStatusText(updater.status)}
+          </p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-ghost"
+              onClick={updater.checkForUpdates}
+              disabled={['checking', 'downloading', 'downloaded', 'disabled'].includes(updater.status.state)}
+            >
+              {updater.status.state === 'checking' ? 'Checking…'
+                : updater.status.state === 'downloaded' ? 'Update downloaded'
+                : 'Check for updates'}
+            </button>
+            {updater.status.state === 'downloaded' && (
+              <button className="btn btn-success" onClick={onInstallUpdate} disabled={installing}>
+                {installing ? 'Restarting…' : `Restart to update to v${updater.status.version}`}
+              </button>
+            )}
+            {updater.status.version && ['available', 'downloading', 'downloaded'].includes(updater.status.state) && (
+              <a href={releaseUrl(updater.status.version)} target="_blank" rel="noreferrer" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                {updater.status.manual ? 'Download from GitHub' : "What's new"}
+              </a>
+            )}
+          </div>
+          {installError && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 8 }}>{installError}</p>
+          )}
+        </div>
+      )}
 
       {/* Reset */}
       <div className="card">

@@ -24,7 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
-import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, computeActiveBan, deriveActiveBanState, deriveScores, faceitSyncAllowed } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, carryForwardApiAttribution, computeActiveBan, deriveActiveBanState, deriveScores, faceitSyncAllowed, faceitSyncStillCurrent } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
 import { rawUpload, uploadedBytes, uploadedFilename } from './upload-middleware.js';
@@ -762,7 +762,9 @@ app.post('/api/obs/transform', async (req, res) => {
 // prefers FACEIT's real veto attribution (democracy history, fetched in
 // faceit.getMatchDetails and carried on each raw entry as `api`) over the
 // old map-picker heuristic. Producer corrections (mapPickers/banSwaps)
-// still outrank both.
+// still outrank both. The refresh and poll paths first run the raw bans
+// through carryForwardApiAttribution so one failed veto-history fetch can't
+// downgrade an already-confirmed map to the guess mid-broadcast.
 
 // computeActiveBan + getActiveBanIdx now live in faceit-merge.js (pure +
 // unit-tested). getActiveBanIdx resolves selected → current →
@@ -831,6 +833,7 @@ app.post('/api/faceit/match', async (req, res) => {
       removedMapKeys: [],
       faceitLastSync: Date.now(),
       faceitLastSyncError: null,
+      faceitVetoHistoryError: details.vetoHistoryError || null,
     };
 
     // Importing a match replaces any series name left over from manual/scrim mode
@@ -913,6 +916,14 @@ async function refreshFromFaceit() {
     faceit.getMatchStats(matchId).catch(() => []),
   ]);
 
+  // A different match was loaded while this fetch was in flight: its result
+  // belongs to nobody now (see faceitSyncStillCurrent). Throwing leaves state
+  // untouched; both callers already handle a failed refresh.
+  if (!faceitSyncStillCurrent(getState(), matchId)) {
+    console.log(`[FACEIT] Refresh for ${matchId} discarded — match changed while it was fetching`);
+    throw new Error('FACEIT match changed during refresh');
+  }
+
   const faction1 = details.teams.faction1;
   const faction2 = details.teams.faction2;
 
@@ -931,10 +942,15 @@ async function refreshFromFaceit() {
     };
   });
 
-  const perMapBans = buildPerMapBans(details.perMapBans, maps,
+  // Keep confirmed ban sides through a failed veto-history fetch (read state
+  // AFTER the await: a match loaded meanwhile must not donate its attribution).
+  const latest = getState();
+  const rawBans = carryForwardApiAttribution(details.perMapBans,
+    { matchId: latest.faceitMatchId, perMapBans: latest.perMapBans }, matchId);
+  const perMapBans = buildPerMapBans(rawBans, maps,
     currentState.banSwaps || [], currentState.mapPickers || []);
 
-  const update = {};
+  const update = { faceitVetoHistoryError: details.vetoHistoryError || null };
   update.perMapBans = perMapBans;
   if (!isOverridden('heroBans')) {
     const activeBan = computeActiveBan(perMapBans, maps, currentState.selectedMapIdx);
@@ -1016,6 +1032,15 @@ async function faceitPollTick() {
       faceit.getMatchStats(matchId).catch(() => []),
     ]);
 
+    // Stale tick: the producer loaded another match while this fetch was in
+    // flight. Bail BEFORE any write — and before the auto-stop below, which
+    // would otherwise let a finished match A stop match B's poll. The interval
+    // keeps running; the next tick reads B's id.
+    if (!faceitSyncStillCurrent(getState(), matchId)) {
+      console.log(`[FACEIT Poll] Discarding result for ${matchId} — match changed while it was fetching`);
+      return;
+    }
+
     // Auto-stop if match is finished
     if (details.status === 'FINISHED' || details.status === 'CANCELLED') {
       console.log(`[FACEIT Poll] Match ${details.status} — stopping auto-sync`);
@@ -1051,8 +1076,15 @@ async function faceitPollTick() {
     });
 
     // Parse per-map bans, re-applying producer corrections (\u21c4 swap, manual
-    // picker) so an auto-sync tick never reverts them
-    const perMapBans = buildPerMapBans(details.perMapBans, maps,
+    // picker) so an auto-sync tick never reverts them. Confirmed attribution
+    // from earlier ticks is carried first (see carryForwardApiAttribution):
+    // one failed veto-history fetch used to swap every screen for 15s. State
+    // is re-read after the await so a match loaded mid-fetch can't donate its
+    // attribution to this one.
+    const latest = getState();
+    const rawBans = carryForwardApiAttribution(details.perMapBans,
+      { matchId: latest.faceitMatchId, perMapBans: latest.perMapBans }, matchId);
+    const perMapBans = buildPerMapBans(rawBans, maps,
       currentState.banSwaps || [], currentState.mapPickers || []);
     const activeBan = computeActiveBan(perMapBans, maps, currentState.selectedMapIdx);
 
@@ -1091,6 +1123,7 @@ async function faceitPollTick() {
       isOverridden,
     });
     update.faceitLastSync = Date.now();
+    update.faceitVetoHistoryError = details.vetoHistoryError || null;
 
     const updated = setState(update);
     broadcast('state', updated);
@@ -1926,6 +1959,7 @@ app.post('/api/reset', (req, res) => {
     faceitMatchId: '',
     faceitMatchUrl: '',
     faceitAutoSync: false,
+    faceitVetoHistoryError: null,
     players: { team1: [], team2: [] },
     maps: (s.maps || []).map(m => ({ ...m, status: 'upcoming', winner: null, roundScore: null })),
   };

@@ -115,9 +115,11 @@ export function deriveScores(maps) {
  * and guessing only where it's missing, then layer producer corrections on
  * top. Three tiers, weakest to strongest:
  *
- *   1. HEURISTIC (legacy, now the fallback): map 1 → team1 picks, later maps →
- *      loser of the previous map picks; the picker is assumed to have made
- *      ban1 (chronological first). This was ALL we had for a season.
+ *   1. HEURISTIC (legacy, now the last-resort fallback): map 1 → team1 picks,
+ *      later maps → loser of the previous map picks; the picker is assumed to
+ *      have made ban1. ban1 is merely the first banned hero in ENTITY order,
+ *      which is NOT chronological — this is roughly a coin flip. It was ALL
+ *      we had for a season.
  *   2. API attribution (`bans.api`, from the democracy veto history — see
  *      parseVetoHistory/buildApiAttribution in faceit.js): real picker and
  *      real per-team bans. When only the picker survived (disrupted veto),
@@ -128,6 +130,12 @@ export function deriveScores(maps) {
  *      the broadcast outranks everything, including the API.
  */
 export function buildPerMapBans(rawBans, maps, banSwaps = [], mapPickers = []) {
+  // Tier 1 is a LAST-RESORT GUESS, not a rule: ban1/ban2 are voting.heroes
+  // ENTITY order, which is not chronological (see getMatchDetails in
+  // faceit.js — Track Hunters vs ELMT Stellar disproved the old "validated
+  // across 14+ maps" claim, and the guess disagreed with the veto history on
+  // every one of a dozen real maps checked). It is kept only because showing
+  // SOME sides beats showing none; the dashboard flags every map it touches.
   return (rawBans || []).map((bans, i) => {
     const api = bans.api || null;
     let picker = api?.picker || 'team1';
@@ -139,8 +147,23 @@ export function buildPerMapBans(rawBans, maps, banSwaps = [], mapPickers = []) {
 
     let team1Ban, team2Ban;
     if (api?.team1Ban || api?.team2Ban) {
-      team1Ban = api.team1Ban;
-      team2Ban = api.team2Ban;
+      team1Ban = api.team1Ban || null;
+      team2Ban = api.team2Ban || null;
+      // ONE side confirmed but the Data API already shows both bans (history
+      // lagging on the second drop, or a one-sided confirmation carried through
+      // a failed fetch — see carryForwardApiAttribution): each team bans one
+      // hero, so the other slot is the remaining hero, by elimination. Filled
+      // only when exactly one raw hero differs from the confirmed one, so this
+      // can never show the same hero on both teams or move the confirmed hero.
+      // Leaving it null would blank a real ban on air at the reveal.
+      if (!team1Ban || !team2Ban) {
+        const confirmedName = (team1Ban || team2Ban).name;
+        const others = [bans.ban1, bans.ban2].filter(h => h && h.name !== confirmedName);
+        if (others.length === 1) {
+          if (!team1Ban) team1Ban = others[0];
+          else team2Ban = others[0];
+        }
+      }
     } else {
       // No (trustworthy) API bans: assume ban1 belongs to the map picker.
       // The dashboard's Hero Bans card warns about this and offers ⇄ Bans.
@@ -152,6 +175,101 @@ export function buildPerMapBans(rawBans, maps, banSwaps = [], mapPickers = []) {
     return banSwaps[i]
       ? { ...entry, team1Ban: entry.team2Ban, team2Ban: entry.team1Ban }
       : entry;
+  });
+}
+
+/** Hero names in a ban-bearing entry's ban1/ban2, as a sorted list (the pair is
+ *  unordered — entity order means nothing, see buildPerMapBans). */
+function banNameSet(entry) {
+  return [entry?.ban1, entry?.ban2]
+    .filter(Boolean)
+    .map(h => String(h.name))
+    .sort();
+}
+
+/**
+ * Keep FACEIT-CONFIRMED ban attribution through a sync where the veto history
+ * didn't deliver it. Runs on the RAW getMatchDetails perMapBans, before
+ * buildPerMapBans, so producer corrections (banSwaps/mapPickers) still layer on
+ * top exactly as before. Pure; returns a new array (entries it doesn't touch are
+ * passed through as-is).
+ *
+ * PRODUCER BUG (v2.2.0, live, Track Hunters vs ELMT Stellar): map 2's bans were
+ * shown on the wrong teams on every overlay because a sync came back without
+ * veto-history attribution and buildPerMapBans silently fell back to its guess.
+ * The history endpoint is undocumented and sits behind Cloudflare; a single
+ * failed 15s tick used to DOWNGRADE an already-confirmed map to the guess —
+ * swapping every screen mid-broadcast — and the next good tick swapped it back.
+ * Who banned what can't change unless the bans themselves change, so a
+ * confirmation, once seen, is carried until FACEIT says something different.
+ *
+ * `prev` is `{ matchId, perMapBans }` from state; its perMapBans are
+ * buildPerMapBans OUTPUT, whose `api` is the untouched raw attribution (banSwaps
+ * only swap team1Ban/team2Ban), so carrying it and re-running buildPerMapBans is
+ * exact. Per map i, with fresh = rawBans[i] and old = prev.perMapBans[i]:
+ *
+ *   - Nothing carries unless prev.matchId === matchId (never across matches;
+ *     the fresh match-load path doesn't call this at all).
+ *   - BANS (team1Ban/team2Ban, as a pair): carried from old.api when the
+ *     fresh api has no bans of its own, old.api had some, and the map's banned
+ *     heroes are the SAME non-empty set (ban1/ban2 names, order-insensitive —
+ *     they come from the Data API, independently of the history endpoint). A
+ *     changed set means a genuinely different veto (reset, redo) and the stale
+ *     sides must not mask it. Fresh bans always win.
+ *   - ONE-SIDED bans (old.api confirmed exactly one team's ban, e.g. Stellar →
+ *     Mei while D.Mon wasn't banned yet): the second ban landing grows the set
+ *     {Mei} → {Mei, D.Mon}, which is exactly the reveal moment a failed fetch
+ *     would otherwise hand to the guess — possibly putting Mei on the wrong
+ *     team. So when old's raw set is a STRICT subset of fresh's and the
+ *     confirmed hero is still banned, that one side is carried; the other slot
+ *     is left null here and filled by elimination in buildPerMapBans (never
+ *     the confirmed hero, never a second copy of it).
+ *   - PICKER: carried from old.api when the fresh api has none, and old's ban
+ *     set is a SUBSET of fresh's. The map is picked before its bans, so bans
+ *     arriving (none → one → two) don't invalidate a confirmed picker, but a
+ *     ban vanishing or changing hero means the veto was redone.
+ *   - Partial results merge field-wise under those rules (e.g. a fresh api with
+ *     only a picker — a drop not yet attributed — keeps old's confirmed bans).
+ *     A map left with no picker and no bans gets no `api`, as buildApiAttribution
+ *     would produce.
+ */
+export function carryForwardApiAttribution(rawBans, prev, matchId) {
+  const fresh = rawBans || [];
+  if (!prev || !matchId || prev.matchId !== matchId) return fresh;
+  const oldList = Array.isArray(prev.perMapBans) ? prev.perMapBans : [];
+  return fresh.map((entry, i) => {
+    const oldApi = oldList[i]?.api;
+    if (!entry || !oldApi) return entry;
+    const freshApi = entry.api || null;
+    const freshSet = banNameSet(entry);
+    const oldSet = banNameSet(oldList[i]);
+
+    let picker = freshApi?.picker || null;
+    if (!picker && oldApi.picker && oldSet.every(n => freshSet.includes(n))) {
+      picker = oldApi.picker;
+    }
+
+    let team1Ban = freshApi?.team1Ban || null;
+    let team2Ban = freshApi?.team2Ban || null;
+    const sameSet = freshSet.length > 0
+      && freshSet.length === oldSet.length
+      && freshSet.every((n, k) => n === oldSet[k]);
+    if (!team1Ban && !team2Ban && (oldApi.team1Ban || oldApi.team2Ban)) {
+      const oneSided = !oldApi.team1Ban !== !oldApi.team2Ban;
+      const confirmedName = String((oldApi.team1Ban || oldApi.team2Ban).name);
+      const grewFrom = oldSet.length < freshSet.length && oldSet.every(n => freshSet.includes(n));
+      if (sameSet || (oneSided && grewFrom && freshSet.includes(confirmedName))) {
+        team1Ban = oldApi.team1Ban || null;
+        team2Ban = oldApi.team2Ban || null;
+      }
+    }
+
+    if (!picker && !team1Ban && !team2Ban) return entry;
+    const unchanged = freshApi
+      && picker === (freshApi.picker || null)
+      && team1Ban === (freshApi.team1Ban || null)
+      && team2Ban === (freshApi.team2Ban || null);
+    return unchanged ? entry : { ...entry, api: { picker, team1Ban, team2Ban } };
   });
 }
 
@@ -281,4 +399,16 @@ export function faceitSyncAllowed(state) {
   if (mode !== 'faceit') return { allowed: false, reason: `mode is ${mode || 'unset'}, not faceit` };
   if (!state.faceitMatchId) return { allowed: false, reason: 'no match loaded' };
   return { allowed: true };
+}
+
+/**
+ * After an AWAITED FACEIT fetch, may its result still be written? Only if the
+ * match it was fetched for is still the loaded one. A 15s poll (or refresh)
+ * for match A can be in flight when the producer loads match B; A's result
+ * used to land in B's state (maps, bans, players, team names) until B's own
+ * next tick. With carryForwardApiAttribution that race could also turn sticky:
+ * A's confirmed ban sides in B's state, then carried by B's failing history.
+ */
+export function faceitSyncStillCurrent(state, fetchedMatchId) {
+  return !!fetchedMatchId && !!state && state.faceitMatchId === fetchedMatchId;
 }

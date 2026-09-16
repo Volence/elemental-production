@@ -239,6 +239,7 @@ export default function MatchHub({ state, updateState, api }) {
         mapPickers: [],
         removedMapKeys: [],
         selectedMapIdx: -1,
+        faceitVetoHistoryError: null,
       });
     } else if (mode === 'scrim') {
       updateState({
@@ -254,6 +255,7 @@ export default function MatchHub({ state, updateState, api }) {
         mapPickers: [],
         removedMapKeys: [],
         selectedMapIdx: -1,
+        faceitVetoHistoryError: null,
         bestOf: 1,
       });
     }
@@ -1020,6 +1022,10 @@ export default function MatchHub({ state, updateState, api }) {
           const withBans = (state.perMapBans || []).filter(b => b && (b.ban1 || b.ban2));
           if (!withBans.length) return null;
           const unconfirmed = withBans.filter(b => !(b.api?.team1Ban || b.api?.team2Ban)).length;
+          // Why the last sync got no attribution (server getVetoHistory). While
+          // it's set, any confirmed sides on screen are held from an earlier
+          // good sync (faceit-merge carryForwardApiAttribution).
+          const historyError = state.faceitVetoHistoryError;
           return unconfirmed === 0 ? (
             <div style={{
               display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', marginBottom: 12,
@@ -1030,6 +1036,10 @@ export default function MatchHub({ state, updateState, api }) {
               <span>
                 Ban sides confirmed from FACEIT's veto history — every map's bans are attributed to
                 the team that made them. <strong>⇄ Bans</strong> still overrides if something looks off.
+                {historyError && (
+                  <> Veto history is currently unavailable ({historyError}), so these sides are held from
+                  the last sync that confirmed them.</>
+                )}
               </span>
             </div>
           ) : (
@@ -1044,6 +1054,12 @@ export default function MatchHub({ state, updateState, api }) {
                   ? 'these maps' : `${unconfirmed} of ${withBans.length} maps`}, so those ban sides are a
                 best guess based on map picks and may be flipped. If a ban shows on the wrong team, click
                 <strong> ⇄ Bans</strong> on that map above — the correction sticks through auto-sync.
+                <br />
+                <span style={{ color: '#f59e0b' }}>
+                  Ban sides unconfirmed: {historyError
+                    ? `veto history unavailable (${historyError}).`
+                    : "veto history answered but hasn't attributed these bans yet."}
+                </span>
               </span>
             </div>
           );

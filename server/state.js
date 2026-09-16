@@ -63,6 +63,7 @@ const defaultState = {
   replayIndex: 0, // current replay index for cycling
   overrides: {}, // e.g. { 'teams.team1.name': true, 'maps': true }
   faceitAutoSync: true, // whether to auto-poll FACEIT for match updates
+  faceitVetoHistoryError: null, // why FACEIT's veto history (who banned what) gave nothing on the last sync, e.g. 'HTTP 403 (Cloudflare challenge)'; null when it answered. Shown on MatchHub's Hero Bans card so guessed ban sides aren't silent (see faceit.getVetoHistory).
   graphicsPresets: {
     default: { name: 'Default', graphics: {} }
   },

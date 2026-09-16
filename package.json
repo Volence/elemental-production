@@ -3,7 +3,7 @@
   "description": "Elemental Overwatch broadcast production companion — OBS overlay controller, FACEIT integration, and scene management.",
   "author": "Elemental Gaming <contact@elemental.gg>",
   "private": true,
-  "version": "2.2.1",
+  "version": "2.3.0",
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
@@ -43,7 +43,8 @@
       "!dist/stinger-transition.webm",
       "public/**/*",
       "package.json",
-      ".env.example"
+      ".env.example",
+      "!**/*.test.js"
     ],
     "extraResources": [
       {
@@ -55,6 +56,13 @@
         "to": "seed/map-images"
       }
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Volence",
+        "repo": "elemental-production"
+      }
+    ],
     "win": {
       "target": [
         "nsis"
@@ -64,7 +72,8 @@
     "nsis": {
       "oneClick": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "artifactName": "Elemental-Production-Setup-${version}.${ext}"
     },
     "linux": {
       "target": [
@@ -72,11 +81,15 @@
       ],
       "icon": "public/elemental-logo.png",
       "category": "Utility"
+    },
+    "appImage": {
+      "artifactName": "Elemental-Production-${version}.${ext}"
     }
   },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "obs-websocket-js": "^5.0.8"
   },

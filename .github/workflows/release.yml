@@ -34,11 +34,18 @@ jobs:
       - name: Package Linux AppImage
         run: npx electron-builder --linux AppImage --publish never
 
+      # latest-linux.yml is what the in-app updater (electron-updater, GitHub
+      # provider) reads to find the new AppImage — without it attached to the
+      # release, installed apps never see the update. The AppImage embeds its
+      # own blockmap, so there's no separate .blockmap on Linux.
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: release/*.AppImage
+          if-no-files-found: error
+          path: |
+            release/*.AppImage
+            release/latest-linux.yml
 
   build-windows:
     runs-on: windows-latest
@@ -66,11 +73,17 @@ jobs:
       - name: Package Windows installer
         run: npx electron-builder --win nsis --publish never
 
+      # latest.yml drives the in-app updater on Windows; the .exe.blockmap
+      # lets it download only the changed blocks instead of the full installer.
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: release/*.exe
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/latest.yml
 
   release:
     needs: [build-linux, build-windows]
