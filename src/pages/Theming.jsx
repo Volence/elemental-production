@@ -36,11 +36,16 @@ export default function Theming({ state, updateState, api, customFonts }) {
   const theme = state.theme || {};
   const [local, setLocal] = useState({ ...DEFAULT_THEME, ...theme });
   const [dirty, setDirty] = useState(false);
+  const teamTimers = useRef({});
+  const teamPending = useRef({});
   useEffect(() => {
     // Broadcasts arrive every few seconds (FACEIT poll, other producers).
     // Never clobber unsaved local edits — resync only when the form is clean.
     if (dirty) return;
-    setLocal({ ...DEFAULT_THEME, ...state.theme });
+    // Team-color edits still inside saveTeamColor's debounce win over the
+    // broadcast, or a dragged picker / the Auto box flickers back mid-save.
+    const pending = { ...teamPending.current[1], ...teamPending.current[2] };
+    setLocal({ ...DEFAULT_THEME, ...state.theme, ...pending });
   }, [state.theme, dirty]);
 
   const update = (key, value) => {
@@ -71,8 +76,6 @@ export default function Theming({ state, updateState, api, customFonts }) {
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  const teamTimers = useRef({});
-  const teamPending = useRef({});
   const saveTeamColor = (n, fields) => {
     setLocal(prev => ({ ...prev, ...fields }));
     teamPending.current[n] = { ...teamPending.current[n], ...fields };
@@ -135,6 +138,8 @@ export default function Theming({ state, updateState, api, customFonts }) {
   };
 
   const resetToDefault = async () => {
+    // A team-color save still in its debounce would re-apply the old color.
+    for (const n of [1, 2]) { clearTimeout(teamTimers.current[n]); teamPending.current[n] = {}; }
     setLocal({ ...DEFAULT_THEME });
     await updateState({ theme: { ...DEFAULT_THEME } });
     // Also release any team-color locks left over from a prior save, so a

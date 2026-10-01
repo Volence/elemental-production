@@ -903,8 +903,18 @@ app.post('/api/faceit/match', async (req, res) => {
 
     const updated = setState(update);
 
-    // Loading a live match turns auto-sync on automatically
+    // Loading a live match turns auto-sync on automatically. So does a match
+    // that JUST finished whose stats FACEIT hasn't published yet: the poll's
+    // FINISHED branch keeps ticking (awaitingFinalStats) until they land, which
+    // also fills in map statuses + score — both derive from stats, so without
+    // this a fresh-finished load sat at 0-0 / all-upcoming with no warning.
+    const resultMaps = Object.values(details.results?.score || {})
+      .reduce((a, b) => a + (Number(b) || 0), 0);
     if (details.status !== 'FINISHED' && details.status !== 'CANCELLED') {
+      startFaceitPoll();
+    } else if (details.status === 'FINISHED'
+        && awaitingFinalStats({ statsCount: stats.length, completedMaps: resultMaps, finishedAt: details.finishedAt })) {
+      console.log(`[FACEIT] ${matchId} just finished — polling until final stats are published`);
       startFaceitPoll();
     }
 
