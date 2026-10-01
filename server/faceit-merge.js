@@ -412,3 +412,59 @@ export function faceitSyncAllowed(state) {
 export function faceitSyncStillCurrent(state, fetchedMatchId) {
   return !!fetchedMatchId && !!state && state.faceitMatchId === fetchedMatchId;
 }
+
+/**
+ * FACEIT's "first attacker" -> the side swap. Producer request (MetalOBS,
+ * 2026-09): the team that attacks first sits on the RIGHT, so team1 attacking
+ * first means swapSides=true (team1 is the left side by default).
+ *
+ * Edge-triggered on `matchId:gameIdx:attacker`: returns null when that fact
+ * was already applied (prevKey), so a producer's manual ⇄ Swap Sides sticks
+ * until the NEXT map's side vote lands. Uses the newest game with a recorded
+ * attacker — FACEIT records the vote right after the map pick, so that's the
+ * map about to be played. No recorded attacker (failed history fetch,
+ * pre-vote) => null => sides untouched.
+ */
+export function resolveAutoSide(attackingFirst, matchId, prevKey) {
+  if (!matchId || !Array.isArray(attackingFirst)) return null;
+  let idx = -1;
+  for (let i = attackingFirst.length - 1; i >= 0; i--) {
+    if (attackingFirst[i] === 'team1' || attackingFirst[i] === 'team2') { idx = i; break; }
+  }
+  if (idx < 0) return null;
+  const attacker = attackingFirst[idx];
+  const key = `${matchId}:${idx}:${attacker}`;
+  if (key === prevKey) return null;
+  return { key, mapIdx: idx, attacker, swapSides: attacker === 'team1' };
+}
+
+/**
+ * Stats from a sync tick -> state.playerStats. FACEIT 404s the stats endpoint
+ * until it has computed them (often a while AFTER the match is FINISHED), and
+ * callers fold fetch errors to []. An empty fetch must never wipe stats that
+ * already loaded — that, plus the poll stopping at FINISHED, is how a finished
+ * series ended up with no stats and a red Series Stats preflight row.
+ */
+export function mergePlayerStats(prev, fetched) {
+  if (Array.isArray(fetched) && fetched.length) return fetched;
+  return Array.isArray(prev) ? prev : [];
+}
+
+const FINAL_STATS_GRACE_MS = 10 * 60 * 1000;
+
+/**
+ * After FACEIT reports FINISHED, keep polling (up to 10 min past finished_at,
+ * unix SECONDS) while completed maps still outnumber stats rounds, so the
+ * late-published final stats are actually picked up.
+ */
+export function awaitingFinalStats({ statsCount, completedMaps, finishedAt, now = Date.now() }) {
+  if (!finishedAt || completedMaps <= statsCount) return false;
+  return now - finishedAt * 1000 < FINAL_STATS_GRACE_MS;
+}
+
+/** A FACEIT match with completed maps but no stats — worth one fetch at boot / preflight. */
+export function needsStatsBackfill(state) {
+  if (!state || state.mode !== 'faceit' || !state.faceitMatchId) return false;
+  if ((state.playerStats || []).length) return false;
+  return (state.maps || []).some(m => m && m.status === 'completed');
+}

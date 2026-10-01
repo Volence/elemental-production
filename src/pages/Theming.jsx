@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { sampleBuckets, pickBestBucket, ELMT_ACCENT_FALLBACK } from '../lib/color-extract.js';
 
 const BUILTIN_FONTS = [
@@ -52,6 +52,51 @@ export default function Theming({ state, updateState, api, customFonts }) {
   // marking it dirty, so background extraction never blocks broadcast resyncs.
   const updateSilent = (key, value) => {
     setLocal(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Team colors are a live broadcast control, so they save the moment they
+  // change instead of waiting on Save Theme. Producer report (MetalOBS,
+  // 2026-09): "can't change color in manual, it stays on auto from logo" — the
+  // Save button sat ~1000px above this card, and switching tabs silently
+  // dropped the unsaved toggle, so the box came back checked. Debounced
+  // because a dragged color picker fires a change per mouse move. Only these
+  // team keys are written: other unsaved edits on the page stay unsaved.
+  // The Save bar sticks just under the (also sticky) scene toolbar, whose
+  // height depends on how many rows its buttons wrap to.
+  const [stickyTop, setStickyTop] = useState(0);
+  useEffect(() => {
+    const measure = () => setStickyTop(document.querySelector('.scene-toolbar')?.offsetHeight || 0);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
+  const teamTimers = useRef({});
+  const teamPending = useRef({});
+  const saveTeamColor = (n, fields) => {
+    setLocal(prev => ({ ...prev, ...fields }));
+    teamPending.current[n] = { ...teamPending.current[n], ...fields };
+    clearTimeout(teamTimers.current[n]);
+    teamTimers.current[n] = setTimeout(async () => {
+      const pending = teamPending.current[n];
+      teamPending.current[n] = {};
+      const color = pending[`team${n}Color`];
+      const updates = { theme: pending };
+      if (color) updates.teams = { [`team${n}`]: { color } };
+      await updateState(updates);
+      const auto = pending[`team${n}ColorAuto`];
+      if (auto === undefined) return;
+      await fetch(`${api}/api/overrides${auto ? '/clear' : ''}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(auto ? { path: `teams.team${n}.color` } : { paths: [`teams.team${n}.color`] }),
+      });
+    }, 250);
+  };
+  // Logo extraction while Auto is on: persist only a real change (same
+  // pickBestBucket primary App.jsx's extractor writes, so they can't fight).
+  const onExtracted = (n, hex) => {
+    if ((state.theme || {})[`team${n}Color`] === hex) return updateSilent(`team${n}Color`, hex);
+    saveTeamColor(n, { [`team${n}Color`]: hex });
   };
 
   const saveTheme = async () => {
@@ -114,7 +159,7 @@ export default function Theming({ state, updateState, api, customFonts }) {
         <p>Customize overlay appearance and team colors</p>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, position: 'sticky', top: stickyTop, zIndex: 5, padding: '8px 0', background: 'var(--bg-primary, #0b0d14)' }}>
         <button className="btn btn-primary" onClick={saveTheme} disabled={!dirty}>
           {dirty ? 'Save Theme' : 'Saved'}
         </button>
@@ -187,6 +232,7 @@ export default function Theming({ state, updateState, api, customFonts }) {
       {/* Team Colors */}
       <div className="card" style={{ marginBottom: 16 }}>
         <span className="card-title">Team Colors</span>
+        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>Changes here go live immediately — no need to Save Theme.</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 8 }}>
           <TeamColorSection
             label={state.teams?.team1?.name || 'Team 1'}
@@ -194,9 +240,9 @@ export default function Theming({ state, updateState, api, customFonts }) {
             auto={local.team1ColorAuto !== false}
             logoUrl={state.teams?.team1?.logo}
             api={api}
-            onColorChange={v => update('team1Color', v)}
-            onExtractedColor={v => updateSilent('team1Color', v)}
-            onAutoChange={v => update('team1ColorAuto', v)}
+            onColorChange={v => saveTeamColor(1, { team1Color: v })}
+            onExtractedColor={v => onExtracted(1, v)}
+            onAutoChange={v => saveTeamColor(1, { team1ColorAuto: v })}
           />
           <TeamColorSection
             label={state.teams?.team2?.name || 'Team 2'}
@@ -204,9 +250,9 @@ export default function Theming({ state, updateState, api, customFonts }) {
             auto={local.team2ColorAuto !== false}
             logoUrl={state.teams?.team2?.logo}
             api={api}
-            onColorChange={v => update('team2Color', v)}
-            onExtractedColor={v => updateSilent('team2Color', v)}
-            onAutoChange={v => update('team2ColorAuto', v)}
+            onColorChange={v => saveTeamColor(2, { team2Color: v })}
+            onExtractedColor={v => onExtracted(2, v)}
+            onAutoChange={v => saveTeamColor(2, { team2ColorAuto: v })}
           />
         </div>
       </div>

@@ -24,7 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
-import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, carryForwardApiAttribution, computeActiveBan, deriveActiveBanState, deriveScores, faceitSyncAllowed, faceitSyncStillCurrent } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, carryForwardApiAttribution, computeActiveBan, deriveActiveBanState, deriveScores, faceitSyncAllowed, faceitSyncStillCurrent, resolveAutoSide, mergePlayerStats, awaitingFinalStats, needsStatsBackfill } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
 import { rawUpload, uploadedBytes, uploadedFilename } from './upload-middleware.js';
@@ -790,6 +790,19 @@ function reconcileHeroBans() {
   return update;
 }
 
+/**
+ * FACEIT "first attacker" -> swapSides (attacker on the RIGHT). Edge-triggered
+ * via state.autoSide.key, so a manual ⇄ Swap Sides holds until the next map's
+ * side vote (see resolveAutoSide). Mutates `update`.
+ */
+function applyAutoSide(update, details, matchId, prevKey) {
+  const side = resolveAutoSide(details.attackingFirst, matchId, prevKey);
+  if (!side) return;
+  update.swapSides = side.swapSides;
+  update.autoSide = { key: side.key, mapIdx: side.mapIdx, attacker: side.attacker };
+  console.log(`[FACEIT] Map ${side.mapIdx + 1}: ${side.attacker} attacks first → ${side.attacker} on the right (swapSides=${side.swapSides})`);
+}
+
 app.post('/api/faceit/match', async (req, res) => {
   try {
     const matchId = faceit.parseMatchUrl(req.body.url || req.body.matchId);
@@ -856,6 +869,8 @@ app.post('/api/faceit/match', async (req, res) => {
       };
     }
     update.playerStats = stats;
+    update.autoSide = null;
+    applyAutoSide(update, details, matchId, null);
     update.perMapBans = perMapBans;
     if (!isOverridden('heroBans')) {
       update.heroBans = activeBan.heroBans;
@@ -982,6 +997,8 @@ async function refreshFromFaceit() {
   if (!isOverridden('teams.team2.logo')) t2.logo = faction2.avatar;
   if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
   update.teams = { team1: t1, team2: t2 };
+  if (stats.length) update.playerStats = stats;
+  applyAutoSide(update, details, matchId, latest.autoSide?.key);
 
   const updated = setState(update);
   broadcast('state', updated);
@@ -1041,10 +1058,23 @@ async function faceitPollTick() {
       return;
     }
 
-    // Auto-stop if match is finished
+    // Auto-stop if match is finished — unless FACEIT hasn't published the
+    // final stats yet (it 404s them for a while after FINISHED). Stopping on
+    // the first FINISHED tick used to lock in empty stats for good: the red
+    // "Series Stats" preflight row on the next startup (DanBuzzBuzz, 2026-09).
     if (details.status === 'FINISHED' || details.status === 'CANCELLED') {
-      console.log(`[FACEIT Poll] Match ${details.status} — stopping auto-sync`);
-      stopFaceitPoll(details.status.toLowerCase());
+      const resultMaps = Object.values(details.results?.score || {})
+        .reduce((a, b) => a + (Number(b) || 0), 0);
+      const completedMaps = Math.max(resultMaps,
+        (currentState.maps || []).filter(m => m && m.status === 'completed').length);
+      const statsCount = Math.max((stats || []).length, (currentState.playerStats || []).length);
+      if (details.status === 'FINISHED'
+          && awaitingFinalStats({ statsCount, completedMaps, finishedAt: details.finishedAt })) {
+        console.log(`[FACEIT Poll] Match FINISHED — waiting for final stats (${statsCount}/${completedMaps} maps)`);
+      } else {
+        console.log(`[FACEIT Poll] Match ${details.status} — stopping auto-sync`);
+        stopFaceitPoll(details.status.toLowerCase());
+      }
       // Do one final update with the finished data before stopping
     }
 
@@ -1103,7 +1133,8 @@ async function faceitPollTick() {
     if (!isOverridden('players')) {
       update.players = { team1: faction1.roster, team2: faction2.roster };
     }
-    update.playerStats = stats;
+    update.playerStats = mergePlayerStats(latest.playerStats, stats);
+    applyAutoSide(update, details, matchId, latest.autoSide?.key);
     update.perMapBans = perMapBans;
     if (!isOverridden('heroBans')) {
       update.heroBans = activeBan.heroBans;
@@ -1388,7 +1419,34 @@ app.post('/api/map-music/directory', (req, res) => {
 // ============ PRE-SHOW CHECKLIST ============
 
 /** Pre-flight check — validate all systems before going live */
+/**
+ * One-shot stats fetch for a FACEIT match that has completed maps but no
+ * stats (needsStatsBackfill) — e.g. a state.json saved before the final stats
+ * were published. Runs at boot and before the preflight checklist reads state.
+ * Single-flight; never throws; never overwrites stats that arrived meanwhile.
+ */
+let statsBackfill = null;
+function backfillPlayerStats() {
+  if (statsBackfill) return statsBackfill;
+  const s = getState();
+  if (!needsStatsBackfill(s)) return Promise.resolve();
+  const matchId = s.faceitMatchId;
+  statsBackfill = faceit.getMatchStats(matchId)
+    .then(stats => {
+      const now = getState();
+      if (!stats.length || !faceitSyncStillCurrent(now, matchId) || (now.playerStats || []).length) return;
+      const updated = setState({ playerStats: stats });
+      broadcast('state', updated);
+      console.log(`[FACEIT] Backfilled ${stats.length} map(s) of stats for ${matchId}`);
+    })
+    .catch(e => console.warn(`[FACEIT] Stats backfill failed: ${e.message}`))
+    .finally(() => { statsBackfill = null; });
+  return statsBackfill;
+}
+
 app.get('/api/preflight', async (req, res) => {
+  // Bounded wait: a slow FACEIT must not hang the checklist.
+  await Promise.race([backfillPlayerStats(), new Promise(r => setTimeout(r, 5000))]);
   const state = getState();
   const checks = [];
 
@@ -1508,7 +1566,7 @@ app.get('/api/preflight', async (req, res) => {
   const completedMaps = (state.maps || []).filter(m => m && m.status === 'completed').length;
   checks.push({
     id: 'final_stats', label: 'Series Stats',
-    ok: statRounds > 0 || completedMaps === 0,
+    ok: statRounds > 0 || completedMaps === 0 || state.mode !== 'faceit',
     detail: statRounds > 0
       ? `${statRounds} played map${statRounds === 1 ? '' : 's'} of stats`
       : 'Final Stats unavailable — no FACEIT stats loaded (manual/scrim, or no map finished yet)',
@@ -1960,6 +2018,7 @@ app.post('/api/reset', (req, res) => {
     faceitMatchUrl: '',
     faceitAutoSync: false,
     faceitVetoHistoryError: null,
+    autoSide: null,
     players: { team1: [], team2: [] },
     maps: (s.maps || []).map(m => ({ ...m, status: 'upcoming', winner: null, roundScore: null })),
   };
@@ -2359,6 +2418,7 @@ reconcileHeroBans();
 if (getState().faceitAutoSync) {
   startFaceitPoll();
 }
+backfillPlayerStats();
 
 // Per-CONNECTION latch, not a process-lifetime one: it's re-armed by the
 // onConnected hook below so every (re)connect heals the sources again. It only

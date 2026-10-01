@@ -46,6 +46,7 @@ const defaultState = {
   matchHistory: [],
   graphicsPreset: 'default',
   swapSides: false, // swap team1/team2 positions in OBS
+  autoSide: null, // last FACEIT "first attacker" fact applied to swapSides: { key, mapIdx, attacker }. Edge-trigger memory for faceit-merge resolveAutoSide — a manual swap holds until the next map's side vote. Cleared on reset/match load.
   flythroughsDir: '', // path to folder containing map flythrough videos
   flythroughFallback: '',
   mapMusicDir: '', // path to folder containing map music audio files

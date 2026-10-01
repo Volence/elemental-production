@@ -186,6 +186,24 @@ export function parseVetoHistory(tickets) {
 }
 
 /**
+ * Democracy history tickets -> who attacks first in each game, as
+ * 'team1' | 'team2' | null (no side vote recorded yet), one per
+ * `attacking_first` ticket in game order. The PICKED entity's guid is the
+ * attacking faction (verified against 1-17d9542e-…: every played game,
+ * Control included, carries one pick; unplayed games stay `open`). This is
+ * the "Premier attaquant" / "First attacker" FACEIT shows in the match room.
+ */
+export function parseAttackingFirst(tickets) {
+  if (!Array.isArray(tickets)) return [];
+  return tickets
+    .filter(t => t?.entity_type === 'attacking_first')
+    .map(t => {
+      const pick = (Array.isArray(t.entities) ? t.entities : []).find(e => e?.status === 'pick');
+      return pick?.guid === 'faction1' ? 'team1' : pick?.guid === 'faction2' ? 'team2' : null;
+    });
+}
+
+/**
  * Per-game veto facts -> the app's team vocabulary (faction1 = team1, the
  * same equivalence buildTeamsUpdate and the poll tick already rely on).
  * Returns one `{ picker, team1Ban, team2Ban } | null` per game:
@@ -262,9 +280,10 @@ export async function getVetoHistory(matchId) {
         result = { games: null, error: 'unexpected response shape (no payload.tickets)' };
       } else {
         const games = parseVetoHistory(data.payload.tickets);
+        const attackingFirst = parseAttackingFirst(data.payload.tickets);
         result = games.length
-          ? { games, error: null }
-          : { games: null, error: 'history has no picks or bans yet' };
+          ? { games, attackingFirst, error: null }
+          : { games: null, attackingFirst, error: 'history has no picks or bans yet' };
       }
     }
   } catch (e) {
@@ -422,6 +441,9 @@ export async function getMatchDetails(matchId) {
       // Why the veto history gave nothing (null when it answered). Written to
       // state.faceitVetoHistoryError by every sync path for the Hero Bans card.
       vetoHistoryError: vetoHistory.error,
+      // Per game: who attacks first ('team1'|'team2'|null); [] when the
+      // history failed. Drives the auto side swap (faceit-merge resolveAutoSide).
+      attackingFirst: vetoHistory.attackingFirst || [],
       results: data.results || {},
       startedAt: data.started_at,
       finishedAt: data.finished_at,

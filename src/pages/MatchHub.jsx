@@ -240,6 +240,7 @@ export default function MatchHub({ state, updateState, api }) {
         removedMapKeys: [],
         selectedMapIdx: -1,
         faceitVetoHistoryError: null,
+        autoSide: null,
       });
     } else if (mode === 'scrim') {
       updateState({
@@ -256,6 +257,7 @@ export default function MatchHub({ state, updateState, api }) {
         removedMapKeys: [],
         selectedMapIdx: -1,
         faceitVetoHistoryError: null,
+        autoSide: null,
         bestOf: 1,
       });
     }
@@ -441,6 +443,11 @@ export default function MatchHub({ state, updateState, api }) {
         <button className="btn btn-ghost btn-sm" onClick={() => resetMatch(true)}>🔄 Reset Scores</button>
         <button className="btn btn-ghost btn-sm" onClick={() => setShowNewMatchConfirm(true)}>🗑️ New Match</button>
         {state.swapSides && <span className="badge badge-warning">Sides are swapped</span>}
+        {state.mode === 'faceit' && state.autoSide?.attacker && (
+          <span className="badge" title="Set automatically from FACEIT's first-attacker vote. ⇄ Swap Sides overrides it until the next map's vote.">
+            Map {state.autoSide.mapIdx + 1}: {state.teams?.[state.autoSide.attacker]?.name || state.autoSide.attacker} attacks first → right side (FACEIT)
+          </span>
+        )}
       </div>
 
       {/* Scrim Mode — Minimal UI */}
