@@ -194,6 +194,10 @@ export function loadState() {
       state = deepMerge(JSON.parse(JSON.stringify(defaultState)), data);
       // Heal a state.json written before the single-current invariant existed
       state.maps = normalizeSingleCurrent(state.maps);
+      // A match loaded under a build without the FACEIT first-attacker swap:
+      // the first tick must only RECORD the current side fact, not flip sides
+      // the producer may already have set by hand (resolveAutoSide seedOnly).
+      if (!('autoSide' in data) && data.faceitMatchId) state.autoSide = { seedOnly: true };
     }
   } catch (e) {
     console.warn('[State] Failed to load state, using defaults:', e.message);

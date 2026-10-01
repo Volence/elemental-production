@@ -108,3 +108,49 @@ describe('needsStatsBackfill', () => {
     expect(needsStatsBackfill(null)).toBe(false);
   });
 });
+
+import { buildFaceitMap, faceitCompletedMaps, revertAutoSwap } from './faceit-merge.js';
+
+describe('buildFaceitMap (forward-only map progress, shared by poll tick + refresh)', () => {
+  const m = { name: 'Busan', mode: 'Control', imageLg: 'L' };
+  const won = { winner: 'f1', scoreSummary: '2-1' };
+  it('takes status/winner/score from FACEIT stats', () => {
+    expect(buildFaceitMap(m, won, {}, 'f1')).toEqual({
+      name: 'Busan', mode: 'Control', image: 'L', status: 'completed', winner: 'team1', roundScore: '2-1' });
+  });
+  it('never demotes a completed map when stats are missing (404 window after FINISHED)', () => {
+    const cur = { status: 'completed', winner: 'team2', roundScore: '1-2' };
+    expect(buildFaceitMap(m, undefined, cur, 'f1'))
+      .toMatchObject({ status: 'completed', winner: 'team2', roundScore: '1-2' });
+  });
+  it('defaults to upcoming with no stats and no prior state', () => {
+    expect(buildFaceitMap(m, undefined, undefined, 'f1')).toMatchObject({ status: 'upcoming', winner: null, roundScore: null });
+  });
+});
+
+describe('faceitCompletedMaps', () => {
+  it('ignores producer-appended maps past FACEIT\'s picks (they never get stats)', () => {
+    const maps = [{ status: 'completed' }, { status: 'completed' }, { status: 'completed' }];
+    expect(faceitCompletedMaps({ results: {}, pickedMaps: [{}, {}] }, maps)).toBe(2);
+  });
+  it('uses FACEIT\'s result score when it says more', () => {
+    expect(faceitCompletedMaps({ results: { score: { faction1: 3, faction2: 1 } }, pickedMaps: [{}, {}, {}, {}] }, [])).toBe(4);
+  });
+});
+
+describe('revertAutoSwap (leaving FACEIT mode)', () => {
+  it('undoes a swap FACEIT made', () => {
+    expect(revertAutoSwap({ swapSides: true, autoSide: { attacker: 'team1' } })).toBe(false);
+  });
+  it('keeps a producer\'s manual swap (differs from what FACEIT set)', () => {
+    expect(revertAutoSwap({ swapSides: true, autoSide: { attacker: 'team2' } })).toBe(true);
+    expect(revertAutoSwap({ swapSides: true, autoSide: null })).toBe(true);
+  });
+});
+
+describe('resolveAutoSide seed (upgrade from a build without autoSide)', () => {
+  it('records the current fact without swapping', () => {
+    expect(resolveAutoSide(['team1'], 'm1', null, { seedOnly: true }))
+      .toEqual({ key: 'm1:0:team1', mapIdx: 0, attacker: 'team1', swapSides: undefined });
+  });
+});

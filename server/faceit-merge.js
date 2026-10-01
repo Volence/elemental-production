@@ -425,7 +425,7 @@ export function faceitSyncStillCurrent(state, fetchedMatchId) {
  * map about to be played. No recorded attacker (failed history fetch,
  * pre-vote) => null => sides untouched.
  */
-export function resolveAutoSide(attackingFirst, matchId, prevKey) {
+export function resolveAutoSide(attackingFirst, matchId, prevKey, { seedOnly = false } = {}) {
   if (!matchId || !Array.isArray(attackingFirst)) return null;
   let idx = -1;
   for (let i = attackingFirst.length - 1; i >= 0; i--) {
@@ -435,7 +435,57 @@ export function resolveAutoSide(attackingFirst, matchId, prevKey) {
   const attacker = attackingFirst[idx];
   const key = `${matchId}:${idx}:${attacker}`;
   if (key === prevKey) return null;
-  return { key, mapIdx: idx, attacker, swapSides: attacker === 'team1' };
+  // seedOnly: state came from a build without autoSide (see state.js
+  // loadState) — remember the fact but leave the producer's sides alone.
+  return { key, mapIdx: idx, attacker, swapSides: seedOnly ? undefined : attacker === 'team1' };
+}
+
+/**
+ * Leaving FACEIT mode: undo a side swap FACEIT made, keep one the producer
+ * made. Returns the new swapSides. A swap equal to what resolveAutoSide set is
+ * treated as FACEIT's (indistinguishable, and FACEIT's is the likely source).
+ */
+export function revertAutoSwap(state) {
+  const swap = !!state?.swapSides;
+  const attacker = state?.autoSide?.attacker;
+  if (!attacker) return swap;
+  return swap === (attacker === 'team1') ? false : swap;
+}
+
+const MAP_STATUS_RANK = { upcoming: 0, current: 1, completed: 2 };
+
+/**
+ * One FACEIT picked map + its stats round -> a state map, never moving
+ * progress backwards: no stats (FACEIT 404s them for a while, e.g. right after
+ * FINISHED) keeps the current status/winner/score instead of resetting the map
+ * to upcoming (which also zeroed the derived series score).
+ */
+export function buildFaceitMap(m, roundStats, current, faction1Id) {
+  const cur = current || {};
+  let winner = cur.winner || null;
+  if (roundStats?.winner) winner = roundStats.winner === faction1Id ? 'team1' : 'team2';
+  const faceitStatus = roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming';
+  const status = MAP_STATUS_RANK[faceitStatus] >= MAP_STATUS_RANK[cur.status || 'upcoming']
+    ? faceitStatus : (cur.status || 'upcoming');
+  return {
+    name: m.name, mode: m.mode,
+    image: m.imageLg || m.imageSm,
+    status, winner,
+    roundScore: roundStats?.scoreSummary || cur.roundScore || null,
+  };
+}
+
+/**
+ * How many of FACEIT's maps are done: FACEIT's own result score, or completed
+ * maps within FACEIT's picks — never producer-appended maps past them, which
+ * never get stats and would keep awaitingFinalStats polling for nothing.
+ */
+export function faceitCompletedMaps(details, maps) {
+  const resultMaps = Object.values(details?.results?.score || {})
+    .reduce((a, b) => a + (Number(b) || 0), 0);
+  const picked = (details?.pickedMaps || []).length;
+  const local = (maps || []).slice(0, picked).filter(m => m && m.status === 'completed').length;
+  return Math.max(resultMaps, local);
 }
 
 /**

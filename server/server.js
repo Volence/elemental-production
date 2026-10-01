@@ -24,7 +24,7 @@ import * as faceit from './faceit.js';
 import { getHeroes, getHeroesByRole } from './heroes.js';
 import * as flythroughs from './flythroughs.js';
 import * as mapMusic from './map-music.js';
-import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, carryForwardApiAttribution, computeActiveBan, deriveActiveBanState, deriveScores, faceitSyncAllowed, faceitSyncStillCurrent, resolveAutoSide, mergePlayerStats, awaitingFinalStats, needsStatsBackfill } from './faceit-merge.js';
+import { buildTeamsUpdate, buildMapsUpdate, buildPerMapBans, carryForwardApiAttribution, computeActiveBan, deriveActiveBanState, deriveScores, faceitSyncAllowed, faceitSyncStillCurrent, resolveAutoSide, mergePlayerStats, awaitingFinalStats, needsStatsBackfill, revertAutoSwap, buildFaceitMap, faceitCompletedMaps } from './faceit-merge.js';
 import { findLocalMapImage } from './map-image-resolver.js';
 import { findLocalHeroRender } from './hero-render-resolver.js';
 import { rawUpload, uploadedBytes, uploadedFilename } from './upload-middleware.js';
@@ -423,6 +423,7 @@ app.get('/api/state', (req, res) => {
 });
 
 app.patch('/api/state', (req, res) => {
+  const before = getState();
   const body = Array.isArray(req.body.maps)
     ? { ...req.body, maps: normalizeSingleCurrent(withLocalMapImagesForState(req.body.maps)) }
     : req.body;
@@ -431,7 +432,12 @@ app.patch('/api/state', (req, res) => {
   // faceitAutoSync=false) so a match id left over from before the switch can't
   // keep overwriting hand-entered maps/bans every 15s. faceitPollTick also
   // refuses to run outside faceit mode, so this is belt AND braces.
-  if ('mode' in body && body.mode !== 'faceit') stopFaceitPoll(`switched to ${body.mode} mode`);
+  if ('mode' in body && body.mode !== 'faceit') {
+    stopFaceitPoll(`switched to ${body.mode} mode`);
+    // A side swap FACEIT's first-attacker vote made doesn't carry into
+    // Manual/Scrim; one the producer made does (see revertAutoSwap).
+    if (before.mode === 'faceit') setState({ swapSides: revertAutoSwap(before), autoSide: null });
+  }
   // heroBans is derived from (perMapBans, maps, selectedMapIdx). If this PATCH
   // touched any of those but did NOT set heroBans itself, re-derive so the HUD
   // wings + Ban Reveal stay in sync with the scoreboard. When the body already
@@ -795,12 +801,13 @@ function reconcileHeroBans() {
  * via state.autoSide.key, so a manual ⇄ Swap Sides holds until the next map's
  * side vote (see resolveAutoSide). Mutates `update`.
  */
-function applyAutoSide(update, details, matchId, prevKey) {
-  const side = resolveAutoSide(details.attackingFirst, matchId, prevKey);
+function applyAutoSide(update, details, matchId, prevAutoSide) {
+  const side = resolveAutoSide(details.attackingFirst, matchId, prevAutoSide?.key,
+    { seedOnly: !!prevAutoSide?.seedOnly });
   if (!side) return;
-  update.swapSides = side.swapSides;
+  if (side.swapSides !== undefined) update.swapSides = side.swapSides;
   update.autoSide = { key: side.key, mapIdx: side.mapIdx, attacker: side.attacker };
-  console.log(`[FACEIT] Map ${side.mapIdx + 1}: ${side.attacker} attacks first → ${side.attacker} on the right (swapSides=${side.swapSides})`);
+  if (side.swapSides !== undefined) console.log(`[FACEIT] Map ${side.mapIdx + 1}: ${side.attacker} attacks first → ${side.attacker} on the right (swapSides=${side.swapSides})`);
 }
 
 app.post('/api/faceit/match', async (req, res) => {
@@ -908,12 +915,10 @@ app.post('/api/faceit/match', async (req, res) => {
     // FINISHED branch keeps ticking (awaitingFinalStats) until they land, which
     // also fills in map statuses + score — both derive from stats, so without
     // this a fresh-finished load sat at 0-0 / all-upcoming with no warning.
-    const resultMaps = Object.values(details.results?.score || {})
-      .reduce((a, b) => a + (Number(b) || 0), 0);
     if (details.status !== 'FINISHED' && details.status !== 'CANCELLED') {
       startFaceitPoll();
     } else if (details.status === 'FINISHED'
-        && awaitingFinalStats({ statsCount: stats.length, completedMaps: resultMaps, finishedAt: details.finishedAt })) {
+        && awaitingFinalStats({ statsCount: stats.length, completedMaps: faceitCompletedMaps(details, []), finishedAt: details.finishedAt })) {
       console.log(`[FACEIT] ${matchId} just finished — polling until final stats are published`);
       startFaceitPoll();
     }
@@ -952,20 +957,10 @@ async function refreshFromFaceit() {
   const faction1 = details.teams.faction1;
   const faction2 = details.teams.faction2;
 
-  const maps = details.pickedMaps.map((m, i) => {
-    const roundStats = stats[i];
-    let winner = null;
-    if (roundStats?.winner) {
-      winner = roundStats.winner === faction1.id ? 'team1' : 'team2';
-    }
-    return {
-      name: m.name, mode: m.mode,
-      image: m.imageLg || m.imageSm,
-      status: roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming',
-      winner,
-      roundScore: roundStats?.scoreSummary || null,
-    };
-  });
+  // Forward-only like the poll tick: Relinquish All in the stats-404 window
+  // right after FINISHED used to reset every map to upcoming and score 0-0.
+  const maps = details.pickedMaps.map((m, i) =>
+    buildFaceitMap(m, stats[i], currentState.maps?.[i], faction1.id));
 
   // Keep confirmed ban sides through a failed veto-history fetch (read state
   // AFTER the await: a match loaded meanwhile must not donate its attribution).
@@ -1008,7 +1003,7 @@ async function refreshFromFaceit() {
   if (!isOverridden('teams.team2.score')) t2.score = computedScore2;
   update.teams = { team1: t1, team2: t2 };
   if (stats.length) update.playerStats = stats;
-  applyAutoSide(update, details, matchId, latest.autoSide?.key);
+  applyAutoSide(update, details, matchId, latest.autoSide);
 
   const updated = setState(update);
   broadcast('state', updated);
@@ -1073,10 +1068,7 @@ async function faceitPollTick() {
     // the first FINISHED tick used to lock in empty stats for good: the red
     // "Series Stats" preflight row on the next startup (DanBuzzBuzz, 2026-09).
     if (details.status === 'FINISHED' || details.status === 'CANCELLED') {
-      const resultMaps = Object.values(details.results?.score || {})
-        .reduce((a, b) => a + (Number(b) || 0), 0);
-      const completedMaps = Math.max(resultMaps,
-        (currentState.maps || []).filter(m => m && m.status === 'completed').length);
+      const completedMaps = faceitCompletedMaps(details, currentState.maps);
       const statsCount = Math.max((stats || []).length, (currentState.playerStats || []).length);
       if (details.status === 'FINISHED'
           && awaitingFinalStats({ statsCount, completedMaps, finishedAt: details.finishedAt })) {
@@ -1091,29 +1083,9 @@ async function faceitPollTick() {
     const faction1 = details.teams.faction1;
     const faction2 = details.teams.faction2;
 
-    const STATUS_RANK = { 'upcoming': 0, 'current': 1, 'completed': 2 };
-    const maps = details.pickedMaps.map((m, i) => {
-      const roundStats = stats[i];
-      const current = currentState.maps?.[i] || {};
-
-      // Winner: use FACEIT if available, otherwise preserve manual selection
-      let winner = current.winner || null;
-      if (roundStats?.winner) {
-        winner = roundStats.winner === faction1.id ? 'team1' : 'team2';
-      }
-
-      // Status: forward-only — never demote (e.g. current back to upcoming)
-      const faceitStatus = roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming';
-      const status = (STATUS_RANK[faceitStatus] >= STATUS_RANK[current.status || 'upcoming'])
-        ? faceitStatus : (current.status || 'upcoming');
-
-      return {
-        name: m.name, mode: m.mode,
-        image: m.imageLg || m.imageSm,
-        status, winner,
-        roundScore: roundStats?.scoreSummary || current.roundScore || null,
-      };
-    });
+    // Winner/status/score from FACEIT, forward-only (see buildFaceitMap).
+    const maps = details.pickedMaps.map((m, i) =>
+      buildFaceitMap(m, stats[i], currentState.maps?.[i], faction1.id));
 
     // Parse per-map bans, re-applying producer corrections (\u21c4 swap, manual
     // picker) so an auto-sync tick never reverts them. Confirmed attribution
@@ -1144,7 +1116,7 @@ async function faceitPollTick() {
       update.players = { team1: faction1.roster, team2: faction2.roster };
     }
     update.playerStats = mergePlayerStats(latest.playerStats, stats);
-    applyAutoSide(update, details, matchId, latest.autoSide?.key);
+    applyAutoSide(update, details, matchId, latest.autoSide);
     update.perMapBans = perMapBans;
     if (!isOverridden('heroBans')) {
       update.heroBans = activeBan.heroBans;
@@ -1436,11 +1408,15 @@ app.post('/api/map-music/directory', (req, res) => {
  * Single-flight; never throws; never overwrites stats that arrived meanwhile.
  */
 let statsBackfill = null;
+let statsBackfillMatch = null;
 function backfillPlayerStats() {
-  if (statsBackfill) return statsBackfill;
   const s = getState();
+  // Single-flight per MATCH: a fetch still running for a previously loaded
+  // match must not stand in for the current one's.
+  if (statsBackfill && statsBackfillMatch === s.faceitMatchId) return statsBackfill;
   if (!needsStatsBackfill(s)) return Promise.resolve();
   const matchId = s.faceitMatchId;
+  statsBackfillMatch = matchId;
   statsBackfill = faceit.getMatchStats(matchId)
     .then(stats => {
       const now = getState();
@@ -1450,7 +1426,7 @@ function backfillPlayerStats() {
       console.log(`[FACEIT] Backfilled ${stats.length} map(s) of stats for ${matchId}`);
     })
     .catch(e => console.warn(`[FACEIT] Stats backfill failed: ${e.message}`))
-    .finally(() => { statsBackfill = null; });
+    .finally(() => { if (statsBackfillMatch === matchId) { statsBackfill = null; statsBackfillMatch = null; } });
   return statsBackfill;
 }
 
