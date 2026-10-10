@@ -46,6 +46,7 @@ const defaultState = {
   matchHistory: [],
   graphicsPreset: 'default',
   swapSides: false, // swap team1/team2 positions in OBS
+  autoSide: null, // last FACEIT "first attacker" fact applied to swapSides: { key, mapIdx, attacker }. Edge-trigger memory for faceit-merge resolveAutoSide — a manual swap holds until the next map's side vote. Cleared on reset/match load.
   flythroughsDir: '', // path to folder containing map flythrough videos
   flythroughFallback: '',
   mapMusicDir: '', // path to folder containing map music audio files
@@ -193,6 +194,10 @@ export function loadState() {
       state = deepMerge(JSON.parse(JSON.stringify(defaultState)), data);
       // Heal a state.json written before the single-current invariant existed
       state.maps = normalizeSingleCurrent(state.maps);
+      // A match loaded under a build without the FACEIT first-attacker swap:
+      // the first tick must only RECORD the current side fact, not flip sides
+      // the producer may already have set by hand (resolveAutoSide seedOnly).
+      if (!('autoSide' in data) && data.faceitMatchId) state.autoSide = { seedOnly: true };
     }
   } catch (e) {
     console.warn('[State] Failed to load state, using defaults:', e.message);

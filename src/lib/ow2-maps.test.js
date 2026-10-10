@@ -22,6 +22,10 @@ describe('OW2_MAPS_FALLBACK vs the server FACEIT map table', () => {
     Object.values(FACEIT_MAP_IDS).map(m => [key(m.name), m.mode])
   );
   const fallbackMaps = new Map(OW2_MAPS_FALLBACK.map(m => [key(m.name), m.mode]));
+  // Live maps whose FACEIT game_map_id hasn't been harvested yet (see the TODO
+  // in FACEIT_MAP_IDS). The picker must still offer them; remove each entry
+  // once its id lands in the server table.
+  const AWAITING_FACEIT_ID = new Set([key('Watchpoint: Grimsvotn')]);
 
   // This is the regression guard for the v2.1.3 producer report ("no neon
   // junction selection in match hub maps"): the Match Hub picker's hardcoded
@@ -33,15 +37,24 @@ describe('OW2_MAPS_FALLBACK vs the server FACEIT map table', () => {
   });
 
   it('invents no maps the server does not know', () => {
-    const extra = [...fallbackMaps.keys()].filter(k => !serverMaps.has(k));
+    const extra = [...fallbackMaps.keys()]
+      .filter(k => !serverMaps.has(k) && !AWAITING_FACEIT_ID.has(k));
     expect(extra).toEqual([]);
   });
 
   it('agrees with the server on every map\'s mode', () => {
     const disagreements = [...fallbackMaps.entries()]
+      .filter(([k]) => !AWAITING_FACEIT_ID.has(k))
       .filter(([k, mode]) => serverMaps.get(k) !== mode)
       .map(([k, mode]) => `${k}: picker=${mode} server=${serverMaps.get(k)}`);
     expect(disagreements).toEqual([]);
+  });
+
+  it('keeps AWAITING_FACEIT_ID honest (drop entries once their id is added)', () => {
+    for (const k of AWAITING_FACEIT_ID) {
+      expect(fallbackMaps.has(k)).toBe(true);
+      expect(serverMaps.has(k)).toBe(false);
+    }
   });
 
   it('uses only modes the picker knows how to group', () => {

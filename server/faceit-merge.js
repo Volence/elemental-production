@@ -412,3 +412,109 @@ export function faceitSyncAllowed(state) {
 export function faceitSyncStillCurrent(state, fetchedMatchId) {
   return !!fetchedMatchId && !!state && state.faceitMatchId === fetchedMatchId;
 }
+
+/**
+ * FACEIT's "first attacker" -> the side swap. Producer request (MetalOBS,
+ * 2026-09): the team that attacks first sits on the RIGHT, so team1 attacking
+ * first means swapSides=true (team1 is the left side by default).
+ *
+ * Edge-triggered on `matchId:gameIdx:attacker`: returns null when that fact
+ * was already applied (prevKey), so a producer's manual ⇄ Swap Sides sticks
+ * until the NEXT map's side vote lands. Uses the newest game with a recorded
+ * attacker — FACEIT records the vote right after the map pick, so that's the
+ * map about to be played. No recorded attacker (failed history fetch,
+ * pre-vote) => null => sides untouched.
+ */
+export function resolveAutoSide(attackingFirst, matchId, prevKey, { seedOnly = false } = {}) {
+  if (!matchId || !Array.isArray(attackingFirst)) return null;
+  let idx = -1;
+  for (let i = attackingFirst.length - 1; i >= 0; i--) {
+    if (attackingFirst[i] === 'team1' || attackingFirst[i] === 'team2') { idx = i; break; }
+  }
+  if (idx < 0) return null;
+  const attacker = attackingFirst[idx];
+  const key = `${matchId}:${idx}:${attacker}`;
+  if (key === prevKey) return null;
+  // seedOnly: state came from a build without autoSide (see state.js
+  // loadState) — remember the fact but leave the producer's sides alone.
+  return { key, mapIdx: idx, attacker, swapSides: seedOnly ? undefined : attacker === 'team1' };
+}
+
+/**
+ * Leaving FACEIT mode: undo a side swap FACEIT made, keep one the producer
+ * made. Returns the new swapSides. A swap equal to what resolveAutoSide set is
+ * treated as FACEIT's (indistinguishable, and FACEIT's is the likely source).
+ */
+export function revertAutoSwap(state) {
+  const swap = !!state?.swapSides;
+  const attacker = state?.autoSide?.attacker;
+  if (!attacker) return swap;
+  return swap === (attacker === 'team1') ? false : swap;
+}
+
+const MAP_STATUS_RANK = { upcoming: 0, current: 1, completed: 2 };
+
+/**
+ * One FACEIT picked map + its stats round -> a state map, never moving
+ * progress backwards: no stats (FACEIT 404s them for a while, e.g. right after
+ * FINISHED) keeps the current status/winner/score instead of resetting the map
+ * to upcoming (which also zeroed the derived series score).
+ */
+export function buildFaceitMap(m, roundStats, current, faction1Id) {
+  const cur = current || {};
+  let winner = cur.winner || null;
+  if (roundStats?.winner) winner = roundStats.winner === faction1Id ? 'team1' : 'team2';
+  const faceitStatus = roundStats ? (roundStats.winner ? 'completed' : 'current') : 'upcoming';
+  const status = MAP_STATUS_RANK[faceitStatus] >= MAP_STATUS_RANK[cur.status || 'upcoming']
+    ? faceitStatus : (cur.status || 'upcoming');
+  return {
+    name: m.name, mode: m.mode,
+    image: m.imageLg || m.imageSm,
+    status, winner,
+    roundScore: roundStats?.scoreSummary || cur.roundScore || null,
+  };
+}
+
+/**
+ * How many of FACEIT's maps are done: FACEIT's own result score, or completed
+ * maps within FACEIT's picks — never producer-appended maps past them, which
+ * never get stats and would keep awaitingFinalStats polling for nothing.
+ */
+export function faceitCompletedMaps(details, maps) {
+  const resultMaps = Object.values(details?.results?.score || {})
+    .reduce((a, b) => a + (Number(b) || 0), 0);
+  const picked = (details?.pickedMaps || []).length;
+  const local = (maps || []).slice(0, picked).filter(m => m && m.status === 'completed').length;
+  return Math.max(resultMaps, local);
+}
+
+/**
+ * Stats from a sync tick -> state.playerStats. FACEIT 404s the stats endpoint
+ * until it has computed them (often a while AFTER the match is FINISHED), and
+ * callers fold fetch errors to []. An empty fetch must never wipe stats that
+ * already loaded — that, plus the poll stopping at FINISHED, is how a finished
+ * series ended up with no stats and a red Series Stats preflight row.
+ */
+export function mergePlayerStats(prev, fetched) {
+  if (Array.isArray(fetched) && fetched.length) return fetched;
+  return Array.isArray(prev) ? prev : [];
+}
+
+const FINAL_STATS_GRACE_MS = 10 * 60 * 1000;
+
+/**
+ * After FACEIT reports FINISHED, keep polling (up to 10 min past finished_at,
+ * unix SECONDS) while completed maps still outnumber stats rounds, so the
+ * late-published final stats are actually picked up.
+ */
+export function awaitingFinalStats({ statsCount, completedMaps, finishedAt, now = Date.now() }) {
+  if (!finishedAt || completedMaps <= statsCount) return false;
+  return now - finishedAt * 1000 < FINAL_STATS_GRACE_MS;
+}
+
+/** A FACEIT match with completed maps but no stats — worth one fetch at boot / preflight. */
+export function needsStatsBackfill(state) {
+  if (!state || state.mode !== 'faceit' || !state.faceitMatchId) return false;
+  if ((state.playerStats || []).length) return false;
+  return (state.maps || []).some(m => m && m.status === 'completed');
+}

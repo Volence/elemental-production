@@ -48,6 +48,8 @@ const MAP_DEFS = [
   { display: 'Throne of Anubis', aliases: ['throne of anubis', 'temple of anubis'] },
   { display: 'Throne Room', aliases: ['throne', 'eichenwalde'] },
   { display: 'Watchpoint: Gibraltar', aliases: ['watchpoint gibraltar'] },
+  // Season 5 (Oct 2026) escort map — see the note in server/flythroughs.js.
+  { display: 'Watchpoint: Grimsvotn', aliases: ['watchpoint grimsvotn', 'grimsvotn'] },
 ];
 
 // Compress a name for fuzzy matching: strip accents/punctuation/spaces.
