@@ -52,8 +52,9 @@ look soft.
 | --- | --- | --- |
 | `neon-junction.webp` (2193×1187) | Overwatch Wiki, `NeonJunction1.png` | OverFast has no Neon Junction screenshot at all — the card was blank |
 | `kings-row.webp` (1920×1200) | Overwatch Wiki, `Kings Row 007.jpg` | OverFast's name uses a curly apostrophe; the FACEIT fallback was a 110×55 thumbnail upscaled ~12× |
+| `watchpoint-grimsvotn.webp` (1920×1080) | Overwatch Wiki, `Watchpoint Grimsvötn 1.jpg` | Season 5 map; OverFast lists a screenshot URL but it 404s |
 
-Both are in-game screenshots of the map itself (no HUD, no watermark),
+All are in-game screenshots of the map itself (no HUD, no watermark),
 re-encoded to WebP at quality 90. Blizzard owns the underlying artwork; these
 are used the same way the live OverFast/FACEIT map art already was.
 
@@ -109,6 +110,7 @@ a reference generated from a snapshot of that data.
 | Suravasa | flashpoint | `suravasa.jpg` / `.png` |
 | Throne of Anubis | clash | `throne-of-anubis.jpg` / `.png` |
 | Watchpoint: Gibraltar | escort | `watchpoint-gibraltar.jpg` / `.png` |
+| Watchpoint: Grimsvotn | escort | `watchpoint-grimsvotn.jpg` / `.png` |
 | Wuxing University | control | `wuxing-university.jpg` / `.png` |
 
 ## Other maps OverFast returns (non-competitive modes)

@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.4.1 — Watchpoint: Grimsvotn map art
+
+Restart to update — **no scene collection re-import needed**.
+
+### Fixed
+
+- **Watchpoint: Grimsvotn had no map image.** The game catalog lists a
+  screenshot for it, but the link is dead, so map cards showed a blank tile.
+  The app now ships its own Grimsvotn image (same as Neon Junction). Your own
+  `watchpoint-grimsvotn` file in the map-images folder still takes priority.
+
 ## v2.4.0 — Season 5, FACEIT attacker side, stats that stick
 
 Dashboard, desktop app and sync only — **no scene collection re-import needed**.
@@ -13,8 +24,8 @@ Installs from inside the app (Restart to update) on v2.3.0 and later.
   her as Support (restart the app if the Match Hub still shows her under
   Damage). **Watchpoint: Grimsvotn** is in the Match Hub map picker, and map
   music / flythroughs pick up any file with "grimsvotn" in its name (accents
-  in the filename are fine). Add your own map image, music and flythrough for
-  it as usual.
+  in the filename are fine). Add your own music and flythrough for it as
+  usual (map art ships in v2.4.1).
 - **First attacker goes on the right automatically (FACEIT).** The app reads
   which team FACEIT has attacking first on each map and puts that team on the
   right side. It only acts when a new map comes up, so a manual swap you make
