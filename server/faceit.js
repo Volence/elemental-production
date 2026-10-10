@@ -84,6 +84,8 @@ export const FACEIT_MAP_IDS = {
   '0x08000000000005BB': { name: 'Route 66', mode: 'Escort' },
   '0x0800000000000C85': { name: 'Shambali Monastery', mode: 'Escort' },
   '0x0800000000000184': { name: 'Watchpoint Gibraltar', mode: 'Escort' },
+  // TODO: Watchpoint: Grimsvotn (Season 5, Oct 2026) — id not yet harvested;
+  // take it from voting.map.entities[].game_map_id once a FACEIT pool carries it.
   '0x0800000000000F35': { name: 'Aatlis', mode: 'Flashpoint' },
   '0x0800000000000E13': { name: 'New Junk City', mode: 'Flashpoint' },
   '0x0800000000000D3E': { name: 'Suravasa', mode: 'Flashpoint' },

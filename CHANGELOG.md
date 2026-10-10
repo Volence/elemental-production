@@ -1,5 +1,40 @@
 # Changelog
 
+## v2.4.0 — Season 5, FACEIT attacker side, stats that stick
+
+Dashboard, desktop app and sync only — **no scene collection re-import needed**.
+Installs from inside the app (Restart to update) on v2.3.0 and later.
+
+### Added
+
+- **Season 5 support.** Doctrine ships in the hero render pack, so a Doctrine
+  ban shows full art on Ban Reveal. Sombra's move to Support needs nothing on
+  your side — the hero list comes live from the game catalog and already has
+  her as Support (restart the app if the Match Hub still shows her under
+  Damage). **Watchpoint: Grimsvotn** is in the Match Hub map picker, and map
+  music / flythroughs pick up any file with "grimsvotn" in its name (accents
+  in the filename are fine). Add your own map image, music and flythrough for
+  it as usual.
+- **First attacker goes on the right automatically (FACEIT).** The app reads
+  which team FACEIT has attacking first on each map and puts that team on the
+  right side. It only acts when a new map comes up, so a manual swap you make
+  during a map holds. The Match Hub shows a badge when this happens.
+  Switching out of FACEIT mode undoes the automatic swap.
+
+### Fixed
+
+- **Series Stats going red / blank after a match ended.** FACEIT publishes
+  final stats a little after a match finishes; the app used to stop checking
+  the moment the match finished and could wipe stats it already had. It now
+  keeps checking (up to 10 minutes) until the final stats arrive, never
+  replaces loaded stats with an empty answer, and backfills missing stats at
+  startup and before the preflight check. The row is no longer red outside
+  FACEIT mode.
+- **"Can't change team color."** Team colors now save as soon as you change
+  them; previously an unsaved change was dropped when you switched tabs, and
+  the Save button could sit off-screen.
+- **Stinger download** now has its own card under OBS Scene Setup in Settings.
+
 ## v2.3.0 — In-app updates, and ban sides that hold
 
 Dashboard, desktop app and sync only — **no scene collection re-import needed**.

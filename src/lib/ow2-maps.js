@@ -67,6 +67,7 @@ export const OW2_MAPS_FALLBACK = [
   { name: 'Havana', mode: 'Escort' }, { name: 'Junkertown', mode: 'Escort' },
   { name: 'Rialto', mode: 'Escort' }, { name: 'Route 66', mode: 'Escort' },
   { name: 'Shambali Monastery', mode: 'Escort' }, { name: 'Watchpoint: Gibraltar', mode: 'Escort' },
+  { name: 'Watchpoint: Grimsvotn', mode: 'Escort' },
   { name: 'Blizzard World', mode: 'Hybrid' }, { name: 'Eichenwalde', mode: 'Hybrid' },
   { name: 'Hollywood', mode: 'Hybrid' }, { name: 'King’s Row', mode: 'Hybrid' },
   { name: 'Midtown', mode: 'Hybrid' }, { name: 'Neon Junction', mode: 'Hybrid' },

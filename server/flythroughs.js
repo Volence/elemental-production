@@ -42,6 +42,9 @@ const MAP_DEFS = [
   { display: 'Throne of Anubis', aliases: ['throne of anubis', 'throne'] },
   { display: 'Throne Room', aliases: ['throne'] },
   { display: 'Watchpoint: Gibraltar', aliases: ['gibraltar'] },
+  // Season 5 (Oct 2026) escort map. Catalog spelling has no accents; compress()
+  // strips them from filenames, so "Grímsvötn Fly.mp4" matches too.
+  { display: 'Watchpoint: Grimsvotn', aliases: ['grimsvotn'] },
 ];
 
 // Compress a name for fuzzy matching: strip accents/punctuation/spaces.
